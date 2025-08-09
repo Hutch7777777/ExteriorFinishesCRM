@@ -4,7 +4,6 @@ import {
   jobs,
   estimates,
   divisions,
-  activityLog,
   type User,
   type UpsertUser,
   type Customer,
@@ -18,8 +17,6 @@ import {
   type EstimateWithRelations,
   type Division,
   type InsertDivision,
-  type ActivityLog,
-  type InsertActivityLog,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql, count } from "drizzle-orm";
@@ -52,7 +49,7 @@ export interface IStorage {
   getRecentJobs(limit?: number): Promise<JobWithRelations[]>;
 
   // Estimate operations
-  getEstimates(divisionId?: string): Promise<EstimateWithRelations[]>;
+  getEstimates(jobId?: string): Promise<EstimateWithRelations[]>;
   getEstimate(id: string): Promise<EstimateWithRelations | undefined>;
   createEstimate(estimate: InsertEstimate): Promise<Estimate>;
   updateEstimate(id: string, estimate: Partial<InsertEstimate>): Promise<Estimate>;
@@ -65,10 +62,6 @@ export interface IStorage {
     totalCustomers: number;
     pendingEstimates: number;
   }>;
-
-  // Activity log
-  logActivity(activity: InsertActivityLog): Promise<ActivityLog>;
-  getRecentActivity(limit?: number): Promise<ActivityLog[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -84,10 +77,7 @@ export class DatabaseStorage implements IStorage {
       .values(userData)
       .onConflictDoUpdate({
         target: users.id,
-        set: {
-          ...userData,
-          updatedAt: new Date(),
-        },
+        set: userData,
       })
       .returning();
     return user;
@@ -111,7 +101,7 @@ export class DatabaseStorage implements IStorage {
   async updateDivision(id: string, division: Partial<InsertDivision>): Promise<Division> {
     const [updatedDivision] = await db
       .update(divisions)
-      .set({ ...division, updatedAt: new Date() })
+      .set(division)
       .where(eq(divisions.id, id))
       .returning();
     return updatedDivision;
@@ -163,7 +153,7 @@ export class DatabaseStorage implements IStorage {
   async updateCustomer(id: string, customer: Partial<InsertCustomer>): Promise<Customer> {
     const [updatedCustomer] = await db
       .update(customers)
-      .set({ ...customer, updatedAt: new Date() })
+      .set(customer)
       .where(eq(customers.id, id))
       .returning();
     return updatedCustomer;
@@ -180,6 +170,7 @@ export class DatabaseStorage implements IStorage {
       .from(jobs)
       .leftJoin(customers, eq(jobs.customerId, customers.id))
       .leftJoin(divisions, eq(jobs.divisionId, divisions.id))
+      .leftJoin(users, eq(jobs.createdBy, users.id))
       .orderBy(desc(jobs.createdAt));
 
     if (divisionId) {
@@ -191,6 +182,7 @@ export class DatabaseStorage implements IStorage {
       ...row.jobs,
       customer: row.customers || undefined,
       division: row.divisions || undefined,
+      createdByUser: row.users || undefined,
     }));
   }
 
@@ -200,6 +192,7 @@ export class DatabaseStorage implements IStorage {
       .from(jobs)
       .leftJoin(customers, eq(jobs.customerId, customers.id))
       .leftJoin(divisions, eq(jobs.divisionId, divisions.id))
+      .leftJoin(users, eq(jobs.createdBy, users.id))
       .where(eq(jobs.id, id));
 
     if (!result) return undefined;
@@ -208,6 +201,7 @@ export class DatabaseStorage implements IStorage {
       ...result.jobs,
       customer: result.customers || undefined,
       division: result.divisions || undefined,
+      createdByUser: result.users || undefined,
     };
   }
 
@@ -219,7 +213,7 @@ export class DatabaseStorage implements IStorage {
   async updateJob(id: string, job: Partial<InsertJob>): Promise<Job> {
     const [updatedJob] = await db
       .update(jobs)
-      .set({ ...job, updatedAt: new Date() })
+      .set(job)
       .where(eq(jobs.id, id))
       .returning();
     return updatedJob;
@@ -235,6 +229,7 @@ export class DatabaseStorage implements IStorage {
       .from(jobs)
       .leftJoin(customers, eq(jobs.customerId, customers.id))
       .leftJoin(divisions, eq(jobs.divisionId, divisions.id))
+      .leftJoin(users, eq(jobs.createdBy, users.id))
       .orderBy(desc(jobs.createdAt))
       .limit(limit);
 
@@ -242,28 +237,25 @@ export class DatabaseStorage implements IStorage {
       ...row.jobs,
       customer: row.customers || undefined,
       division: row.divisions || undefined,
+      createdByUser: row.users || undefined,
     }));
   }
 
   // Estimate operations
-  async getEstimates(divisionId?: string): Promise<EstimateWithRelations[]> {
+  async getEstimates(jobId?: string): Promise<EstimateWithRelations[]> {
     const query = db
       .select()
       .from(estimates)
-      .leftJoin(customers, eq(estimates.customerId, customers.id))
-      .leftJoin(divisions, eq(estimates.divisionId, divisions.id))
       .leftJoin(jobs, eq(estimates.jobId, jobs.id))
       .orderBy(desc(estimates.createdAt));
 
-    if (divisionId) {
-      query.where(eq(estimates.divisionId, divisionId));
+    if (jobId) {
+      query.where(eq(estimates.jobId, jobId));
     }
 
     const results = await query;
     return results.map(row => ({
       ...row.estimates,
-      customer: row.customers || undefined,
-      division: row.divisions || undefined,
       job: row.jobs || undefined,
     }));
   }
@@ -272,8 +264,6 @@ export class DatabaseStorage implements IStorage {
     const [result] = await db
       .select()
       .from(estimates)
-      .leftJoin(customers, eq(estimates.customerId, customers.id))
-      .leftJoin(divisions, eq(estimates.divisionId, divisions.id))
       .leftJoin(jobs, eq(estimates.jobId, jobs.id))
       .where(eq(estimates.id, id));
 
@@ -281,8 +271,6 @@ export class DatabaseStorage implements IStorage {
 
     return {
       ...result.estimates,
-      customer: result.customers || undefined,
-      division: result.divisions || undefined,
       job: result.jobs || undefined,
     };
   }
@@ -295,7 +283,7 @@ export class DatabaseStorage implements IStorage {
   async updateEstimate(id: string, estimate: Partial<InsertEstimate>): Promise<Estimate> {
     const [updatedEstimate] = await db
       .update(estimates)
-      .set({ ...estimate, updatedAt: new Date() })
+      .set(estimate)
       .where(eq(estimates.id, id))
       .returning();
     return updatedEstimate;
@@ -312,49 +300,34 @@ export class DatabaseStorage implements IStorage {
     totalCustomers: number;
     pendingEstimates: number;
   }> {
-    // Get total revenue from completed jobs
-    const [revenueResult] = await db
-      .select({ total: sql<number>`COALESCE(SUM(${jobs.value}), 0)` })
-      .from(jobs)
-      .where(eq(jobs.status, 'completed'));
-
-    // Get active jobs count
     const [activeJobsResult] = await db
       .select({ count: count() })
       .from(jobs)
-      .where(eq(jobs.status, 'in_progress'));
+      .where(eq(jobs.status, 'active'));
 
-    // Get total customers count
-    const [customersResult] = await db
+    const [totalCustomersResult] = await db
       .select({ count: count() })
       .from(customers);
 
-    // Get pending estimates count
-    const [estimatesResult] = await db
+    const [pendingEstimatesResult] = await db
       .select({ count: count() })
       .from(estimates)
       .where(eq(estimates.status, 'sent'));
 
+    // Calculate total revenue from approved estimates
+    const [revenueResult] = await db
+      .select({ 
+        total: sql<number>`COALESCE(SUM(${estimates.totalCents}), 0)::int`
+      })
+      .from(estimates)
+      .where(eq(estimates.status, 'approved'));
+
     return {
-      totalRevenue: Number(revenueResult?.total) || 0,
+      totalRevenue: (revenueResult?.total || 0) / 100, // Convert cents to dollars
       activeJobs: activeJobsResult?.count || 0,
-      totalCustomers: customersResult?.count || 0,
-      pendingEstimates: estimatesResult?.count || 0,
+      totalCustomers: totalCustomersResult?.count || 0,
+      pendingEstimates: pendingEstimatesResult?.count || 0,
     };
-  }
-
-  // Activity log
-  async logActivity(activity: InsertActivityLog): Promise<ActivityLog> {
-    const [newActivity] = await db.insert(activityLog).values(activity).returning();
-    return newActivity;
-  }
-
-  async getRecentActivity(limit = 10): Promise<ActivityLog[]> {
-    return await db
-      .select()
-      .from(activityLog)
-      .orderBy(desc(activityLog.createdAt))
-      .limit(limit);
   }
 }
 

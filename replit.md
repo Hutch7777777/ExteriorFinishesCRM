@@ -4,6 +4,14 @@ This is a Customer Relationship Management (CRM) system built for Exterior Finis
 
 The system features a React-based frontend with TypeScript, a Node.js Express backend, PostgreSQL database with Drizzle ORM, and Replit authentication integration. It's designed to streamline business operations by providing centralized tracking of customer interactions, project management, and financial estimates.
 
+## Recent Changes (August 2025)
+- ✅ Configured complete database schema with Drizzle ORM and Neon PostgreSQL
+- ✅ Created five main tables: users, divisions, customers, jobs, estimates with proper foreign key relationships
+- ✅ Implemented proper database migrations and seeding scripts with sample data
+- ✅ Set up division-based routing with @tanstack/react-router (mfnc, sfnc, rr divisions)
+- ✅ Built comprehensive app shell with header division switcher and sidebar navigation
+- ✅ Created reusable DataTable and FormWrapper components for data management
+
 # User Preferences
 
 Preferred communication style: Simple, everyday language.
@@ -40,13 +48,12 @@ Preferred communication style: Simple, everyday language.
 - **User Management**: Automatic user provisioning with profile data sync
 
 ## Database Schema Design
-- **Users**: Authentication and profile information
-- **Divisions**: Residential and commercial business units
-- **Customers**: Contact information and division association
-- **Jobs**: Project tracking with status management
-- **Estimates**: Financial proposals with approval workflow
-- **Activity Log**: Audit trail for business operations
-- **Sessions**: Secure session storage for authentication
+- **Users**: Authentication (id, email, password_hash, name, role, division_id) with admin/staff roles
+- **Divisions**: Business units (id, key ['mfnc'|'sfnc'|'rr'], name) for Multi-Family/Single-Family/Repair
+- **Customers**: Contact information (id, division_id, name, email, phone, address_json, notes)
+- **Jobs**: Project tracking (id, customer_id, division_id, status, site_address_json, created_by)  
+- **Estimates**: Financial proposals (id, job_id, status, total_cents, lines_json)
+- **Sessions**: Secure session storage for Replit authentication (required for auth)
 
 ## Core Business Logic
 - **Division Management**: Separate residential and commercial operations

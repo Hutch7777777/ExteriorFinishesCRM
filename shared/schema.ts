@@ -6,14 +6,13 @@ import {
   timestamp,
   varchar,
   text,
-  decimal,
+  integer,
   pgEnum,
   uuid,
-  boolean,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 
-// Session storage table for Replit Auth
+// Session storage table for Replit Auth (required)
 export const sessions = pgTable(
   "sessions",
   {
@@ -24,106 +23,99 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
-// User storage table for Replit Auth
-export const users = pgTable("users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  email: varchar("email").unique(),
-  firstName: varchar("first_name"),
-  lastName: varchar("last_name"),
-  profileImageUrl: varchar("profile_image_url"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
 // Enums
-export const divisionTypeEnum = pgEnum('division_type', ['residential', 'commercial']);
-export const jobStatusEnum = pgEnum('job_status', ['planning', 'in_progress', 'completed', 'cancelled']);
+export const userRoleEnum = pgEnum('user_role', ['admin', 'staff']);
+export const divisionKeyEnum = pgEnum('division_key', ['mfnc', 'sfnc', 'rr']);
+export const jobStatusEnum = pgEnum('job_status', ['draft', 'active', 'closed']);
 export const estimateStatusEnum = pgEnum('estimate_status', ['draft', 'sent', 'approved', 'rejected']);
+
+// Users table
+export const users = pgTable("users", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: varchar("email", { length: 255 }).unique().notNull(),
+  passwordHash: varchar("password_hash", { length: 255 }).notNull(),
+  name: varchar("name", { length: 200 }).notNull(),
+  role: userRoleEnum("role").notNull().default('staff'),
+  divisionId: uuid("division_id").references(() => divisions.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_users_division_id").on(table.divisionId),
+  index("idx_users_role").on(table.role),
+]);
 
 // Divisions table
 export const divisions = pgTable("divisions", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: varchar("name", { length: 100 }).notNull(),
-  type: divisionTypeEnum("type").notNull(),
-  description: text("description"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  key: divisionKeyEnum("key").unique().notNull(),
+  name: varchar("name", { length: 200 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 // Customers table
 export const customers = pgTable("customers", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  divisionId: uuid("division_id").notNull().references(() => divisions.id),
   name: varchar("name", { length: 200 }).notNull(),
   email: varchar("email", { length: 255 }),
   phone: varchar("phone", { length: 20 }),
-  address: text("address"),
-  city: varchar("city", { length: 100 }),
-  state: varchar("state", { length: 50 }),
-  zipCode: varchar("zip_code", { length: 10 }),
-  divisionId: uuid("division_id").references(() => divisions.id),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
+  addressJson: jsonb("address_json"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_customers_division_id").on(table.divisionId),
+  index("idx_customers_email").on(table.email),
+]);
 
 // Jobs table
 export const jobs = pgTable("jobs", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   customerId: uuid("customer_id").notNull().references(() => customers.id),
   divisionId: uuid("division_id").notNull().references(() => divisions.id),
-  title: varchar("title", { length: 200 }).notNull(),
-  description: text("description"),
-  projectType: varchar("project_type", { length: 100 }).notNull(),
-  status: jobStatusEnum("status").notNull().default('planning'),
-  value: decimal("value", { precision: 12, scale: 2 }),
-  startDate: timestamp("start_date"),
-  dueDate: timestamp("due_date"),
-  completedDate: timestamp("completed_date"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
+  status: jobStatusEnum("status").notNull().default('draft'),
+  siteAddressJson: jsonb("site_address_json"),
+  createdBy: uuid("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_jobs_customer_id").on(table.customerId),
+  index("idx_jobs_division_id").on(table.divisionId),
+  index("idx_jobs_created_by").on(table.createdBy),
+  index("idx_jobs_status").on(table.status),
+]);
 
 // Estimates table
 export const estimates = pgTable("estimates", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  customerId: uuid("customer_id").notNull().references(() => customers.id),
-  divisionId: uuid("division_id").notNull().references(() => divisions.id),
-  jobId: uuid("job_id").references(() => jobs.id),
-  title: varchar("title", { length: 200 }).notNull(),
-  description: text("description"),
-  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+  jobId: uuid("job_id").notNull().references(() => jobs.id),
   status: estimateStatusEnum("status").notNull().default('draft'),
-  validUntil: timestamp("valid_until"),
-  sentDate: timestamp("sent_date"),
-  approvedDate: timestamp("approved_date"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-// Activity log for tracking system events
-export const activityLog = pgTable("activity_log", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").references(() => users.id),
-  action: varchar("action", { length: 100 }).notNull(),
-  description: text("description").notNull(),
-  entityType: varchar("entity_type", { length: 50 }),
-  entityId: uuid("entity_id"),
-  createdAt: timestamp("created_at").defaultNow(),
-});
+  totalCents: integer("total_cents").notNull().default(0),
+  linesJson: jsonb("lines_json"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_estimates_job_id").on(table.jobId),
+  index("idx_estimates_status").on(table.status),
+]);
 
 // Relations
+export const userRelations = relations(users, ({ one, many }) => ({
+  division: one(divisions, {
+    fields: [users.divisionId],
+    references: [divisions.id],
+  }),
+  createdJobs: many(jobs),
+}));
+
+export const divisionRelations = relations(divisions, ({ many }) => ({
+  users: many(users),
+  customers: many(customers),
+  jobs: many(jobs),
+}));
+
 export const customerRelations = relations(customers, ({ one, many }) => ({
   division: one(divisions, {
     fields: [customers.divisionId],
     references: [divisions.id],
   }),
   jobs: many(jobs),
-  estimates: many(estimates),
-}));
-
-export const divisionRelations = relations(divisions, ({ many }) => ({
-  customers: many(customers),
-  jobs: many(jobs),
-  estimates: many(estimates),
 }));
 
 export const jobRelations = relations(jobs, ({ one, many }) => ({
@@ -135,18 +127,14 @@ export const jobRelations = relations(jobs, ({ one, many }) => ({
     fields: [jobs.divisionId],
     references: [divisions.id],
   }),
+  createdByUser: one(users, {
+    fields: [jobs.createdBy],
+    references: [users.id],
+  }),
   estimates: many(estimates),
 }));
 
 export const estimateRelations = relations(estimates, ({ one }) => ({
-  customer: one(customers, {
-    fields: [estimates.customerId],
-    references: [customers.id],
-  }),
-  division: one(divisions, {
-    fields: [estimates.divisionId],
-    references: [divisions.id],
-  }),
   job: one(jobs, {
     fields: [estimates.jobId],
     references: [jobs.id],
@@ -154,46 +142,67 @@ export const estimateRelations = relations(estimates, ({ one }) => ({
 }));
 
 // Insert schemas
-export const insertDivisionSchema = createInsertSchema(divisions).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertCustomerSchema = createInsertSchema(customers).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertJobSchema = createInsertSchema(jobs).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertEstimateSchema = createInsertSchema(estimates).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertActivityLogSchema = createInsertSchema(activityLog).omit({ id: true, createdAt: true });
+export const insertUserSchema = createInsertSchema(users).omit({ 
+  id: true, 
+  createdAt: true 
+});
+
+export const insertDivisionSchema = createInsertSchema(divisions).omit({ 
+  id: true, 
+  createdAt: true 
+});
+
+export const insertCustomerSchema = createInsertSchema(customers).omit({ 
+  id: true, 
+  createdAt: true 
+});
+
+export const insertJobSchema = createInsertSchema(jobs).omit({ 
+  id: true, 
+  createdAt: true 
+});
+
+export const insertEstimateSchema = createInsertSchema(estimates).omit({ 
+  id: true, 
+  createdAt: true 
+});
 
 // Types
-export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
+export type InsertUser = typeof insertUserSchema._type;
 
-export type InsertDivision = typeof insertDivisionSchema._type;
 export type Division = typeof divisions.$inferSelect;
+export type InsertDivision = typeof insertDivisionSchema._type;
 
-export type InsertCustomer = typeof insertCustomerSchema._type;
 export type Customer = typeof customers.$inferSelect;
+export type InsertCustomer = typeof insertCustomerSchema._type;
 
-export type InsertJob = typeof insertJobSchema._type;
 export type Job = typeof jobs.$inferSelect;
+export type InsertJob = typeof insertJobSchema._type;
 
-export type InsertEstimate = typeof insertEstimateSchema._type;
 export type Estimate = typeof estimates.$inferSelect;
-
-export type InsertActivityLog = typeof insertActivityLogSchema._type;
-export type ActivityLog = typeof activityLog.$inferSelect;
+export type InsertEstimate = typeof insertEstimateSchema._type;
 
 // Extended types with relations
+export type UserWithRelations = User & {
+  division?: Division;
+};
+
 export type CustomerWithRelations = Customer & {
   division?: Division;
   jobs?: Job[];
-  estimates?: Estimate[];
 };
 
 export type JobWithRelations = Job & {
   customer?: Customer;
   division?: Division;
+  createdByUser?: User;
   estimates?: Estimate[];
 };
 
 export type EstimateWithRelations = Estimate & {
-  customer?: Customer;
-  division?: Division;
-  job?: Job;
+  job?: JobWithRelations;
 };
+
+// For Replit Auth compatibility
+export type UpsertUser = typeof users.$inferInsert;
