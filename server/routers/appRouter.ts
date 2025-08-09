@@ -49,7 +49,7 @@ export const createAppRouter = () => {
       const ctx = await createContext(req, res);
       requireRole('admin')(ctx);
       
-      const input = insertUserSchema.omit({ id: true, createdAt: true }).parse(req.body.input);
+      const input = insertUserSchema.omit({ id: true, createdAt: true }).parse(req.body?.input || {});
       const user = await storage.createUser(input);
       const { passwordHash, ...userWithoutPassword } = user;
       const result = { user: userWithoutPassword };
@@ -107,8 +107,43 @@ export const createAppRouter = () => {
       const ctx = await createContext(req, res);
       requireRole('staff')(ctx);
       
-      const input = insertCustomerSchema.omit({ id: true, createdAt: true }).parse(req.body.input);
+      const input = insertCustomerSchema.omit({ id: true, createdAt: true }).parse(req.body?.input || {});
       const result = await storage.createCustomer(input);
+      
+      res.json({ result: superjson.serialize(result) });
+    } catch (error) {
+      if (error instanceof TRPCError) {
+        res.status(error.statusCode).json({ error: { message: error.message, code: error.code } });
+      } else {
+        res.status(500).json({ error: { message: 'Internal server error' } });
+      }
+    }
+  });
+
+  // Divisions endpoints
+  router.get('/divisions.getAll', async (req, res) => {
+    try {
+      const ctx = await createContext(req, res);
+      requireRole('staff')(ctx);
+      
+      const result = await storage.getDivisions();
+      res.json({ result: superjson.serialize(result) });
+    } catch (error) {
+      if (error instanceof TRPCError) {
+        res.status(error.statusCode).json({ error: { message: error.message, code: error.code } });
+      } else {
+        res.status(500).json({ error: { message: 'Internal server error' } });
+      }
+    }
+  });
+
+  router.get('/divisions.getByKey', async (req, res) => {
+    try {
+      const ctx = await createContext(req, res);
+      requireRole('staff')(ctx);
+      
+      const input = z.object({ key: z.enum(['mfnc', 'sfnc', 'rr']) }).parse(req.query);
+      const result = await storage.getDivisionByKey(input.key);
       
       res.json({ result: superjson.serialize(result) });
     } catch (error) {

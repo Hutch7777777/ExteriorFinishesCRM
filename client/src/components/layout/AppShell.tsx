@@ -1,19 +1,15 @@
 import { useParams } from '@tanstack/react-router'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { Users, Briefcase, Calculator, LogOut } from 'lucide-react'
 import { apiRequest } from '@/lib/queryClient'
 import { useToast } from '@/hooks/use-toast'
+import { DivisionSwitcher } from '@/components/DivisionSwitcher'
 import Customers from '@/pages/Customers'
 import Jobs from '@/pages/Jobs'
 import Estimates from '@/pages/Estimates'
 
-const DIVISIONS = {
-  mfnc: 'Multi-Family New Construction',
-  sfnc: 'Single-Family New Construction', 
-  rr: 'Repair & Renovation'
-}
+// DIVISIONS constant removed - now fetched via tRPC
 
 interface NavLinkProps {
   href: string
@@ -39,16 +35,8 @@ function NavLink({ href, icon, label, isActive }: NavLinkProps) {
 }
 
 function Header() {
-  const params = useParams({ strict: false })
-  const currentDivision = params.division || 'mfnc'
-  const currentPath = window.location.pathname
-  const currentSection = currentPath.split('/').pop() || 'customers'
   const { toast } = useToast()
   const queryClient = useQueryClient()
-
-  const handleDivisionChange = (newDivision: string) => {
-    window.location.href = `/${newDivision}/${currentSection}`
-  }
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
@@ -83,23 +71,7 @@ function Header() {
         </div>
         
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <label htmlFor="division-select" className="text-sm font-medium text-muted-foreground">
-              Division:
-            </label>
-            <Select value={currentDivision} onValueChange={handleDivisionChange}>
-              <SelectTrigger id="division-select" className="w-64">
-                <SelectValue placeholder="Select division" />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(DIVISIONS).map(([key, label]) => (
-                  <SelectItem key={key} value={key}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <DivisionSwitcher />
           
           <Button
             variant="ghost"

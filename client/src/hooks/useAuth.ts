@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { getQueryFn } from "@/lib/queryClient";
+import { trpcClient } from "@/lib/trpc";
 
 interface AuthUser {
   id: string;
@@ -14,15 +14,24 @@ interface AuthResponse {
 }
 
 export function useAuth() {
-  const { data: userData, isLoading } = useQuery<AuthResponse | null>({
-    queryKey: ["/api/auth/me"],
-    queryFn: getQueryFn({ on401: "returnNull" }),
+  const { data: userData, isLoading, error } = useQuery<AuthResponse | null>({
+    queryKey: ["auth.me"],
+    queryFn: async () => {
+      try {
+        return await trpcClient.auth.me();
+      } catch (error: any) {
+        if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
+          return null; // User not authenticated
+        }
+        throw error; // Other errors should be thrown
+      }
+    },
     retry: false,
   });
 
   return {
     user: userData?.user,
     isLoading,
-    isAuthenticated: !!userData?.user,
+    isAuthenticated: !!userData?.user && !error,
   };
 }

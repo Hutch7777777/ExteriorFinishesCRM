@@ -52,6 +52,15 @@ export class TRPCClient {
       body: JSON.stringify({ input }),
     }),
   };
+
+  // Divisions endpoints
+  divisions = {
+    getAll: () => this.makeRequest('divisions.getAll'),
+    getByKey: (input: { key: 'mfnc' | 'sfnc' | 'rr' }) => {
+      const params = new URLSearchParams(input);
+      return this.makeRequest(`divisions.getByKey?${params}`);
+    },
+  };
 }
 
 export const trpcClient = new TRPCClient();

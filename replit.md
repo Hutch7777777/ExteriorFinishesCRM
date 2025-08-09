@@ -15,6 +15,13 @@ The system features a React-based frontend with TypeScript, a Node.js Express ba
 - ✅ Created authentication routes: POST /api/auth/login, /logout, /register (admin-only), GET /api/auth/me
 - ✅ Built sign-in page with React Hook Form and added logout functionality to app header
 - ✅ Added authentication middleware and proper cookie management with 15-minute token expiry
+- ✅ Implemented custom tRPC-like system with superjson transformer for type-safe API communication
+- ✅ Created authentication context with createContext() that extracts JWT user from cookies
+- ✅ Added role-based access control with requireAuthed() and requireRole('admin'|'staff') helpers
+- ✅ Built division scoping helper that forces staff to their division, allows admin access to all divisions
+- ✅ Implemented divisions endpoints: divisions.getAll() and divisions.getByKey() with proper authentication
+- ✅ Created DivisionSwitcher component that fetches divisions via tRPC and updates route parameters
+- ✅ Set up division-based navigation: /:division/customers | jobs | estimates with proper route handling
 
 # User Preferences
 

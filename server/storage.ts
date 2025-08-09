@@ -32,6 +32,7 @@ export interface IStorage {
   // Division operations
   getDivisions(): Promise<Division[]>;
   getDivision(id: string): Promise<Division | undefined>;
+  getDivisionByKey(key: 'mfnc' | 'sfnc' | 'rr'): Promise<Division | undefined>;
   createDivision(division: InsertDivision): Promise<Division>;
   updateDivision(id: string, division: Partial<InsertDivision>): Promise<Division>;
   deleteDivision(id: string): Promise<void>;
@@ -103,6 +104,11 @@ export class DatabaseStorage implements IStorage {
 
   async getDivision(id: string): Promise<Division | undefined> {
     const [division] = await db.select().from(divisions).where(eq(divisions.id, id));
+    return division;
+  }
+
+  async getDivisionByKey(key: 'mfnc' | 'sfnc' | 'rr'): Promise<Division | undefined> {
+    const [division] = await db.select().from(divisions).where(eq(divisions.key, key));
     return division;
   }
 
