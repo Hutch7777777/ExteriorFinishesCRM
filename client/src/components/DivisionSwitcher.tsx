@@ -29,38 +29,47 @@ export function DivisionSwitcher() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center gap-2">
-        <label className="text-sm font-medium text-muted-foreground">
+      <div className="flex items-center gap-3">
+        <label className="text-sm font-medium text-slate-600 dark:text-slate-400">
           Division:
         </label>
-        <div className="w-64 h-10 bg-muted rounded-md animate-pulse" />
+        <div className="w-48 h-10 bg-slate-100 dark:bg-slate-800 rounded-xl animate-pulse" />
       </div>
     );
   }
 
   if (!divisions || divisions.length === 0) {
     return (
-      <div className="flex items-center gap-2">
-        <label className="text-sm font-medium text-muted-foreground">
+      <div className="flex items-center gap-3">
+        <label className="text-sm font-medium text-slate-600 dark:text-slate-400">
           Division:
         </label>
-        <div className="text-sm text-muted-foreground">No divisions available</div>
+        <div className="text-sm text-slate-500">No divisions available</div>
       </div>
     );
   }
 
+  const currentDivisionData = divisions.find(d => d.key === currentDivision);
+
   return (
-    <div className="flex items-center gap-2">
-      <label htmlFor="division-select" className="text-sm font-medium text-muted-foreground">
+    <div className="flex items-center gap-3">
+      <label htmlFor="division-select" className="text-sm font-medium text-slate-600 dark:text-slate-400">
         Division:
       </label>
       <Select value={currentDivision} onValueChange={handleDivisionChange}>
-        <SelectTrigger id="division-select" className="w-64">
+        <SelectTrigger 
+          id="division-select" 
+          className="w-48 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 transition-colors"
+        >
           <SelectValue placeholder="Select division" />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
           {divisions.map((division) => (
-            <SelectItem key={division.key} value={division.key}>
+            <SelectItem 
+              key={division.key} 
+              value={division.key}
+              className="hover:bg-slate-50 dark:hover:bg-slate-700 focus:bg-slate-50 dark:focus:bg-slate-700"
+            >
               {division.name}
             </SelectItem>
           ))}

@@ -1,15 +1,17 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams, Link } from '@tanstack/react-router'
+import { ColumnDef } from '@tanstack/react-table'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { DataTable } from '@/components/ui/data-table'
+import { EmptyState } from '@/components/ui/empty-state'
 import { useToast } from '@/hooks/use-toast'
 import { trpcClient } from '@/lib/trpc'
-import { Plus, Edit } from 'lucide-react'
+import { Plus, Edit, Users, Mail, Phone } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -87,127 +89,220 @@ export default function Customers() {
     }
   })
 
-  const handleSearch = (query: string) => {
-    setSearchQuery(query)
-  }
-
   const handleCreateSubmit = (data: CreateCustomerData) => {
     createMutation.mutate(data)
   }
 
-  const columns = [
+  // Define table columns for TanStack React Table
+  const columns: ColumnDef<Customer>[] = [
     {
-      key: 'name',
-      header: 'Name',
-      render: (value: string) => <div className="font-medium">{value}</div>
+      accessorKey: "name",
+      header: "Name",
+      cell: ({ row }) => (
+        <div className="font-medium text-slate-900 dark:text-slate-50">
+          {row.original.name}
+        </div>
+      ),
     },
     {
-      key: 'email',
-      header: 'Email',
-      render: (value: string | null) => value || '-'
+      accessorKey: "email",
+      header: "Email",
+      cell: ({ row }) => (
+        <div className="text-slate-600 dark:text-slate-400">
+          {row.original.email ? (
+            <div className="flex items-center gap-2">
+              <Mail className="w-4 h-4" />
+              {row.original.email}
+            </div>
+          ) : (
+            <span className="text-slate-400">—</span>
+          )}
+        </div>
+      ),
     },
     {
-      key: 'phone',
-      header: 'Phone',
-      render: (value: string | null) => value || '-'
+      accessorKey: "phone",
+      header: "Phone",
+      cell: ({ row }) => (
+        <div className="text-slate-600 dark:text-slate-400">
+          {row.original.phone ? (
+            <div className="flex items-center gap-2">
+              <Phone className="w-4 h-4" />
+              {row.original.phone}
+            </div>
+          ) : (
+            <span className="text-slate-400">—</span>
+          )}
+        </div>
+      ),
     },
     {
-      key: 'notes',
-      header: 'Notes',
-      render: (value: string | null) => (
-        <div className="max-w-xs truncate">{value || '-'}</div>
-      )
+      accessorKey: "notes",
+      header: "Notes",
+      cell: ({ row }) => (
+        <div className="max-w-xs">
+          {row.original.notes ? (
+            <span className="text-slate-600 dark:text-slate-400 line-clamp-2">
+              {row.original.notes}
+            </span>
+          ) : (
+            <span className="text-slate-400">—</span>
+          )}
+        </div>
+      ),
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      cell: ({ row }) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            window.location.href = `/${division}/customers/edit/${row.original.id}`
+          }}
+          className="text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-50"
+        >
+          <Edit className="w-4 h-4" />
+        </Button>
+      ),
     },
   ]
 
-  const rowActions = (customer: Customer) => (
-    <Button
-      variant="ghost"
-      size="sm"
-      onClick={() => {
-        window.location.href = `/${division}/customers/edit/${customer.id}`
-      }}
-    >
-      <Edit className="h-4 w-4" />
-    </Button>
-  )
-
   return (
     <div className="space-y-6">
+      {/* Page header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Customers</h1>
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-50">
+            Customers
+          </h1>
+          <p className="text-slate-600 dark:text-slate-400 mt-1">
+            Manage your customer relationships and contact information
+          </p>
+        </div>
       </div>
 
+      {/* Data table with modern styling */}
       <DataTable
         columns={columns}
         data={customers}
-        searchPlaceholder="Search customers..."
-        onSearch={handleSearch}
+        searchPlaceholder="Search customers by name..."
         isLoading={isLoading}
-        actions={{
-          create: {
-            label: "Add Customer",
-            onClick: () => setIsCreateDialogOpen(true)
-          },
-          rowActions
+        createAction={{
+          label: "Add Customer",
+          onClick: () => setIsCreateDialogOpen(true)
+        }}
+        emptyState={{
+          icon: <Users className="w-12 h-12" />,
+          title: "No customers found",
+          description: "Get started by adding your first customer to this division."
         }}
       />
 
-      {/* Create Dialog */}
+      {/* Create Customer Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Create New Customer</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="w-5 h-5" />
+              Create New Customer
+            </DialogTitle>
             <DialogDescription>
-              Add a new customer to the {division.toUpperCase()} division
+              Add a new customer to the {division.toUpperCase()} division. All fields except name are optional.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={form.handleSubmit(handleCreateSubmit)} className="space-y-4">
-            <div>
-              <Label htmlFor="name">Name *</Label>
+            <div className="space-y-2">
+              <Label htmlFor="name" className="text-slate-700 dark:text-slate-300">
+                Customer Name *
+              </Label>
               <Input 
                 id="name" 
+                placeholder="Enter customer name"
                 {...form.register('name')}
-                className={form.formState.errors.name ? 'border-destructive' : ''}
+                className={`${
+                  form.formState.errors.name 
+                    ? 'border-red-500 focus:border-red-500' 
+                    : 'border-slate-200 dark:border-slate-800'
+                }`}
               />
               {form.formState.errors.name && (
-                <p className="text-sm text-destructive mt-1">
+                <p className="text-sm text-red-600 mt-1">
                   {form.formState.errors.name.message}
                 </p>
               )}
             </div>
-            <div>
-              <Label htmlFor="email">Email</Label>
+            
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-slate-700 dark:text-slate-300">
+                Email Address
+              </Label>
               <Input 
                 id="email" 
                 type="email"
+                placeholder="customer@example.com"
                 {...form.register('email')}
-                className={form.formState.errors.email ? 'border-destructive' : ''}
+                className={`${
+                  form.formState.errors.email 
+                    ? 'border-red-500 focus:border-red-500' 
+                    : 'border-slate-200 dark:border-slate-800'
+                }`}
               />
               {form.formState.errors.email && (
-                <p className="text-sm text-destructive mt-1">
+                <p className="text-sm text-red-600 mt-1">
                   {form.formState.errors.email.message}
                 </p>
               )}
             </div>
-            <div>
-              <Label htmlFor="phone">Phone</Label>
+            
+            <div className="space-y-2">
+              <Label htmlFor="phone" className="text-slate-700 dark:text-slate-300">
+                Phone Number
+              </Label>
               <Input 
                 id="phone" 
                 type="tel"
+                placeholder="(555) 123-4567"
                 {...form.register('phone')}
+                className="border-slate-200 dark:border-slate-800"
               />
             </div>
-            <div>
-              <Label htmlFor="notes">Notes</Label>
+            
+            <div className="space-y-2">
+              <Label htmlFor="notes" className="text-slate-700 dark:text-slate-300">
+                Notes
+              </Label>
               <Textarea 
                 id="notes"
+                placeholder="Additional notes or special requirements..."
                 {...form.register('notes')}
+                className="border-slate-200 dark:border-slate-800 min-h-20"
               />
             </div>
-            <DialogFooter>
-              <Button type="submit" disabled={createMutation.isPending}>
-                {createMutation.isPending ? 'Creating...' : 'Create Customer'}
+            
+            <DialogFooter className="flex gap-3">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => setIsCreateDialogOpen(false)}
+                className="border-slate-200 dark:border-slate-800"
+              >
+                Cancel
+              </Button>
+              <Button 
+                type="submit" 
+                disabled={createMutation.isPending}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {createMutation.isPending ? (
+                  <>Creating...</>
+                ) : (
+                  <>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Customer
+                  </>
+                )}
               </Button>
             </DialogFooter>
           </form>

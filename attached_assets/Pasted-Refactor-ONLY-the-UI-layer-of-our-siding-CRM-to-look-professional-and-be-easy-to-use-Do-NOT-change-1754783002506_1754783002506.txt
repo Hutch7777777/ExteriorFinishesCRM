@@ -1,0 +1,75 @@
+Refactor ONLY the UI layer of our siding CRM to look professional and be easy to use. 
+Do NOT change business logic, DB schema, tRPC procedures, or route paths. Keep all functionality intact.
+
+Goals
+- Modern, clean layout; intuitive navigation; great defaults.
+- Accessible (WCAG AA), responsive (mobile → desktop), consistent spacing/typography.
+- Polished tables, forms, dialogs, empty/loading/error states.
+
+Design system (Tailwind)
+- Update tailwind.config to add theme tokens:
+  colors: primary, primary-foreground, muted, muted-foreground, border, bg, card, destructive.
+  Use a neutral/blue palette; keep contrast AA.
+- Base typography: Inter (fallback system), text-sm default, text-base on md+.
+- Spacing scale: multiples of 4. Rounded-xl (12px) for cards/inputs/buttons. Shadows: sm/md only.
+
+UI kit (new reusable components in /client/src/components/ui)
+- Button, Input, Textarea, Select, Badge, Card, Dialog, Drawer, Dropdown, Tooltip, Toast, Skeleton, EmptyState.
+- Use Radix primitives where applicable; icons via lucide-react. 
+- Provide variants (primary, secondary, ghost, destructive) + sizes (sm, md).
+
+App shell
+- Header: left = app logo/name; center = Division Switcher; right = user menu.
+- Sidebar: sectioned nav (Customers, Jobs, Estimates). Collapse on mobile; show as Drawer.
+- Content: container with breadcrumb, page title, actions row (search, filters, “Create”).
+- Keep existing routes; wire shell without breaking navigation.
+
+Division Switcher
+- Keep behavior; restyle as a compact Select with division key + name and divider.
+
+Tables (TanStack Table)
+- Add a <DataTable> with:
+  - Sticky header, zebra rows, hover states.
+  - Client-side column visibility toggle, sort indicators, basic pagination.
+  - Toolbar above table: search input, status filter (where relevant), “Create” button.
+  - EmptyState when no rows (title + helpful copy + primary action).
+  - Loading: Skeleton rows (3–5). Error: inline callout with retry.
+
+Forms (react-hook-form + zod)
+- Vertical layout, max-w-xl; 12px rounded inputs; clear labels and helper text.
+- Submit/Cancel sticky footer on mobile. Inline field errors.
+- Use Dialog for quick-create; dedicated page for edit forms.
+- Keep current form schemas and API calls intact.
+
+Feedback
+- Use Toasts for success/failure on create/update.
+- Destructive actions (delete) require confirm Dialog with clear copy.
+
+Accessibility & keyboard
+- All interactive elements focus-visible.
+- Dialogs/Drawers trap focus, Esc to close; buttons have aria-labels where icon-only.
+
+Loading & error boundaries
+- Page-level Suspense loaders (Skeleton for header + table/form).
+- Simple ErrorBoundary component with retry.
+
+Files to touch (examples, adjust to actual paths)
+- /client/src/components/ui/*
+- /client/src/components/layout/* (header, sidebar, page)
+- /client/src/routes/**/*.{tsx}
+- Minimal CSS in /client/src/index.css (only CSS vars/utilities)
+
+Acceptance criteria
+- No TypeScript errors; all existing CRUD still works.
+- Navigation unchanged; division scoping still applies.
+- Tables have toolbar (search/filter/create), skeleton loading, empty states.
+- Forms have validation, inline errors, and toasts on success/fail.
+- Mobile: sidebar becomes Drawer; actions remain reachable; forms usable with one hand.
+
+Deliverables
+1) Updated Tailwind config + tokens.
+2) Reusable UI components with docs in comments.
+3) Refreshed shell + pages for Customers, Jobs, Estimates using the new components.
+4) Small visual polish pass (spacing, alignment, icon usage) across pages.
+
+If anything is ambiguous, choose sensible defaults and keep the refactor incremental so functionality stays intact.

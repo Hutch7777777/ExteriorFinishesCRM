@@ -9,6 +9,11 @@ export default {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        xl: "12px", // Primary rounded value for cards, inputs, buttons
+      },
+      spacing: {
+        '18': '4.5rem',
+        '88': '22rem',
       },
       colors: {
         background: "var(--background)",

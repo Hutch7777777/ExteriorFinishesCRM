@@ -83,7 +83,7 @@ export const requireRole = (role: 'admin' | 'staff') => {
 };
 
 // Division scoping helper
-export const getDivisionScope = (user: User, requestedDivisionKey?: string): string | undefined => {
+export const getDivisionScope = async (user: User, requestedDivisionKey?: string): Promise<string | undefined> => {
   if (user.role === 'staff') {
     // Staff users are forced to use their assigned division
     if (!user.divisionId) {
@@ -96,9 +96,16 @@ export const getDivisionScope = (user: User, requestedDivisionKey?: string): str
   }
 
   if (user.role === 'admin') {
-    // Admin can specify division or default to their assigned division
+    // Admin can specify division by key - need to look up the UUID
     if (requestedDivisionKey) {
-      return requestedDivisionKey;
+      const division = await storage.getDivisionByKey(requestedDivisionKey as 'mfnc' | 'sfnc' | 'rr');
+      if (!division) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: `Division with key '${requestedDivisionKey}' not found`,
+        });
+      }
+      return division.id;
     }
     return user.divisionId || undefined;
   }

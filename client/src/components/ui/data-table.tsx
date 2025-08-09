@@ -1,4 +1,19 @@
 import {
+  ColumnDef,
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+  getSortedRowModel,
+  SortingState,
+  getFilteredRowModel,
+  ColumnFiltersState,
+} from "@tanstack/react-table"
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Skeleton } from "@/components/ui/skeleton"
+import { EmptyState } from "@/components/ui/empty-state"
+import {
   Table,
   TableBody,
   TableCell,
@@ -6,64 +21,85 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useState } from "react"
+import { Search, Plus, ArrowUpDown } from "lucide-react"
 
-interface Column<T> {
-  key: keyof T | string
-  header: string
-  render?: (value: any, row: T) => React.ReactNode
-}
-
-interface DataTableProps<T> {
-  columns: Column<T>[]
-  data: T[]
+interface DataTableProps<TData, TValue> {
+  columns: ColumnDef<TData, TValue>[]
+  data: TData[]
+  searchKey?: string
   searchPlaceholder?: string
-  onSearch?: (query: string) => void
-  statusFilter?: {
-    options: { value: string; label: string }[]
-    onFilter: (status: string) => void
-    placeholder: string
+  createAction?: {
+    label: string
+    onClick: () => void
   }
-  actions?: {
-    create?: {
-      label: string
-      onClick: () => void
-    }
-    rowActions?: (row: T) => React.ReactNode
+  emptyState?: {
+    title: string
+    description: string
+    icon?: React.ReactNode
   }
   isLoading?: boolean
 }
 
-export function DataTable<T extends Record<string, any>>({
+/**
+ * Professional DataTable component with search, sorting, and empty states.
+ * Built with TanStack Table for full-featured data management.
+ */
+export function DataTable<TData, TValue>({
   columns,
   data,
-  searchPlaceholder,
-  onSearch,
-  statusFilter,
-  actions,
+  searchKey = "name",
+  searchPlaceholder = "Search...",
+  createAction,
+  emptyState,
   isLoading = false,
-}: DataTableProps<T>) {
-  const [searchQuery, setSearchQuery] = useState("")
+}: DataTableProps<TData, TValue>) {
+  const [sorting, setSorting] = useState<SortingState>([])
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
 
-  const handleSearch = (value: string) => {
-    setSearchQuery(value)
-    onSearch?.(value)
-  }
+  const table = useReactTable({
+    data,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    onSortingChange: setSorting,
+    getSortedRowModel: getSortedRowModel(),
+    onColumnFiltersChange: setColumnFilters,
+    getFilteredRowModel: getFilteredRowModel(),
+    state: {
+      sorting,
+      columnFilters,
+    },
+  })
+
+  const searchValue = (table.getColumn(searchKey)?.getFilterValue() as string) ?? ""
 
   if (isLoading) {
     return (
       <div className="space-y-4">
+        {/* Toolbar skeleton */}
         <div className="flex items-center justify-between">
-          <div className="w-64 h-10 bg-muted rounded-md animate-pulse" />
-          <div className="w-24 h-10 bg-muted rounded-md animate-pulse" />
+          <div className="flex items-center space-x-2">
+            <Skeleton className="h-10 w-80" />
+          </div>
+          <Skeleton className="h-10 w-32" />
         </div>
-        <div className="border rounded-lg">
-          <div className="h-12 bg-muted/20 border-b animate-pulse" />
+        
+        {/* Table skeleton */}
+        <div className="rounded-xl border bg-white dark:bg-slate-900">
+          <div className="p-4 border-b">
+            <div className="flex space-x-4">
+              {columns.map((_, i) => (
+                <Skeleton key={i} className="h-4 flex-1" />
+              ))}
+            </div>
+          </div>
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="h-12 bg-muted/10 border-b animate-pulse" />
+            <div key={i} className="p-4 border-b last:border-b-0">
+              <div className="flex space-x-4">
+                {columns.map((_, j) => (
+                  <Skeleton key={j} className="h-4 flex-1" />
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       </div>
@@ -72,76 +108,85 @@ export function DataTable<T extends Record<string, any>>({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          {onSearch && (
+      {/* Toolbar */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
             <Input
-              placeholder={searchPlaceholder || "Search..."}
-              value={searchQuery}
-              onChange={(e) => handleSearch(e.target.value)}
-              className="w-64"
+              placeholder={searchPlaceholder}
+              value={searchValue}
+              onChange={(event) =>
+                table.getColumn(searchKey)?.setFilterValue(event.target.value)
+              }
+              className="pl-9 w-80 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
             />
-          )}
-          {statusFilter && (
-            <Select onValueChange={statusFilter.onFilter}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder={statusFilter.placeholder} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                {statusFilter.options.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
+          </div>
         </div>
-        {actions?.create && (
-          <Button onClick={actions.create.onClick}>
-            {actions.create.label}
+        {createAction && (
+          <Button onClick={createAction.onClick} className="bg-blue-600 hover:bg-blue-700">
+            <Plus className="h-4 w-4 mr-2" />
+            {createAction.label}
           </Button>
         )}
       </div>
 
-      <div className="border rounded-lg">
+      {/* Table */}
+      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
         <Table>
           <TableHeader>
-            <TableRow>
-              {columns.map((column) => (
-                <TableHead key={String(column.key)}>
-                  {column.header}
-                </TableHead>
-              ))}
-              {actions?.rowActions && <TableHead className="w-20">Actions</TableHead>}
-            </TableRow>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id} className="border-slate-200 dark:border-slate-800 hover:bg-transparent">
+                {headerGroup.headers.map((header) => {
+                  return (
+                    <TableHead 
+                      key={header.id}
+                      className="text-slate-600 dark:text-slate-400 font-medium bg-slate-50 dark:bg-slate-900/50"
+                    >
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                    </TableHead>
+                  )
+                })}
+              </TableRow>
+            ))}
           </TableHeader>
           <TableBody>
-            {data.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length + (actions?.rowActions ? 1 : 0)}
-                  className="text-center py-8 text-muted-foreground"
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row, index) => (
+                <TableRow
+                  key={row.id}
+                  className={`border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors ${
+                    index % 2 === 0 ? 'bg-white dark:bg-slate-900' : 'bg-slate-50/50 dark:bg-slate-800/20'
+                  }`}
+                  data-state={row.getIsSelected() && "selected"}
                 >
-                  No data found
-                </TableCell>
-              </TableRow>
-            ) : (
-              data.map((row, index) => (
-                <TableRow key={index}>
-                  {columns.map((column) => (
-                    <TableCell key={String(column.key)}>
-                      {column.render
-                        ? column.render(row[column.key as keyof T], row)
-                        : String(row[column.key as keyof T] || "")}
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id} className="text-slate-900 dark:text-slate-50">
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
-                  {actions?.rowActions && (
-                    <TableCell>{actions.rowActions(row)}</TableCell>
-                  )}
                 </TableRow>
               ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={columns.length} className="h-24 text-center">
+                  {emptyState ? (
+                    <EmptyState
+                      icon={emptyState.icon}
+                      title={emptyState.title}
+                      description={emptyState.description}
+                      action={createAction}
+                    />
+                  ) : (
+                    <div className="text-slate-500">No results found.</div>
+                  )}
+                </TableCell>
+              </TableRow>
             )}
           </TableBody>
         </Table>

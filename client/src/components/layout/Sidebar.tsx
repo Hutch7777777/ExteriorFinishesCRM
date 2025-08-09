@@ -1,127 +1,66 @@
-import { Link, useLocation } from "wouter";
-import { Home, Users, Briefcase, Calculator, Building, House, LogOut } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useAuth } from "@/hooks/useAuth";
+import { useParams } from '@tanstack/react-router'
+import { Users, Briefcase, Calculator } from 'lucide-react'
 
-const navigation = [
-  { name: "Dashboard", href: "/", icon: Home },
-  { name: "Customers", href: "/customers", icon: Users },
-  { name: "Jobs", href: "/jobs", icon: Briefcase },
-  { name: "Estimates", href: "/estimates", icon: Calculator },
-];
+interface NavLinkProps {
+  href: string
+  icon: React.ReactNode
+  label: string
+  isActive?: boolean
+}
 
-const divisions = [
-  { name: "Residential", href: "/division/residential", icon: House },
-  { name: "Commercial", href: "/division/commercial", icon: Building },
-];
+function NavLink({ href, icon, label, isActive }: NavLinkProps) {
+  return (
+    <a
+      href={href}
+      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group ${
+        isActive
+          ? 'bg-blue-600 text-white shadow-sm'
+          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-50 dark:hover:bg-slate-800'
+      }`}
+    >
+      <span className={`${isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300'}`}>
+        {icon}
+      </span>
+      <span className="font-medium">{label}</span>
+    </a>
+  )
+}
 
-export default function Sidebar() {
-  const [location] = useLocation();
-  const { user } = useAuth();
-
-  const handleLogout = () => {
-    window.location.href = "/api/logout";
-  };
+export function Sidebar() {
+  const params = useParams({ strict: false })
+  const currentDivision = (params as any)?.division || 'mfnc'
+  const currentPath = window.location.pathname
 
   return (
-    <div className="fixed left-0 top-0 h-full w-64 bg-slate-800 shadow-2xl z-40">
-      {/* Logo and Company Header */}
-      <div className="flex items-center gap-3 px-6 py-5 border-b border-slate-700">
-        <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
-          <Home className="w-4 h-4 text-white" />
-        </div>
-        <div>
-          <h1 className="text-white font-semibold text-lg">Exterior Finishes</h1>
-          <p className="text-slate-400 text-sm">CRM Dashboard</p>
-        </div>
-      </div>
-
-      {/* Navigation Menu */}
-      <nav className="px-4 py-6">
-        <ul className="space-y-2">
-          {navigation.map((item) => {
-            const Icon = item.icon;
-            const isActive = location === item.href;
-            
-            return (
-              <li key={item.name}>
-                <Link href={item.href}>
-                  <a className={cn(
-                    "flex items-center gap-3 px-3 py-2 rounded-lg font-medium transition-colors",
-                    isActive
-                      ? "text-white bg-blue-600"
-                      : "text-slate-300 hover:text-white hover:bg-slate-700"
-                  )}>
-                    <Icon className="w-5 h-5" />
-                    <span>{item.name}</span>
-                  </a>
-                </Link>
-              </li>
-            );
-          })}
-          
-          <li className="pt-4">
-            <div className="px-3 py-2 text-slate-500 text-sm font-medium uppercase tracking-wider">
-              Divisions
-            </div>
-          </li>
-          
-          {divisions.map((item) => {
-            const Icon = item.icon;
-            const isActive = location === item.href;
-            
-            return (
-              <li key={item.name}>
-                <Link href={item.href}>
-                  <a className={cn(
-                    "flex items-center gap-3 px-3 py-2 rounded-lg transition-colors",
-                    isActive
-                      ? "text-white bg-blue-600"
-                      : "text-slate-300 hover:text-white hover:bg-slate-700"
-                  )}>
-                    <Icon className="w-5 h-5" />
-                    <span>{item.name}</span>
-                  </a>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
-
-      {/* User Profile Section */}
-      <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-700">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-slate-600 rounded-full flex items-center justify-center overflow-hidden">
-            {user?.profileImageUrl ? (
-              <img 
-                src={user.profileImageUrl} 
-                alt="Profile" 
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full bg-slate-600 rounded-full flex items-center justify-center">
-                <span className="text-slate-300 text-sm font-medium">
-                  {user?.firstName?.[0]}{user?.lastName?.[0]}
-                </span>
-              </div>
-            )}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-white text-sm font-medium truncate">
-              {user?.firstName} {user?.lastName}
-            </p>
-            <p className="text-slate-400 text-xs truncate">Project Manager</p>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="text-slate-400 hover:text-white transition-colors"
-            title="Logout"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
+    <aside className="w-64 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 sidebar-shadow">
+      <div className="p-6">
+        {/* Navigation section */}
+        <div className="mb-8">
+          <h2 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3">
+            Navigation
+          </h2>
+          <nav className="space-y-1">
+            <NavLink
+              href={`/${currentDivision}/customers`}
+              icon={<Users className="w-5 h-5" />}
+              label="Customers"
+              isActive={currentPath.includes('/customers')}
+            />
+            <NavLink
+              href={`/${currentDivision}/jobs`}
+              icon={<Briefcase className="w-5 h-5" />}
+              label="Jobs"
+              isActive={currentPath.includes('/jobs')}
+            />
+            <NavLink
+              href={`/${currentDivision}/estimates`}
+              icon={<Calculator className="w-5 h-5" />}
+              label="Estimates"
+              isActive={currentPath.includes('/estimates')}
+            />
+          </nav>
         </div>
       </div>
-    </div>
-  );
+    </aside>
+  )
 }

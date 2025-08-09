@@ -80,7 +80,7 @@ export const createAppRouter = () => {
       });
       
       const input = inputSchema.parse(req.query);
-      const scopedDivisionId = getDivisionScope(user, input.divisionKey);
+      const scopedDivisionId = await getDivisionScope(user, input.divisionKey);
       
       const result = await storage.getCustomers(scopedDivisionId);
       
@@ -149,7 +149,7 @@ export const createAppRouter = () => {
         throw new TRPCError({ code: 'NOT_FOUND', message: 'Division not found' });
       }
       
-      const scopedDivisionId = getDivisionScope(user, input.divisionKey);
+      const scopedDivisionId = await getDivisionScope(user, input.divisionKey);
       if (scopedDivisionId !== division.id) {
         throw new TRPCError({ code: 'FORBIDDEN', message: 'Access denied to this division' });
       }
@@ -222,7 +222,7 @@ export const createAppRouter = () => {
       if (existing.divisionId) {
         const division = await storage.getDivision(existing.divisionId);
         if (division) {
-          const scopedDivisionId = getDivisionScope(user, division.key);
+          const scopedDivisionId = await getDivisionScope(user, division.key);
           if (scopedDivisionId !== division.id) {
             throw new TRPCError({ code: 'FORBIDDEN', message: 'Access denied to this division' });
           }
@@ -261,7 +261,7 @@ export const createAppRouter = () => {
       });
       
       const input = inputSchema.parse(req.query);
-      const scopedDivisionId = getDivisionScope(user, input.divisionKey);
+      const scopedDivisionId = await getDivisionScope(user, input.divisionKey);
       
       const result = await storage.getJobs(scopedDivisionId);
       
@@ -305,7 +305,7 @@ export const createAppRouter = () => {
         throw new TRPCError({ code: 'NOT_FOUND', message: 'Division not found' });
       }
       
-      const scopedDivisionId = getDivisionScope(user, input.divisionKey);
+      const scopedDivisionId = await getDivisionScope(user, input.divisionKey);
       if (scopedDivisionId !== division.id) {
         throw new TRPCError({ code: 'FORBIDDEN', message: 'Access denied to this division' });
       }
@@ -361,7 +361,7 @@ export const createAppRouter = () => {
       if (existing.divisionId) {
         const division = await storage.getDivision(existing.divisionId);
         if (division) {
-          const scopedDivisionId = getDivisionScope(user, division.key);
+          const scopedDivisionId = await getDivisionScope(user, division.key);
           if (scopedDivisionId !== division.id) {
             throw new TRPCError({ code: 'FORBIDDEN', message: 'Access denied to this division' });
           }
@@ -403,7 +403,7 @@ export const createAppRouter = () => {
       
       // Filter by division if user is staff or division specified
       if (input.divisionKey || user.role === 'staff') {
-        const scopedDivisionId = getDivisionScope(user, input.divisionKey);
+        const scopedDivisionId = await getDivisionScope(user, input.divisionKey);
         result = result.filter(estimate => {
           return estimate.job?.divisionId === scopedDivisionId;
         });
@@ -453,7 +453,7 @@ export const createAppRouter = () => {
       if (job.divisionId) {
         const division = await storage.getDivision(job.divisionId);
         if (division) {
-          const scopedDivisionId = getDivisionScope(user, division.key);
+          const scopedDivisionId = await getDivisionScope(user, division.key);
           if (scopedDivisionId !== division.id) {
             throw new TRPCError({ code: 'FORBIDDEN', message: 'Access denied to this division' });
           }
@@ -502,7 +502,7 @@ export const createAppRouter = () => {
       if (existing.job?.divisionId) {
         const division = await storage.getDivision(existing.job.divisionId);
         if (division) {
-          const scopedDivisionId = getDivisionScope(user, division.key);
+          const scopedDivisionId = await getDivisionScope(user, division.key);
           if (scopedDivisionId !== division.id) {
             throw new TRPCError({ code: 'FORBIDDEN', message: 'Access denied to this division' });
           }
