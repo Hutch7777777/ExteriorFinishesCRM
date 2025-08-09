@@ -32,10 +32,14 @@ export default function SignIn() {
 
   const signInMutation = useMutation({
     mutationFn: async (data: SignInFormData) => {
+      console.log("Making login request with:", data);
       const response = await apiRequest("POST", "/api/auth/login", data);
-      return response.json();
+      const result = await response.json();
+      console.log("Login response:", result);
+      return result;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log("Login successful:", data);
       toast({
         title: "Welcome back!",
         description: "You have successfully signed in.",
