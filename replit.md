@@ -11,6 +11,10 @@ The system features a React-based frontend with TypeScript, a Node.js Express ba
 - ✅ Set up division-based routing with @tanstack/react-router (mfnc, sfnc, rr divisions)
 - ✅ Built comprehensive app shell with header division switcher and sidebar navigation
 - ✅ Created reusable DataTable and FormWrapper components for data management
+- ✅ Implemented JWT authentication with httpOnly cookies and bcryptjs password hashing
+- ✅ Created authentication routes: POST /api/auth/login, /logout, /register (admin-only), GET /api/auth/me
+- ✅ Built sign-in page with React Hook Form and added logout functionality to app header
+- ✅ Added authentication middleware and proper cookie management with 15-minute token expiry
 
 # User Preferences
 
@@ -41,11 +45,12 @@ Preferred communication style: Simple, everyday language.
 - **Connection Pooling**: Neon serverless connection pooling
 
 ## Authentication and Authorization
-- **Provider**: Replit OpenID Connect (OIDC) integration
-- **Strategy**: Passport.js with OpenID Connect strategy
-- **Session Management**: Express sessions with PostgreSQL storage
-- **Security**: HTTP-only cookies, CSRF protection, and secure session configuration
-- **User Management**: Automatic user provisioning with profile data sync
+- **Primary System**: JWT authentication with httpOnly cookies (secure=false for local development)
+- **Password Security**: bcryptjs for password hashing with salt rounds of 12
+- **Token Management**: 15-minute JWT expiry with automatic cookie clearing on logout
+- **Session Security**: httpOnly, SameSite=lax cookies with proper path and domain settings
+- **Access Control**: Admin-only user registration, role-based permissions (admin/staff)
+- **Fallback Support**: Replit OIDC integration maintained for compatibility (unused)
 
 ## Database Schema Design
 - **Users**: Authentication (id, email, password_hash, name, role, division_id) with admin/staff roles

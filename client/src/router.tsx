@@ -1,6 +1,7 @@
 import { createRouter, createRoute, createRootRoute, redirect, Outlet } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import Landing from '@/pages/Landing'
+import SignIn from '@/pages/SignIn'
 import Customers from '@/pages/Customers'
 import Jobs from '@/pages/Jobs'
 import Estimates from '@/pages/Estimates'
@@ -18,7 +19,7 @@ const rootRoute = createRootRoute({
     }
 
     if (!isAuthenticated) {
-      return <Landing />
+      return <SignIn />
     }
 
     return (

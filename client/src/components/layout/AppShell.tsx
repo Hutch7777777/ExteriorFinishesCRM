@@ -1,6 +1,10 @@
 import { useParams } from '@tanstack/react-router'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Users, Briefcase, Calculator } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Users, Briefcase, Calculator, LogOut } from 'lucide-react'
+import { apiRequest } from '@/lib/queryClient'
+import { useToast } from '@/hooks/use-toast'
 import Customers from '@/pages/Customers'
 import Jobs from '@/pages/Jobs'
 import Estimates from '@/pages/Estimates'
@@ -39,10 +43,35 @@ function Header() {
   const currentDivision = params.division || 'mfnc'
   const currentPath = window.location.pathname
   const currentSection = currentPath.split('/').pop() || 'customers'
+  const { toast } = useToast()
+  const queryClient = useQueryClient()
 
   const handleDivisionChange = (newDivision: string) => {
     window.location.href = `/${newDivision}/${currentSection}`
   }
+
+  const logoutMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", "/api/auth/logout");
+    },
+    onSuccess: () => {
+      toast({
+        title: "Signed out successfully",
+        description: "You have been logged out.",
+      });
+      // Clear auth cache and redirect to sign in
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      window.location.href = "/";
+    },
+    onError: (error: Error) => {
+      console.error("Logout error:", error);
+      toast({
+        title: "Logout failed",
+        description: "There was an error signing out. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
 
   return (
     <header className="bg-white border-b px-6 py-4">
@@ -72,12 +101,16 @@ function Header() {
             </Select>
           </div>
           
-          <a
-            href="/api/logout"
-            className="text-sm text-muted-foreground hover:text-foreground"
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => logoutMutation.mutate()}
+            disabled={logoutMutation.isPending}
+            className="text-muted-foreground hover:text-foreground"
           >
-            Sign Out
-          </a>
+            <LogOut className="w-4 h-4 mr-2" />
+            {logoutMutation.isPending ? "Signing out..." : "Sign Out"}
+          </Button>
         </div>
       </div>
     </header>
