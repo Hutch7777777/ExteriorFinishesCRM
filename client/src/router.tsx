@@ -60,6 +60,31 @@ const shellRoute = createRoute({
   }
 })
 
+// Edit routes
+const editCustomerRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/$division/customers/edit/$id',
+  component: () => {
+    return <AppShell />
+  }
+})
+
+const editJobRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/$division/jobs/edit/$id',
+  component: () => {
+    return <AppShell />
+  }
+})
+
+const editEstimateRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/$division/estimates/edit/$id',
+  component: () => {
+    return <AppShell />
+  }
+})
+
 // 404 route
 const notFoundRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -71,6 +96,9 @@ const notFoundRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   indexRoute,
   shellRoute,
+  editCustomerRoute,
+  editJobRoute,
+  editEstimateRoute,
   notFoundRoute
 ])
 

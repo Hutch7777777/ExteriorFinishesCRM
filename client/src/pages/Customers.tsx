@@ -1,79 +1,218 @@
-import { useParams } from '@tanstack/react-router'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { DataTable } from '@/components/ui/DataTable'
+import { useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useParams, Link } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
-import { Plus, Users } from 'lucide-react'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { DataTable } from '@/components/ui/data-table'
+import { useToast } from '@/hooks/use-toast'
+import { trpcClient } from '@/lib/trpc'
+import { Plus, Edit } from 'lucide-react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+
+const createCustomerSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  email: z.string().email('Invalid email').optional().or(z.literal('')),
+  phone: z.string().optional(),
+  notes: z.string().optional(),
+})
+
+type CreateCustomerData = z.infer<typeof createCustomerSchema>
+
+interface Customer {
+  id: string
+  name: string
+  email: string | null
+  phone: string | null
+  notes: string | null
+  divisionId: string
+  createdAt: string
+}
 
 export default function Customers() {
-  const { division } = useParams({ strict: false })
+  const params = useParams({ strict: false })
+  const division = (params as any).division || 'mfnc'
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const { toast } = useToast()
+  const queryClient = useQueryClient()
 
-  // Mock data for demonstration
-  const customers = [
-    {
-      id: 1,
-      name: 'John Smith',
-      email: 'john@example.com',
-      phone: '(555) 123-4567',
-      city: 'Springfield',
-      state: 'IL'
+  const form = useForm<CreateCustomerData>({
+    resolver: zodResolver(createCustomerSchema),
+    defaultValues: {
+      name: '',
+      email: '',
+      phone: '',
+      notes: '',
     },
-    {
-      id: 2,
-      name: 'Sarah Johnson',
-      email: 'sarah@example.com',
-      phone: '(555) 987-6543',
-      city: 'Chicago',
-      state: 'IL'
+  })
+
+  // Fetch customers
+  const { data: customers = [], isLoading } = useQuery<Customer[]>({
+    queryKey: ['customers.list', division, searchQuery],
+    queryFn: () => trpcClient.customers.list({ 
+      divisionKey: division as 'mfnc' | 'sfnc' | 'rr',
+      q: searchQuery || undefined 
+    }),
+    retry: false,
+  })
+
+  // Create customer mutation
+  const createMutation = useMutation({
+    mutationFn: async (data: CreateCustomerData) => {
+      return trpcClient.customers.create({
+        divisionKey: division as 'mfnc' | 'sfnc' | 'rr',
+        name: data.name,
+        email: data.email || undefined,
+        phone: data.phone || undefined,
+        notes: data.notes || undefined,
+      })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customers.list'] })
+      setIsCreateDialogOpen(false)
+      form.reset()
+      toast({ title: 'Customer created successfully' })
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Failed to create customer',
+        description: error.message,
+        variant: 'destructive'
+      })
     }
-  ]
+  })
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query)
+  }
+
+  const handleCreateSubmit = (data: CreateCustomerData) => {
+    createMutation.mutate(data)
+  }
 
   const columns = [
-    { key: 'name', header: 'Name', sortable: true },
-    { key: 'email', header: 'Email', sortable: true },
-    { key: 'phone', header: 'Phone' },
-    { key: 'city', header: 'City', sortable: true },
-    { key: 'state', header: 'State' },
     {
-      key: 'actions',
-      header: 'Actions',
-      render: () => (
-        <Button variant="outline" size="sm">
-          Edit
-        </Button>
+      key: 'name',
+      header: 'Name',
+      render: (value: string) => <div className="font-medium">{value}</div>
+    },
+    {
+      key: 'email',
+      header: 'Email',
+      render: (value: string | null) => value || '-'
+    },
+    {
+      key: 'phone',
+      header: 'Phone',
+      render: (value: string | null) => value || '-'
+    },
+    {
+      key: 'notes',
+      header: 'Notes',
+      render: (value: string | null) => (
+        <div className="max-w-xs truncate">{value || '-'}</div>
       )
-    }
+    },
   ]
+
+  const rowActions = (customer: Customer) => (
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={() => {
+        window.location.href = `/${division}/customers/edit/${customer.id}`
+      }}
+    >
+      <Edit className="h-4 w-4" />
+    </Button>
+  )
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Users className="w-6 h-6 text-primary" />
-          <div>
-            <h1 className="text-2xl font-bold">Customers</h1>
-            <p className="text-muted-foreground">
-              Division: {division?.toUpperCase()}
-            </p>
-          </div>
-        </div>
-        <Button>
-          <Plus className="w-4 h-4 mr-2" />
-          Add Customer
-        </Button>
+        <h1 className="text-2xl font-semibold">Customers</h1>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Customer List</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <DataTable
-            data={customers}
-            columns={columns}
-            searchPlaceholder="Search customers..."
-          />
-        </CardContent>
-      </Card>
+      <DataTable
+        columns={columns}
+        data={customers}
+        searchPlaceholder="Search customers..."
+        onSearch={handleSearch}
+        isLoading={isLoading}
+        actions={{
+          create: {
+            label: "Add Customer",
+            onClick: () => setIsCreateDialogOpen(true)
+          },
+          rowActions
+        }}
+      />
+
+      {/* Create Dialog */}
+      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Customer</DialogTitle>
+            <DialogDescription>
+              Add a new customer to the {division.toUpperCase()} division
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={form.handleSubmit(handleCreateSubmit)} className="space-y-4">
+            <div>
+              <Label htmlFor="name">Name *</Label>
+              <Input 
+                id="name" 
+                {...form.register('name')}
+                className={form.formState.errors.name ? 'border-destructive' : ''}
+              />
+              {form.formState.errors.name && (
+                <p className="text-sm text-destructive mt-1">
+                  {form.formState.errors.name.message}
+                </p>
+              )}
+            </div>
+            <div>
+              <Label htmlFor="email">Email</Label>
+              <Input 
+                id="email" 
+                type="email"
+                {...form.register('email')}
+                className={form.formState.errors.email ? 'border-destructive' : ''}
+              />
+              {form.formState.errors.email && (
+                <p className="text-sm text-destructive mt-1">
+                  {form.formState.errors.email.message}
+                </p>
+              )}
+            </div>
+            <div>
+              <Label htmlFor="phone">Phone</Label>
+              <Input 
+                id="phone" 
+                type="tel"
+                {...form.register('phone')}
+              />
+            </div>
+            <div>
+              <Label htmlFor="notes">Notes</Label>
+              <Textarea 
+                id="notes"
+                {...form.register('notes')}
+              />
+            </div>
+            <DialogFooter>
+              <Button type="submit" disabled={createMutation.isPending}>
+                {createMutation.isPending ? 'Creating...' : 'Create Customer'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

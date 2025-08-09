@@ -8,6 +8,7 @@ import { DivisionSwitcher } from '@/components/DivisionSwitcher'
 import Customers from '@/pages/Customers'
 import Jobs from '@/pages/Jobs'
 import Estimates from '@/pages/Estimates'
+import EditCustomer from '@/pages/EditCustomer'
 
 // DIVISIONS constant removed - now fetched via tRPC
 
@@ -122,10 +123,24 @@ function Sidebar() {
 
 export default function AppShell() {
   const params = useParams({ strict: false })
-  const section = params.section || 'customers'
+  const division = (params as any).division || 'mfnc'
+  const section = (params as any).section || 'customers'
+  const currentPath = window.location.pathname
 
-  // Render the appropriate component based on the section
+  // Render the appropriate component based on the route
   const renderContent = () => {
+    // Handle edit routes
+    if (currentPath.includes('/customers/edit/')) {
+      return <EditCustomer />
+    }
+    if (currentPath.includes('/jobs/edit/')) {
+      return <div className="text-center py-8 text-muted-foreground">Edit Job (Coming Soon)</div>
+    }
+    if (currentPath.includes('/estimates/edit/')) {
+      return <div className="text-center py-8 text-muted-foreground">Edit Estimate (Coming Soon)</div>
+    }
+
+    // Handle main sections
     switch (section) {
       case 'customers':
         return <Customers />
