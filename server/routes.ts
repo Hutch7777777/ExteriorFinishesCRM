@@ -26,8 +26,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      console.log("User object from session:", req.user);
+      
+      // Get user ID from different possible sources
+      let userId = null;
+      if (req.user?.claims?.sub) {
+        // Convert Replit user ID to UUID format like we do in upsertUser
+        const crypto = await import('crypto');
+        const userIdHash = crypto.createHash('sha256').update(req.user.claims.sub).digest('hex');
+        userId = [
+          userIdHash.substring(0, 8),
+          userIdHash.substring(8, 12),
+          userIdHash.substring(12, 16),
+          userIdHash.substring(16, 20),
+          userIdHash.substring(20, 32)
+        ].join('-');
+      } else if (req.user?.id) {
+        userId = req.user.id;
+      }
+      
+      if (!userId) {
+        return res.status(401).json({ message: "User ID not found in session" });
+      }
+      
       const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found in database" });
+      }
+      
       res.json(user);
     } catch (error) {
       console.error("Error fetching user:", error);

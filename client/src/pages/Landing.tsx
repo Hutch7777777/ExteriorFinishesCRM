@@ -1,11 +1,22 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Home, Users, Briefcase, Calculator, Building, House } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { useEffect } from "react";
 
 export default function Landing() {
+  const { isAuthenticated, isLoading } = useAuth();
+
   const handleLogin = () => {
-    window.location.href = "/api/login";
+    window.location.href = "/signin";
   };
+
+  // Redirect authenticated users to the main app
+  useEffect(() => {
+    if (isAuthenticated && !isLoading) {
+      window.location.href = "/mfnc/customers";
+    }
+  }, [isAuthenticated, isLoading]);
 
   return (
     <div className="min-h-screen bg-slate-50">
