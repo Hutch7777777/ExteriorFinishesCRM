@@ -39,15 +39,93 @@ export class TRPCClient {
 
   // Customers endpoints
   customers = {
-    list: (input: { divisionKey?: string } = {}) => {
-      const params = new URLSearchParams(input as any);
+    list: (input: { divisionKey?: string; q?: string; page?: number } = {}) => {
+      const params = new URLSearchParams();
+      if (input.divisionKey) params.set('divisionKey', input.divisionKey);
+      if (input.q) params.set('q', input.q);
+      if (input.page) params.set('page', input.page.toString());
       return this.makeRequest(`customers.list?${params}`);
     },
-    get: (input: { id: string }) => {
+    getById: (input: { id: string }) => {
       const params = new URLSearchParams(input);
-      return this.makeRequest(`customers.get?${params}`);
+      return this.makeRequest(`customers.getById?${params}`);
     },
-    create: (input: any) => this.makeRequest('customers.create', {
+    create: (input: {
+      divisionKey: 'mfnc' | 'sfnc' | 'rr';
+      name: string;
+      email?: string;
+      phone?: string;
+      addressJson?: any;
+      notes?: string;
+    }) => this.makeRequest('customers.create', {
+      method: 'POST',
+      body: JSON.stringify({ input }),
+    }),
+    update: (input: {
+      id: string;
+      name?: string;
+      email?: string;
+      phone?: string;
+      addressJson?: any;
+      notes?: string;
+    }) => this.makeRequest('customers.update', {
+      method: 'POST',
+      body: JSON.stringify({ input }),
+    }),
+  };
+
+  // Jobs endpoints
+  jobs = {
+    list: (input: { divisionKey?: 'mfnc' | 'sfnc' | 'rr'; status?: 'planning' | 'in_progress' | 'completed'; page?: number } = {}) => {
+      const params = new URLSearchParams();
+      if (input.divisionKey) params.set('divisionKey', input.divisionKey);
+      if (input.status) params.set('status', input.status);
+      if (input.page) params.set('page', input.page.toString());
+      return this.makeRequest(`jobs.list?${params}`);
+    },
+    create: (input: {
+      customerId: string;
+      divisionKey: 'mfnc' | 'sfnc' | 'rr';
+      status?: 'planning' | 'in_progress' | 'completed';
+      siteAddressJson?: any;
+    }) => this.makeRequest('jobs.create', {
+      method: 'POST',
+      body: JSON.stringify({ input }),
+    }),
+    update: (input: {
+      id: string;
+      status?: 'planning' | 'in_progress' | 'completed';
+      siteAddressJson?: any;
+    }) => this.makeRequest('jobs.update', {
+      method: 'POST',
+      body: JSON.stringify({ input }),
+    }),
+  };
+
+  // Estimates endpoints
+  estimates = {
+    list: (input: { divisionKey?: 'mfnc' | 'sfnc' | 'rr'; status?: 'draft' | 'sent' | 'approved' | 'rejected'; page?: number } = {}) => {
+      const params = new URLSearchParams();
+      if (input.divisionKey) params.set('divisionKey', input.divisionKey);
+      if (input.status) params.set('status', input.status);
+      if (input.page) params.set('page', input.page.toString());
+      return this.makeRequest(`estimates.list?${params}`);
+    },
+    create: (input: {
+      jobId: string;
+      status?: 'draft' | 'sent' | 'approved' | 'rejected';
+      totalCents: number;
+      linesJson: any;
+    }) => this.makeRequest('estimates.create', {
+      method: 'POST',
+      body: JSON.stringify({ input }),
+    }),
+    update: (input: {
+      id: string;
+      status?: 'draft' | 'sent' | 'approved' | 'rejected';
+      totalCents?: number;
+      linesJson?: any;
+    }) => this.makeRequest('estimates.update', {
       method: 'POST',
       body: JSON.stringify({ input }),
     }),
