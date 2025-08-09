@@ -2,6 +2,7 @@ import { createRouter, createRoute, createRootRoute, redirect, Outlet } from '@t
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import Landing from '@/pages/Landing'
 import SignIn from '@/pages/SignIn'
+import SignUp from '@/pages/SignUp'
 import Customers from '@/pages/Customers'
 import Jobs from '@/pages/Jobs'
 import Estimates from '@/pages/Estimates'
@@ -9,19 +10,9 @@ import NotFound from '@/pages/not-found'
 import AppShell from '@/components/layout/AppShell'
 import { useAuth } from '@/hooks/useAuth'
 
-// Root route with authentication check
+// Root route without automatic redirects - let components handle authentication
 const rootRoute = createRootRoute({
   component: () => {
-    const { isAuthenticated, isLoading } = useAuth()
-    
-    if (isLoading) {
-      return <div className="flex items-center justify-center h-screen">Loading...</div>
-    }
-
-    if (!isAuthenticated) {
-      return <SignIn />
-    }
-
     return (
       <>
         <Outlet />
@@ -31,10 +22,31 @@ const rootRoute = createRootRoute({
   }
 })
 
+// Landing page route 
+const landingRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/',
+  component: Landing
+})
+
+// Sign in route
+const signInRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/signin',
+  component: SignIn
+})
+
+// Sign up route
+const signUpRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/signup',
+  component: SignUp
+})
+
 // Index route - redirect to /mfnc/customers
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/',
+  path: '/dashboard',
   component: () => {
     // Use window.location to do immediate redirect
     window.location.href = '/mfnc/customers'
@@ -94,6 +106,9 @@ const notFoundRoute = createRoute({
 
 // Create the route tree
 const routeTree = rootRoute.addChildren([
+  landingRoute,
+  signInRoute,
+  signUpRoute,
   indexRoute,
   shellRoute,
   editCustomerRoute,

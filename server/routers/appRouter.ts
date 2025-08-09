@@ -33,7 +33,9 @@ export const createAppRouter = () => {
     try {
       const ctx = await createContext(req, res);
       const user = requireAuthed(ctx);
-      const result = { user };
+      // Remove password hash before returning user data
+      const { passwordHash, ...userWithoutPassword } = user;
+      const result = { user: userWithoutPassword };
       res.json({ result: superjson.serialize(result) });
     } catch (error) {
       if (error instanceof TRPCError) {

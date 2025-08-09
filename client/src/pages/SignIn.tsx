@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { Link } from "wouter";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 // No need for router import since we're using window.location.href
 import { apiRequest } from "@/lib/queryClient";
@@ -123,10 +124,12 @@ export default function SignIn() {
             </form>
           </Form>
           
-          <div className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
-            <p>Demo credentials:</p>
-            <p className="font-mono text-xs mt-1">
-              admin@exteriorfinishes.com / admin123
+          <div className="mt-4 text-center">
+            <p className="text-sm text-muted-foreground">
+              Don't have an account?{" "}
+              <Link href="/signup" className="font-medium text-primary hover:underline">
+                Create account
+              </Link>
             </p>
           </div>
         </CardContent>

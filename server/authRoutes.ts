@@ -69,8 +69,8 @@ router.post('/login', async (req: Request, res: Response) => {
   }
 });
 
-// Register route (admin-only)
-router.post('/register', authenticateToken, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+// Register route (open registration, first user becomes admin)
+router.post('/register', async (req: Request, res: Response) => {
   try {
     const { email, password, name, role, divisionId } = registerSchema.parse(req.body);
 
@@ -80,6 +80,10 @@ router.post('/register', authenticateToken, requireAdmin, async (req: Authentica
       return res.status(409).json({ message: 'User already exists' });
     }
 
+    // Check if this is the first user (make them admin)
+    const userCount = await storage.getUserCount();
+    const actualRole = userCount === 0 ? 'admin' : (role || 'staff');
+
     // Hash password
     const passwordHash = await hashPassword(password);
 
@@ -88,8 +92,8 @@ router.post('/register', authenticateToken, requireAdmin, async (req: Authentica
       email,
       passwordHash,
       name,
-      role,
-      divisionId: divisionId || null,
+      role: actualRole,
+      divisionId: actualRole === 'admin' ? null : divisionId,
     };
 
     const newUser = await storage.createUser(userData);
