@@ -5,6 +5,7 @@ import { setupAuth, isAuthenticated } from "./replitAuth";
 import authRoutes from "./authRoutes";
 import { authenticateToken } from "./auth";
 import type { AuthenticatedRequest } from "./auth";
+import { appRouter } from "./routers/appRouter";
 import { 
   insertDivisionSchema,
   insertCustomerSchema,
@@ -15,6 +16,9 @@ import {
 export async function registerRoutes(app: Express): Promise<Server> {
   // JWT Auth routes
   app.use('/api/auth', authRoutes);
+
+  // Custom tRPC-like API routes
+  app.use('/api/trpc', appRouter());
 
   // Replit Auth middleware (keep for future compatibility)
   await setupAuth(app);
