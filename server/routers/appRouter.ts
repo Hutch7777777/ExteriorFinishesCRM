@@ -51,7 +51,8 @@ export const createAppRouter = () => {
       const ctx = await createContext(req, res);
       requireRole('admin')(ctx);
       
-      const input = insertUserSchema.omit({ id: true, createdAt: true }).parse(req.body?.input || {});
+      const inputData = req.body?.input || {};
+      const input = insertUserSchema.omit({ id: true, createdAt: true }).parse(inputData);
       const user = await storage.createUser(input);
       const { passwordHash, ...userWithoutPassword } = user;
       const result = { user: userWithoutPassword };
@@ -255,7 +256,7 @@ export const createAppRouter = () => {
       
       const inputSchema = z.object({
         divisionKey: z.enum(['mfnc', 'sfnc', 'rr']).optional(),
-        status: z.enum(['planning', 'in_progress', 'completed']).optional(),
+        status: z.enum(['draft', 'active', 'closed', 'planning', 'in_progress', 'completed']).optional(),
         page: z.coerce.number().min(1).default(1),
       });
       
@@ -292,7 +293,7 @@ export const createAppRouter = () => {
       const inputSchema = z.object({
         customerId: z.string().uuid(),
         divisionKey: z.enum(['mfnc', 'sfnc', 'rr']),
-        status: z.enum(['planning', 'in_progress', 'completed']).default('planning'),
+        status: z.enum(['draft', 'active', 'closed', 'planning', 'in_progress', 'completed']).default('draft'),
         siteAddressJson: z.any().optional(),
       });
       
@@ -344,7 +345,7 @@ export const createAppRouter = () => {
       
       const inputSchema = z.object({
         id: z.string().uuid(),
-        status: z.enum(['planning', 'in_progress', 'completed']).optional(),
+        status: z.enum(['draft', 'active', 'closed', 'planning', 'in_progress', 'completed']).optional(),
         siteAddressJson: z.any().optional(),
       });
       

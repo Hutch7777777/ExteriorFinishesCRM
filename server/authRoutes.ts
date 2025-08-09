@@ -124,7 +124,7 @@ router.post('/logout', (req: Request, res: Response) => {
 });
 
 // Get current user route
-router.get('/me', authenticateToken, (req: AuthenticatedRequest, res: Response) => {
+router.get('/me', authenticateToken as any, (req: AuthenticatedRequest, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ message: 'User not found' });
   }

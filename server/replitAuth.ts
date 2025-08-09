@@ -57,12 +57,24 @@ function updateUserSession(
 async function upsertUser(
   claims: any,
 ) {
+  // Convert Replit user ID to a UUID-compatible format by hashing
+  const crypto = await import('crypto');
+  const userIdHash = crypto.createHash('sha256').update(claims["sub"]).digest('hex');
+  const uuid = [
+    userIdHash.substring(0, 8),
+    userIdHash.substring(8, 12),
+    userIdHash.substring(12, 16),
+    userIdHash.substring(16, 20),
+    userIdHash.substring(20, 32)
+  ].join('-');
+  
   await storage.upsertUser({
-    id: claims["sub"],
+    id: uuid,
+    name: `${claims["first_name"] || ''} ${claims["last_name"] || ''}`.trim() || claims["email"],
     email: claims["email"],
-    firstName: claims["first_name"],
-    lastName: claims["last_name"],
-    profileImageUrl: claims["profile_image_url"],
+    passwordHash: 'oauth-user', // Placeholder for OAuth users
+    role: 'staff',
+    divisionId: null,
   });
 }
 

@@ -67,6 +67,16 @@ export interface IStorage {
     totalCustomers: number;
     pendingEstimates: number;
   }>;
+
+  // Activity tracking (stub methods for now)
+  getRecentActivity(limit?: number): Promise<any[]>;
+  logActivity(activity: {
+    userId: string;
+    action: string;
+    description: string;
+    entityType: string;
+    entityId: string;
+  }): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -353,6 +363,23 @@ export class DatabaseStorage implements IStorage {
       totalCustomers: totalCustomersResult?.count || 0,
       pendingEstimates: pendingEstimatesResult?.count || 0,
     };
+  }
+
+  // Activity tracking stub methods
+  async getRecentActivity(limit = 10): Promise<any[]> {
+    // TODO: Implement activity tracking table
+    return [];
+  }
+
+  async logActivity(activity: {
+    userId: string;
+    action: string;
+    description: string;
+    entityType: string;
+    entityId: string;
+  }): Promise<void> {
+    // TODO: Implement activity logging
+    console.log('Activity logged:', activity);
   }
 }
 

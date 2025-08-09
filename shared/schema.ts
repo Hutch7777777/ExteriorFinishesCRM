@@ -26,7 +26,7 @@ export const sessions = pgTable(
 // Enums
 export const userRoleEnum = pgEnum('user_role', ['admin', 'staff']);
 export const divisionKeyEnum = pgEnum('division_key', ['mfnc', 'sfnc', 'rr']);
-export const jobStatusEnum = pgEnum('job_status', ['draft', 'active', 'closed']);
+export const jobStatusEnum = pgEnum('job_status', ['draft', 'active', 'closed', 'planning', 'in_progress', 'completed']);
 export const estimateStatusEnum = pgEnum('estimate_status', ['draft', 'sent', 'approved', 'rejected']);
 
 // Users table

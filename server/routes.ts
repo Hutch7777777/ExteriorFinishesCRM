@@ -266,7 +266,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.logActivity({
         userId: req.user.claims.sub,
         action: 'create',
-        description: `Created new job: ${job.title}`,
+        description: `Created new job for customer ID: ${job.customerId}`,
         entityType: 'job',
         entityId: job.id,
       });
@@ -286,7 +286,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.logActivity({
         userId: req.user.claims.sub,
         action: 'update',
-        description: `Updated job: ${job.title}`,
+        description: `Updated job for customer ID: ${job.customerId}`,
         entityType: 'job',
         entityId: job.id,
       });
@@ -350,7 +350,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.logActivity({
         userId: req.user.claims.sub,
         action: 'create',
-        description: `Created new estimate: ${estimate.title}`,
+        description: `Created new estimate for job ID: ${estimate.jobId}`,
         entityType: 'estimate',
         entityId: estimate.id,
       });
@@ -370,7 +370,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.logActivity({
         userId: req.user.claims.sub,
         action: 'update',
-        description: `Updated estimate: ${estimate.title}`,
+        description: `Updated estimate for job ID: ${estimate.jobId}`,
         entityType: 'estimate',
         entityId: estimate.id,
       });
