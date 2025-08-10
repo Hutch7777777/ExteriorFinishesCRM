@@ -160,19 +160,22 @@ export default function LeadManagement() {
   const [activeTab, setActiveTab] = useState('pipeline')
 
   // Fetch proposals for the current division
-  const { data: proposals = [] } = useQuery({
+  const { data: proposals = [], isLoading: proposalsLoading } = useQuery({
     queryKey: ['proposals', division],
     queryFn: () => apiRequest(`/api/trpc/proposals.list?divisionKey=${division}`),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    select: (data: any) => data || []
   })
 
   // Summary stats
+  const proposalsArray = Array.isArray(proposals) ? proposals : []
   const stats = {
     totalLeads: leads.length,
     qualifiedLeads: leads.filter(l => l.status === 'qualified').length,
-    proposalsSent: proposals.filter(p => p.status === 'sent').length,
+    proposalsSent: proposalsArray.filter((p: any) => p.status === 'sent').length,
     activeContracts: contracts.filter(c => c.status === 'signed').length,
     pipelineValue: leads.reduce((sum, lead) => sum + lead.value, 0),
-    proposalValue: proposals.reduce((sum, prop) => sum + prop.value, 0)
+    proposalValue: proposalsArray.reduce((sum: number, prop: any) => sum + (prop.baseCostCents / 100), 0)
   }
 
   return (
@@ -290,22 +293,26 @@ export default function LeadManagement() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {proposals.length === 0 ? (
-                  <EmptyState
-                    icon={FileText}
-                    title="No proposals found"
-                    description="Create your first proposal to get started"
-                    action={
-                      <CreateProposalDialog>
-                        <Button>
-                          <Plus className="h-4 w-4 mr-2" />
-                          Create Proposal
-                        </Button>
-                      </CreateProposalDialog>
-                    }
-                  />
+                {proposalsLoading ? (
+                  <div className="text-center py-8 text-slate-500">Loading proposals...</div>
+                ) : proposalsArray.length === 0 ? (
+                  <div className="text-center py-12">
+                    <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+                      No proposals found
+                    </h3>
+                    <p className="text-gray-500 mb-6">
+                      Create your first proposal to get started
+                    </p>
+                    <CreateProposalDialog>
+                      <Button>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create Proposal
+                      </Button>
+                    </CreateProposalDialog>
+                  </div>
                 ) : (
-                  proposals.map((proposal: any) => (
+                  proposalsArray.map((proposal: any) => (
                     <div key={proposal.id} className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
                       <div className="flex items-center justify-between">
                         <div>

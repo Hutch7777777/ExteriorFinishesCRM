@@ -17,6 +17,7 @@ export default function ProposalView() {
     queryKey: ['proposals', proposalId],
     queryFn: () => apiRequest(`/api/trpc/proposals.getById?id=${proposalId}`),
     enabled: !!proposalId,
+    select: (data: any) => data || {}
   })
 
   if (isLoading) {
@@ -62,19 +63,19 @@ export default function ProposalView() {
     })
   }
 
-  const projectInclusions = Array.isArray(proposal.projectInclusions) 
+  const projectInclusions = Array.isArray(proposal?.projectInclusions) 
     ? proposal.projectInclusions 
     : []
 
-  const projectExclusions = Array.isArray(proposal.projectExclusions) 
+  const projectExclusions = Array.isArray(proposal?.projectExclusions) 
     ? proposal.projectExclusions 
     : []
 
-  const baseExclusions = Array.isArray(proposal.baseExclusions) 
+  const baseExclusions = Array.isArray(proposal?.baseExclusions) 
     ? proposal.baseExclusions 
     : []
 
-  const options = Array.isArray(proposal.options) 
+  const options = Array.isArray(proposal?.options) 
     ? proposal.options 
     : []
 
@@ -94,17 +95,17 @@ export default function ProposalView() {
             </Button>
             <div>
               <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-                {proposal.title}
+                {proposal?.title || 'Proposal'}
               </h1>
               <p className="text-sm text-gray-500">
-                Created {formatDate(proposal.createdAt)}
+                Created {formatDate(proposal?.createdAt || new Date().toISOString())}
               </p>
             </div>
           </div>
           
           <div className="flex items-center space-x-3">
-            <Badge className={getStatusColor(proposal.status)}>
-              {proposal.status.charAt(0).toUpperCase() + proposal.status.slice(1)}
+            <Badge className={getStatusColor(proposal?.status || 'draft')}>
+              {(proposal?.status || 'draft').charAt(0).toUpperCase() + (proposal?.status || 'draft').slice(1)}
             </Badge>
             
             <div className="flex space-x-2">
@@ -116,7 +117,7 @@ export default function ProposalView() {
                 <Download className="h-4 w-4 mr-2" />
                 Download PDF
               </Button>
-              {proposal.status === 'draft' && (
+              {(proposal?.status || 'draft') === 'draft' && (
                 <Button size="sm">
                   <Send className="h-4 w-4 mr-2" />
                   Send Proposal
@@ -137,21 +138,21 @@ export default function ProposalView() {
                 EXTERIOR FINISHES
               </h1>
               <p className="text-sm text-gray-600 dark:text-gray-400 italic">
-                Vendor Pricing Valid {proposal.validDays} Days Unless Noted Otherwise.
+                Vendor Pricing Valid {proposal?.validDays || 60} Days Unless Noted Otherwise.
               </p>
             </div>
 
             {/* Project Details */}
             <div className="mb-8 space-y-2">
-              <p><strong>Date:</strong> {formatDate(proposal.dateCreated)}</p>
-              <p><strong>Homeowner:</strong> {proposal.homeowner}</p>
-              <p><strong>Address:</strong> {proposal.address}</p>
+              <p><strong>Date:</strong> {formatDate(proposal?.createdAt || new Date().toISOString())}</p>
+              <p><strong>Homeowner:</strong> {proposal?.homeowner || 'N/A'}</p>
+              <p><strong>Address:</strong> {proposal?.address || 'N/A'}</p>
             </div>
 
             {/* Project Description */}
             <div className="mb-8">
               <h2 className="text-lg font-bold mb-4">Project Inclusions:</h2>
-              <p className="mb-6">{proposal.projectDescription}</p>
+              <p className="mb-6">{proposal?.projectDescription || 'No description provided'}</p>
 
               {/* Inclusions List */}
               <div className="space-y-4">
@@ -172,7 +173,7 @@ export default function ProposalView() {
             <div className="mb-8 py-4 border-t border-b border-gray-200 dark:border-gray-700">
               <div className="text-center">
                 <p className="text-lg font-bold">
-                  Total Cost to Supply and Install Items Listed W/O WSST: {formatCurrency(proposal.baseCostCents / 100)}
+                  Total Cost to Supply and Install Items Listed W/O WSST: {formatCurrency((proposal?.baseCostCents || 0) / 100)}
                 </p>
               </div>
             </div>
@@ -191,7 +192,7 @@ export default function ProposalView() {
                         {option.description}
                       </p>
                       <p className="font-semibold">
-                        Total Cost for {option.name}: {formatCurrency(option.costCents / 100)}
+                        Total Cost for {option.name}: {formatCurrency((option.costCents || 0) / 100)}
                       </p>
                     </div>
                   ))}
@@ -217,7 +218,7 @@ export default function ProposalView() {
             </div>
 
             {/* Insurance */}
-            {proposal.insuranceLimits && (
+            {proposal?.insuranceLimits && (
               <div className="mb-8">
                 <h2 className="text-lg font-bold mb-4">Exterior Finishes Insurance Limits</h2>
                 <div className="whitespace-pre-line text-sm">
@@ -227,7 +228,7 @@ export default function ProposalView() {
             )}
 
             {/* Additional Notes */}
-            {proposal.additionalNotes && (
+            {proposal?.additionalNotes && (
               <div className="mb-8">
                 <div className="whitespace-pre-line text-sm">
                   {proposal.additionalNotes}
@@ -239,7 +240,7 @@ export default function ProposalView() {
             <div className="mt-12">
               <p className="mb-8">Sincerely,</p>
               <p className="font-semibold">
-                {proposal.createdByUser?.name || 'Anthony Hutchinson'}
+                {proposal?.createdByUser?.name || 'Anthony Hutchinson'}
               </p>
             </div>
           </CardContent>
