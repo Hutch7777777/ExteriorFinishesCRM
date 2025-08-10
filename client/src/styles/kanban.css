@@ -1,0 +1,39 @@
+/* Custom styles for the Kanban board */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Custom scrollbar for horizontal scroll */
+.overflow-x-auto::-webkit-scrollbar {
+  height: 8px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Dark mode scrollbar */
+.dark .overflow-x-auto::-webkit-scrollbar-track {
+  background: #1e293b;
+}
+
+.dark .overflow-x-auto::-webkit-scrollbar-thumb {
+  background: #475569;
+}
+
+.dark .overflow-x-auto::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}

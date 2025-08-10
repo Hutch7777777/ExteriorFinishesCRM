@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from '@tanstack/react-router'
+import '@/styles/kanban.css'
 import {
   DndContext,
   DragEndEvent,
@@ -227,12 +228,12 @@ function LeadCard({ lead, division, isDragging = false }: LeadCardProps) {
         {/* Contact Info */}
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
-            <Mail className="h-3 w-3" />
+            <Mail className="h-3 w-3 flex-shrink-0" />
             <span className="truncate">{lead.email}</span>
           </div>
           <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
-            <Phone className="h-3 w-3" />
-            <span>{lead.phone}</span>
+            <Phone className="h-3 w-3 flex-shrink-0" />
+            <span className="truncate">{lead.phone}</span>
           </div>
         </div>
 
@@ -251,15 +252,15 @@ function LeadCard({ lead, division, isDragging = false }: LeadCardProps) {
 
         {/* Notes */}
         {lead.notes && (
-          <p className="text-xs text-slate-600 dark:text-slate-400 truncate">
+          <p className="text-xs text-slate-600 dark:text-slate-400 break-words line-clamp-2">
             {lead.notes}
           </p>
         )}
 
         {/* Assigned To & Date */}
         <div className="flex items-center justify-between text-xs text-slate-500">
-          <span>Assigned: {lead.assignedTo}</span>
-          <span>{lead.createdAt}</span>
+          <span className="truncate mr-2">Assigned: {lead.assignedTo}</span>
+          <span className="flex-shrink-0">{lead.createdAt}</span>
         </div>
       </CardContent>
     </Card>
@@ -283,8 +284,8 @@ function KanbanColumn({ stage, leads, division }: KanbanColumnProps) {
   return (
     <div 
       ref={setNodeRef}
-      className={`rounded-lg border-2 border-dashed p-4 min-h-[600px] transition-colors ${stage.color} ${
-        isOver ? 'border-blue-400 bg-blue-50' : ''
+      className={`rounded-lg border-2 border-dashed p-4 min-h-[600px] w-full transition-colors ${stage.color} ${
+        isOver ? 'border-blue-400 bg-blue-50 dark:bg-blue-950' : ''
       }`}
     >
       <div className="mb-4">
@@ -411,15 +412,18 @@ export default function KanbanBoard() {
         </div>
 
         {/* Kanban Board */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 xl:grid-cols-7 gap-4 min-h-[600px]">
-          {SALES_STAGES.map((stage) => (
-            <KanbanColumn
-              key={stage.id}
-              stage={stage}
-              leads={leads}
-              division={division}
-            />
-          ))}
+        <div className="overflow-x-auto pb-4">
+          <div className="flex gap-6 min-h-[600px]" style={{ minWidth: 'max-content' }}>
+            {SALES_STAGES.map((stage) => (
+              <div key={stage.id} className="flex-shrink-0" style={{ width: '320px' }}>
+                <KanbanColumn
+                  stage={stage}
+                  leads={leads}
+                  division={division}
+                />
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Summary Stats */}
