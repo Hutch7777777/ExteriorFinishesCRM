@@ -1,13 +1,15 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
-import { LogOut, Home } from 'lucide-react'
+import { LogOut, Home, Menu } from 'lucide-react'
 import { apiRequest } from '@/lib/queryClient'
 import { useToast } from '@/hooks/use-toast'
+import { useSidebar } from '@/contexts/SidebarContext'
 import { DivisionSwitcher } from '@/components/DivisionSwitcher'
 
 export function Header() {
   const { toast } = useToast()
   const queryClient = useQueryClient()
+  const { toggleSidebar } = useSidebar()
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
@@ -35,8 +37,16 @@ export function Header() {
   return (
     <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-4">
       <div className="flex items-center justify-between">
-        {/* Left section - App logo and name */}
+        {/* Left section - Menu toggle and App logo */}
         <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleSidebar}
+            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800"
+          >
+            <Menu className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+          </Button>
           <div className="w-8 h-8 bg-blue-600 rounded-xl flex items-center justify-center">
             <Home className="w-4 h-4 text-white" />
           </div>

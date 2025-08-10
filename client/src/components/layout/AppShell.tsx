@@ -1,6 +1,7 @@
 import { Suspense, lazy, useEffect } from 'react'
 import { Header } from '@/components/layout/Header'
 import { Sidebar } from '@/components/layout/Sidebar'
+import { SidebarProvider } from '@/contexts/SidebarContext'
 import { Skeleton } from '@/components/ui/skeleton'
 
 // Lazy load all page components for better performance
@@ -156,16 +157,18 @@ export default function AppShell() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 overflow-x-hidden">
-      <Header />
-      <div className="flex">
-        <Sidebar />
-        <main className="flex-1 overflow-x-hidden">
-          <div className="p-6 lg:p-8 max-w-full">
-            {renderContent()}
-          </div>
-        </main>
+    <SidebarProvider>
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 overflow-x-hidden">
+        <Header />
+        <div className="flex">
+          <Sidebar />
+          <main className="flex-1 overflow-x-hidden">
+            <div className="p-6 lg:p-8 max-w-full">
+              {renderContent()}
+            </div>
+          </main>
+        </div>
       </div>
-    </div>
+    </SidebarProvider>
   )
 }
