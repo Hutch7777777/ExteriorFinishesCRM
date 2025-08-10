@@ -37,7 +37,7 @@ import { formatCurrency } from '@/lib/utils'
 import { Plus, Trash2 } from 'lucide-react'
 
 const proposalSchema = z.object({
-  customerId: z.string().min(1, 'Customer is required'),
+  customerId: z.string().min(1, 'Lead is required'),
   title: z.string().min(1, 'Title is required'),
   homeowner: z.string().min(1, 'Homeowner name is required'),
   address: z.string().min(1, 'Address is required'),
@@ -69,7 +69,7 @@ export function CreateProposalDialog({ children }: CreateProposalDialogProps) {
   const { toast } = useToast()
   const queryClient = useQueryClient()
 
-  // Fetch customers for the current division
+  // Fetch leads for the current division
   const { data: customers = [] } = useQuery({
     queryKey: ['customers', division],
     queryFn: () => apiRequest(`/api/trpc/customers.list?divisionKey=${division}`),
@@ -166,11 +166,11 @@ export function CreateProposalDialog({ children }: CreateProposalDialogProps) {
                 name="customerId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Customer</FormLabel>
+                    <FormLabel>Lead</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select customer" />
+                          <SelectValue placeholder="Select lead" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
