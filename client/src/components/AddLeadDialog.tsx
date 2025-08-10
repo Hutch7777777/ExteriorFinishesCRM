@@ -133,11 +133,26 @@ export function AddLeadDialog({ children, onLeadAdded }: AddLeadDialogProps) {
       }
     },
     onError: (error: any) => {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to create lead',
-        variant: 'destructive',
-      })
+      console.error('Lead creation error:', error)
+      
+      // Check if it's an authentication error
+      if (error.message && error.message.includes('401')) {
+        toast({
+          title: 'Session Expired',
+          description: 'Please sign in again to continue',
+          variant: 'destructive',
+        })
+        // Redirect to sign in page after a short delay
+        setTimeout(() => {
+          window.location.href = '/signin'
+        }, 2000)
+      } else {
+        toast({
+          title: 'Error',
+          description: error.message || 'Failed to create lead',
+          variant: 'destructive',
+        })
+      }
     },
   })
 

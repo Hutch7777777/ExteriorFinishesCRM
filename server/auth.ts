@@ -5,7 +5,7 @@ import { storage } from './storage';
 import type { User } from '@shared/schema';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-fallback-secret-key';
-const JWT_EXPIRES_IN = '15m';
+const JWT_EXPIRES_IN = '24h'; // Extended for better user experience
 
 export interface AuthenticatedRequest extends Request {
   user?: User;
