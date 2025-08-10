@@ -94,10 +94,7 @@ export function AddLeadDialog({ children, onLeadAdded }: AddLeadDialogProps) {
       }
       
       // Create customer in database
-      await apiRequest('/api/trpc/customers.create', {
-        method: 'POST',
-        body: { input: customerData },
-      })
+      await apiRequest('POST', '/api/trpc/customers.create', { input: customerData })
 
       // Return mock lead data for the pipeline
       const newLead = {
