@@ -1,9 +1,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
-import { LogOut, Home, Menu } from 'lucide-react'
+import { LogOut, Menu } from 'lucide-react'
 import { apiRequest } from '@/lib/queryClient'
 import { useToast } from '@/hooks/use-toast'
 import { useSidebar } from '@/contexts/SidebarContext'
+import { ExteriorFinishesLogo } from '@/components/icons/ExteriorFinishesLogo'
 import { DivisionSwitcher } from '@/components/DivisionSwitcher'
 
 export function Header() {
@@ -43,18 +44,16 @@ export function Header() {
             variant="ghost"
             size="sm"
             onClick={toggleSidebar}
-            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800"
+            className="p-2 hover:bg-blue-50 dark:hover:bg-slate-800"
           >
             <Menu className="w-5 h-5 text-slate-600 dark:text-slate-400" />
           </Button>
-          <div className="w-8 h-8 bg-blue-600 rounded-xl flex items-center justify-center">
-            <Home className="w-4 h-4 text-white" />
-          </div>
+          <ExteriorFinishesLogo className="w-10 h-6" />
           <div>
             <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-50">
               Exterior Finishes
             </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400">CRM System</p>
+            <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">WHERE SERVICE & QUALITY MEET</p>
           </div>
         </div>
         

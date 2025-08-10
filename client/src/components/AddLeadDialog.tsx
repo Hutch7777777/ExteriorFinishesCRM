@@ -446,6 +446,7 @@ export function AddLeadDialog({ children, onLeadAdded }: AddLeadDialogProps) {
               <Button 
                 type="submit" 
                 disabled={createLeadMutation.isPending}
+                className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md"
               >
                 {createLeadMutation.isPending ? 'Adding Lead...' : 'Add Lead'}
               </Button>

@@ -208,7 +208,7 @@ function LeadCard({ lead, division, isDragging = false }: LeadCardProps) {
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 w-6 p-0"
+              className="h-6 w-6 p-0 hover:bg-blue-50 hover:text-blue-600"
               onClick={handleActionClick}
             >
               <Eye className="h-3 w-3" />
@@ -216,7 +216,7 @@ function LeadCard({ lead, division, isDragging = false }: LeadCardProps) {
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 w-6 p-0"
+              className="h-6 w-6 p-0 hover:bg-blue-50 hover:text-blue-600"
               onClick={handleActionClick}
             >
               <MoreHorizontal className="h-3 w-3" />
