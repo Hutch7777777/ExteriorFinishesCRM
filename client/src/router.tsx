@@ -60,7 +60,18 @@ const shellRoute = createRoute({
   path: '/$division/$section',
   beforeLoad: ({ params }) => {
     const validDivisions = ['mfnc', 'sfnc', 'rr']
-    const validSections = ['customers', 'jobs', 'estimates']
+    const validSections = [
+      'customers', 
+      'jobs', 
+      'estimates', 
+      'lead-management', 
+      'pipeline', 
+      'proposals', 
+      'contracts', 
+      'contacts', 
+      'communication', 
+      'reports'
+    ]
     
     if (!validDivisions.includes(params.division) || !validSections.includes(params.section)) {
       window.location.href = '/mfnc/customers'

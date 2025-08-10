@@ -22,6 +22,7 @@ interface NavLinkProps {
 function NavLink({ href, icon, label, isActive }: NavLinkProps) {
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault()
+    console.log('NavLink clicked:', { href, label })
     // Force a full page navigation to ensure routing works
     window.location.href = href
   }
