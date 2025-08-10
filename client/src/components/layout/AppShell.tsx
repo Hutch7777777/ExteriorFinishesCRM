@@ -20,6 +20,13 @@ export default function AppShell() {
   const pathSegments = currentPath.split('/').filter(Boolean)
   const division = pathSegments[0] || 'mfnc'
   const section = pathSegments[1] || 'customers'
+  
+  console.log('AppShell DEBUG:', {
+    currentPath,
+    pathSegments,
+    division,
+    section
+  })
 
 
 
@@ -81,19 +88,39 @@ export default function AppShell() {
 
     // Handle main sections with suspense for lazy loading
     const ComponentToRender = (() => {
-      console.log('Current section:', section, 'Full path:', currentPath) // Debug log
+      console.log('DEBUG - Current section:', section, 'Full path:', currentPath, 'Division:', division) // Debug log
       
       switch (section) {
-        case 'customers': return Customers
-        case 'jobs': return Jobs
-        case 'estimates': return Estimates
-        case 'lead-management': return LeadManagement
-        case 'pipeline': return LeadManagement // backward compatibility
-        case 'proposals': return LeadManagement // redirect to lead management
-        case 'contracts': return LeadManagement // redirect to lead management
-        case 'contacts': return Contacts
-        case 'communication': return Communication
-        case 'reports': return Reports
+        case 'customers': 
+          console.log('Loading Customers component')
+          return Customers
+        case 'jobs': 
+          console.log('Loading Jobs component')
+          return Jobs
+        case 'estimates': 
+          console.log('Loading Estimates component')
+          return Estimates
+        case 'lead-management': 
+          console.log('Loading LeadManagement component')
+          return LeadManagement
+        case 'pipeline': 
+          console.log('Loading LeadManagement component (backward compatibility)')
+          return LeadManagement // backward compatibility
+        case 'proposals': 
+          console.log('Loading LeadManagement component (proposals redirect)')
+          return LeadManagement // redirect to lead management
+        case 'contracts': 
+          console.log('Loading LeadManagement component (contracts redirect)')
+          return LeadManagement // redirect to lead management
+        case 'contacts': 
+          console.log('Loading Contacts component')
+          return Contacts
+        case 'communication': 
+          console.log('Loading Communication component')
+          return Communication
+        case 'reports': 
+          console.log('Loading Reports component')
+          return Reports
         default: 
           console.log('No match found for section:', section, 'defaulting to Customers')
           return Customers
