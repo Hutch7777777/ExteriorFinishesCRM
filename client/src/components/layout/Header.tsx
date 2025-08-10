@@ -4,7 +4,7 @@ import { LogOut, Menu } from 'lucide-react'
 import { apiRequest } from '@/lib/queryClient'
 import { useToast } from '@/hooks/use-toast'
 import { useSidebar } from '@/contexts/SidebarContext'
-import { ExteriorFinishesLogo } from '@/components/icons/ExteriorFinishesLogo'
+
 import { DivisionSwitcher } from '@/components/DivisionSwitcher'
 
 export function Header() {
@@ -48,7 +48,11 @@ export function Header() {
           >
             <Menu className="w-5 h-5 text-slate-600 dark:text-slate-400" />
           </Button>
-          <ExteriorFinishesLogo className="w-12 h-8" />
+          <img 
+            src="/images/logo.svg" 
+            alt="Exterior Finishes Logo" 
+            className="h-8 w-auto object-contain"
+          />
           <div>
             <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-50">
               Exterior Finishes
