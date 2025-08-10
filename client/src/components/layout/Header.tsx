@@ -51,14 +51,8 @@ export function Header() {
           <img 
             src="/images/exterior-finishes-logo.png" 
             alt="Exterior Finishes Logo" 
-            className="h-10 w-auto object-contain"
+            className="h-16 w-auto object-contain"
           />
-          <div>
-            <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-50">
-              Exterior Finishes
-            </h1>
-            <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">WHERE SERVICE & QUALITY MEET</p>
-          </div>
         </div>
         
         {/* Center section - Division Switcher */}
