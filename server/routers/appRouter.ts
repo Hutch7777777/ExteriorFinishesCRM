@@ -74,7 +74,7 @@ export const createAppRouter = () => {
       const user = requireRole('staff')(ctx);
       
       const inputSchema = z.object({
-        divisionKey: z.enum(['mfnc', 'sfnc', 'rr']).optional(),
+        divisionKey: z.enum(['mfnc', 'sfnc', 'rr', 'all']).optional(),
         q: z.string().optional(),
         page: z.coerce.number().min(1).default(1),
       });
@@ -255,7 +255,7 @@ export const createAppRouter = () => {
       const user = requireRole('staff')(ctx);
       
       const inputSchema = z.object({
-        divisionKey: z.enum(['mfnc', 'sfnc', 'rr']).optional(),
+        divisionKey: z.enum(['mfnc', 'sfnc', 'rr', 'all']).optional(),
         status: z.enum(['draft', 'active', 'closed', 'planning', 'in_progress', 'completed']).optional(),
         page: z.coerce.number().min(1).default(1),
       });
@@ -391,7 +391,7 @@ export const createAppRouter = () => {
       const user = requireRole('staff')(ctx);
       
       const inputSchema = z.object({
-        divisionKey: z.enum(['mfnc', 'sfnc', 'rr']).optional(),
+        divisionKey: z.enum(['mfnc', 'sfnc', 'rr', 'all']).optional(),
         status: z.enum(['draft', 'sent', 'approved', 'rejected']).optional(),
         page: z.coerce.number().min(1).default(1),
       });
@@ -401,12 +401,14 @@ export const createAppRouter = () => {
       // Get estimates with division filtering
       let result = await storage.getEstimates();
       
-      // Filter by division if user is staff or division specified
-      if (input.divisionKey || user.role === 'staff') {
+      // Filter by division if user is staff or division specified (but not "all")
+      if ((input.divisionKey && input.divisionKey !== 'all') || user.role === 'staff') {
         const scopedDivisionId = await getDivisionScope(user, input.divisionKey);
-        result = result.filter(estimate => {
-          return estimate.job?.divisionId === scopedDivisionId;
-        });
+        if (scopedDivisionId) {
+          result = result.filter(estimate => {
+            return estimate.job?.divisionId === scopedDivisionId;
+          });
+        }
       }
       
       // Filter by status if provided

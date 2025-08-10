@@ -5,7 +5,7 @@ import { trpcClient } from '@/lib/trpc';
 
 interface Division {
   id: string;
-  key: 'mfnc' | 'sfnc' | 'rr';
+  key: 'mfnc' | 'sfnc' | 'rr' | 'all';
   name: string;
 }
 
@@ -16,11 +16,11 @@ export function DivisionSwitcher() {
   const currentSection = (params as any).section || 'customers';
 
   // Fetch divisions using tRPC with optimized caching
-  const { data: divisions, isLoading } = useQuery<Division[]>({
+  const { data: divisions, isLoading } = useQuery({
     queryKey: ['divisions.getAll'],
     queryFn: () => trpcClient.divisions.getAll(),
     staleTime: 30 * 60 * 1000, // 30 minutes - divisions rarely change
-    cacheTime: 60 * 60 * 1000, // 1 hour in cache
+    gcTime: 60 * 60 * 1000, // 1 hour in cache (renamed from cacheTime in v5)
     retry: 1,
     refetchOnWindowFocus: false,
   });
@@ -41,7 +41,7 @@ export function DivisionSwitcher() {
     );
   }
 
-  if (!divisions || divisions.length === 0) {
+  if (!divisions || !Array.isArray(divisions) || divisions.length === 0) {
     return (
       <div className="flex items-center gap-3">
         <label className="text-sm font-medium text-slate-600 dark:text-slate-400">
@@ -52,7 +52,9 @@ export function DivisionSwitcher() {
     );
   }
 
-  const currentDivisionData = divisions.find(d => d.key === currentDivision);
+  const currentDivisionData = currentDivision === 'all' 
+    ? { key: 'all' as const, name: 'All Divisions' }
+    : divisions?.find((d: Division) => d.key === currentDivision);
 
   return (
     <div className="flex items-center gap-3">
@@ -67,7 +69,14 @@ export function DivisionSwitcher() {
           <SelectValue placeholder="Select division" />
         </SelectTrigger>
         <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-          {divisions.map((division) => (
+          {/* Add "All" option */}
+          <SelectItem 
+            value="all"
+            className="hover:bg-slate-50 dark:hover:bg-slate-700 focus:bg-slate-50 dark:focus:bg-slate-700"
+          >
+            All Divisions
+          </SelectItem>
+          {divisions?.map((division: Division) => (
             <SelectItem 
               key={division.key} 
               value={division.key}

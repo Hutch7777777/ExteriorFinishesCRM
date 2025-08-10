@@ -59,7 +59,7 @@ const shellRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/$division/$section',
   beforeLoad: ({ params }) => {
-    const validDivisions = ['mfnc', 'sfnc', 'rr']
+    const validDivisions = ['mfnc', 'sfnc', 'rr', 'all']
     const validSections = [
       'customers', 
       'jobs', 

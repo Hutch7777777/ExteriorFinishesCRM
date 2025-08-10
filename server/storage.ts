@@ -154,6 +154,8 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(divisions, eq(customers.divisionId, divisions.id))
       .orderBy(desc(customers.createdAt));
 
+    // Only filter by division if divisionId is provided
+    // If divisionId is undefined, show all customers across all divisions
     if (divisionId) {
       query.where(eq(customers.divisionId, divisionId));
     }
@@ -208,6 +210,8 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(users, eq(jobs.createdBy, users.id))
       .orderBy(desc(jobs.createdAt));
 
+    // Only filter by division if divisionId is provided
+    // If divisionId is undefined, show all jobs across all divisions
     if (divisionId) {
       query.where(eq(jobs.divisionId, divisionId));
     }

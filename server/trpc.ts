@@ -96,7 +96,11 @@ export const getDivisionScope = async (user: User, requestedDivisionKey?: string
   }
 
   if (user.role === 'admin') {
-    // Admin can specify division by key - need to look up the UUID
+    // Admin can view all divisions or specify a specific division
+    if (requestedDivisionKey === 'all') {
+      return undefined; // undefined means no filtering, show all divisions
+    }
+    
     if (requestedDivisionKey) {
       const division = await storage.getDivisionByKey(requestedDivisionKey as 'mfnc' | 'sfnc' | 'rr');
       if (!division) {

@@ -49,6 +49,7 @@ The system features a React-based frontend with TypeScript, a Node.js Express ba
 - ✅ Created comprehensive Lead Management page with tabbed interface for Pipeline, Proposals, and Contracts
 - ✅ Enhanced Team Communication page with real-time chat interface, channels, and direct messaging
 - ✅ Fixed router validation to allow all business module sections including lead-management, contacts, communication, and reports
+- ✅ Added "All Divisions" option to view combined data across all divisions for admin users
 
 ### Business Management Platform Expansion (January 2025)
 - ✅ Created Pipeline module with Kanban-style lead tracking and sales funnel visualization
