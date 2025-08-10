@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useParams } from '@tanstack/react-router'
+import { useParams, useNavigate } from '@tanstack/react-router'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -151,6 +151,7 @@ const getStatusColor = (status: string) => {
 
 export default function LeadManagement() {
   const params = useParams({ strict: false })
+  const navigate = useNavigate()
   const division = (params as any).division || 'mfnc'
   const [activeTab, setActiveTab] = useState('pipeline')
 
@@ -273,7 +274,11 @@ export default function LeadManagement() {
             <CardContent>
               <div className="space-y-4">
                 {leads.map((lead) => (
-                  <div key={lead.id} className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                  <div 
+                    key={lead.id} 
+                    className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                    onClick={() => navigate({ to: `/${division}/lead-management/lead/${lead.id}` })}
+                  >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-4">
                         <div>
@@ -302,13 +307,28 @@ export default function LeadManagement() {
                           ${lead.value.toLocaleString()}
                         </span>
                         <div className="flex space-x-1">
-                          <Button variant="ghost" size="sm">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              navigate({ to: `/${division}/lead-management/lead/${lead.id}` })
+                            }}
+                          >
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="sm">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="sm">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </div>

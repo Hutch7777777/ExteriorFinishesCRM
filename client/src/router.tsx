@@ -92,6 +92,15 @@ const editCustomerRoute = createRoute({
   }
 })
 
+// Lead detail route
+const leadDetailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/$division/lead-management/lead/$id',
+  component: () => {
+    return <AppShell />
+  }
+})
+
 const editJobRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/$division/jobs/edit/$id',
@@ -123,6 +132,7 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
   shellRoute,
   editCustomerRoute,
+  leadDetailRoute,
   editJobRoute,
   editEstimateRoute,
   notFoundRoute

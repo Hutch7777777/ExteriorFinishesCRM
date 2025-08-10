@@ -12,6 +12,7 @@ const Contacts = lazy(() => import('@/pages/Contacts'))
 const Communication = lazy(() => import('@/pages/Communication'))
 const Reports = lazy(() => import('@/pages/Reports'))
 const EditCustomer = lazy(() => import('@/pages/EditCustomer'))
+const LeadDetail = lazy(() => import('@/pages/LeadDetail'))
 
 export default function AppShell() {
   const currentPath = window.location.pathname
@@ -79,6 +80,16 @@ export default function AppShell() {
         </Suspense>
       )
     }
+    
+    // Handle lead detail route
+    if (currentPath.includes('/lead-management/lead/')) {
+      return (
+        <Suspense fallback={<PageSkeleton />}>
+          <LeadDetail />
+        </Suspense>
+      )
+    }
+    
     if (currentPath.includes('/jobs/edit/')) {
       return <div className="text-center py-8 text-slate-500">Edit Job (Coming Soon)</div>
     }
