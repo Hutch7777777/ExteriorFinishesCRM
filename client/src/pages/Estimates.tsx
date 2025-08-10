@@ -83,14 +83,17 @@ export default function Estimates() {
     },
   })
 
-  // Fetch estimates
+  // Fetch estimates with improved caching
   const { data: estimates = [], isLoading } = useQuery<Estimate[]>({
     queryKey: ['estimates.list', division, statusFilter],
     queryFn: () => trpcClient.estimates.list({ 
       divisionKey: division as 'mfnc' | 'sfnc' | 'rr',
       status: statusFilter !== 'all' ? statusFilter as any : undefined
     }),
-    retry: false,
+    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
+    cacheTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
+    retry: 1,
+    refetchOnWindowFocus: false,
   })
 
   // Fetch jobs for the dropdown
@@ -195,17 +198,14 @@ export default function Estimates() {
         columns={columns}
         data={estimates}
         isLoading={isLoading}
-        statusFilter={{
-          options: statusOptions,
-          onFilter: handleStatusFilter,
-          placeholder: "Filter by status"
+        searchPlaceholder="Search estimates..."
+        createAction={{
+          label: "Create Estimate",
+          onClick: () => setIsCreateDialogOpen(true)
         }}
-        actions={{
-          create: {
-            label: "Create Estimate",
-            onClick: () => setIsCreateDialogOpen(true)
-          },
-          rowActions
+        emptyState={{
+          title: "No estimates found",
+          description: "Create your first estimate to get started.",
         }}
       />
 

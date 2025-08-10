@@ -15,11 +15,14 @@ export function DivisionSwitcher() {
   const currentDivision = (params as any).division || 'mfnc';
   const currentSection = (params as any).section || 'customers';
 
-  // Fetch divisions using tRPC
+  // Fetch divisions using tRPC with optimized caching
   const { data: divisions, isLoading } = useQuery<Division[]>({
     queryKey: ['divisions.getAll'],
     queryFn: () => trpcClient.divisions.getAll(),
-    retry: false,
+    staleTime: 30 * 60 * 1000, // 30 minutes - divisions rarely change
+    cacheTime: 60 * 60 * 1000, // 1 hour in cache
+    retry: 1,
+    refetchOnWindowFocus: false,
   });
 
   const handleDivisionChange = (newDivisionKey: string) => {

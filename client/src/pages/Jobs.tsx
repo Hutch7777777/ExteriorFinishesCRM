@@ -73,23 +73,29 @@ export default function Jobs() {
     },
   })
 
-  // Fetch jobs
+  // Fetch jobs with improved caching
   const { data: jobs = [], isLoading } = useQuery<Job[]>({
     queryKey: ['jobs.list', division, statusFilter],
     queryFn: () => trpcClient.jobs.list({ 
       divisionKey: division as 'mfnc' | 'sfnc' | 'rr',
       status: statusFilter !== 'all' ? statusFilter as any : undefined
     }),
-    retry: false,
+    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
+    cacheTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
+    retry: 1,
+    refetchOnWindowFocus: false,
   })
 
-  // Fetch customers for the dropdown
+  // Fetch customers for the dropdown with caching
   const { data: customers = [] } = useQuery<Customer[]>({
     queryKey: ['customers.list', division],
     queryFn: () => trpcClient.customers.list({ 
       divisionKey: division as 'mfnc' | 'sfnc' | 'rr'
     }),
-    retry: false,
+    staleTime: 5 * 60 * 1000,
+    cacheTime: 10 * 60 * 1000,
+    retry: 1,
+    refetchOnWindowFocus: false,
   })
 
   // Create job mutation
@@ -170,17 +176,14 @@ export default function Jobs() {
         columns={columns}
         data={jobs}
         isLoading={isLoading}
-        statusFilter={{
-          options: statusOptions,
-          onFilter: handleStatusFilter,
-          placeholder: "Filter by status"
+        searchPlaceholder="Search jobs..."
+        createAction={{
+          label: "Create Job",
+          onClick: () => setIsCreateDialogOpen(true)
         }}
-        actions={{
-          create: {
-            label: "Create Job",
-            onClick: () => setIsCreateDialogOpen(true)
-          },
-          rowActions
+        emptyState={{
+          title: "No jobs found",
+          description: "Create your first job to get started.",
         }}
       />
 

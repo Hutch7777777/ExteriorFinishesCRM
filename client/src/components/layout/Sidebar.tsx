@@ -20,9 +20,18 @@ interface NavLinkProps {
 }
 
 function NavLink({ href, icon, label, isActive }: NavLinkProps) {
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    // Use history API for faster navigation without full page reload
+    window.history.pushState(null, '', href)
+    // Trigger a custom event to update the app state
+    window.dispatchEvent(new PopStateEvent('popstate'))
+  }
+
   return (
     <a
       href={href}
+      onClick={handleClick}
       className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group ${
         isActive
           ? 'bg-blue-600 text-white shadow-sm'
