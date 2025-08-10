@@ -49,9 +49,9 @@ export function Header() {
             <Menu className="w-5 h-5 text-slate-600 dark:text-slate-400" />
           </Button>
           <img 
-            src="/images/logo.svg" 
+            src="/images/exterior-finishes-logo.png" 
             alt="Exterior Finishes Logo" 
-            className="h-8 w-auto object-contain"
+            className="h-10 w-auto object-contain"
           />
           <div>
             <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-50">
