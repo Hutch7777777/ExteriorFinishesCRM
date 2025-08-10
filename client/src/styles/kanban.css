@@ -6,19 +6,21 @@
   overflow: hidden;
 }
 
-/* Custom scrollbar for horizontal scroll */
+/* Custom scrollbar for Kanban board horizontal scroll */
 .overflow-x-auto::-webkit-scrollbar {
-  height: 8px;
+  height: 12px;
 }
 
 .overflow-x-auto::-webkit-scrollbar-track {
-  background: #f1f5f9;
-  border-radius: 4px;
+  background: #f8fafc;
+  border-radius: 6px;
+  margin: 0 8px;
 }
 
 .overflow-x-auto::-webkit-scrollbar-thumb {
   background: #cbd5e1;
-  border-radius: 4px;
+  border-radius: 6px;
+  border: 2px solid #f8fafc;
 }
 
 .overflow-x-auto::-webkit-scrollbar-thumb:hover {
@@ -27,13 +29,21 @@
 
 /* Dark mode scrollbar */
 .dark .overflow-x-auto::-webkit-scrollbar-track {
-  background: #1e293b;
+  background: #0f172a;
+  border: 2px solid #1e293b;
 }
 
 .dark .overflow-x-auto::-webkit-scrollbar-thumb {
   background: #475569;
+  border: 2px solid #1e293b;
 }
 
 .dark .overflow-x-auto::-webkit-scrollbar-thumb:hover {
   background: #64748b;
+}
+
+/* Ensure the container doesn't affect page scroll */
+.kanban-container {
+  max-width: 100%;
+  overflow: hidden;
 }

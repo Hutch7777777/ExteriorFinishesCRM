@@ -394,7 +394,7 @@ export default function KanbanBoard() {
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="space-y-6">
+      <div className="space-y-6 kanban-container">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -412,17 +412,19 @@ export default function KanbanBoard() {
         </div>
 
         {/* Kanban Board */}
-        <div className="overflow-x-auto pb-4">
-          <div className="flex gap-6 min-h-[600px]" style={{ minWidth: 'max-content' }}>
-            {SALES_STAGES.map((stage) => (
-              <div key={stage.id} className="flex-shrink-0" style={{ width: '320px' }}>
-                <KanbanColumn
-                  stage={stage}
-                  leads={leads}
-                  division={division}
-                />
-              </div>
-            ))}
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
+          <div className="overflow-x-auto overflow-y-hidden">
+            <div className="flex gap-6 min-h-[600px] pb-4" style={{ width: '2240px' }}>
+              {SALES_STAGES.map((stage) => (
+                <div key={stage.id} className="flex-shrink-0 w-80">
+                  <KanbanColumn
+                    stage={stage}
+                    leads={leads}
+                    division={division}
+                  />
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
