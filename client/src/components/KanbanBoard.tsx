@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from '@tanstack/react-router'
 import '@/styles/kanban.css'
 import {
@@ -337,8 +337,15 @@ export default function KanbanBoard({ leads: propLeads, onLeadAdded }: KanbanBoa
   const params = useParams({ strict: false })
   const division = (params as any).division || 'mfnc'
   
-  const [leads, setLeads] = useState(propLeads || mockLeads)
+  const [leads, setLeads] = useState(propLeads || [])
   const [activeId, setActiveId] = useState<string | null>(null)
+  
+  // Update leads when propLeads changes
+  useEffect(() => {
+    if (propLeads) {
+      setLeads(propLeads)
+    }
+  }, [propLeads])
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -389,9 +396,6 @@ export default function KanbanBoard({ leads: propLeads, onLeadAdded }: KanbanBoa
       // In a real app, you would also update the backend here
       console.log(`Lead ${activeId} moved to ${targetStageId}`)
     }
-
-    // In a real app, you would also update the backend here
-    console.log(`Lead ${activeId} moved to ${targetStage.title}`)
   }
 
   const activeLead = activeId ? leads.find(lead => lead.id === activeId) : null

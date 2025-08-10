@@ -104,14 +104,15 @@ export function AddLeadDialog({ children, onLeadAdded }: AddLeadDialogProps) {
         email: data.email,
         phone: data.phone,
         address: data.address,
-        status: 'lead', // Always starts in first stage
+        status: 'new', // Always starts in first stage (changed from 'lead' to 'new')
         value: data.value,
         source: data.source,
         projectType: data.projectType,
         timeline: data.timeline,
         budget: data.budget,
         createdAt: new Date().toISOString().split('T')[0],
-        nextAction: 'Initial contact made',
+        assignedTo: 'Unassigned', // Required by KanbanBoard
+        avatar: data.contact.split(' ').map(n => n[0]).join('').toUpperCase(), // Generate initials
         notes: data.notes || '',
       }
       
