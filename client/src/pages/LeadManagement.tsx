@@ -33,14 +33,8 @@ import KanbanBoard from '@/components/KanbanBoard'
 import { CreateProposalDialog } from '@/components/CreateProposalDialog'
 import { AddLeadDialog } from '@/components/AddLeadDialog'
 
-export default function LeadManagement() {
-  const params = useParams({ strict: false })
-  const navigate = useNavigate()
-  const division = (params as any).division || 'mfnc'
-  const [activeTab, setActiveTab] = useState('pipeline')
-
-  // Mock data for demonstration - will be managed as state
-  const [leads, setLeads] = useState([
+// Mock data for demonstration - will be managed as state
+const mockLeads = [
   {
     id: '1',
     name: 'Acme Corporation',
@@ -51,7 +45,8 @@ export default function LeadManagement() {
     value: 150000,
     source: 'Website',
     createdAt: '2025-01-08',
-    nextAction: 'Send proposal',
+    assignedTo: 'Sarah Johnson',
+    avatar: 'SJ',
     notes: 'Interested in siding renovation for 5-story building'
   },
   {
@@ -64,7 +59,8 @@ export default function LeadManagement() {
     value: 250000,
     source: 'Referral',
     createdAt: '2025-01-05',
-    nextAction: 'Follow up on proposal',
+    assignedTo: 'Mike Chen',
+    avatar: 'MC',
     notes: 'Large residential complex, decision expected this week'
   },
   {
@@ -77,10 +73,11 @@ export default function LeadManagement() {
     value: 85000,
     source: 'Cold Call',
     createdAt: '2025-01-03',
-    nextAction: 'Schedule site visit',
+    assignedTo: 'John Smith',
+    avatar: 'JS',
     notes: 'Budget constraints, looking for cost-effective solutions'
   }
-  ])
+]
 
 const proposals = [
   {
@@ -165,6 +162,7 @@ export default function LeadManagement() {
   const navigate = useNavigate()
   const division = (params as any).division || 'mfnc'
   const [activeTab, setActiveTab] = useState('pipeline')
+  const [leads, setLeads] = useState(mockLeads)
 
   // Function to handle adding new leads to the pipeline
   const handleLeadAdded = (newLead: any) => {
@@ -174,7 +172,7 @@ export default function LeadManagement() {
   // Fetch proposals for the current division
   const { data: proposals = [], isLoading: proposalsLoading } = useQuery({
     queryKey: ['proposals', division],
-    queryFn: () => apiRequest(`/api/trpc/proposals.list?divisionKey=${division}`),
+    queryFn: () => apiRequest('GET', `/api/trpc/proposals.list?divisionKey=${division}`),
     staleTime: 5 * 60 * 1000, // 5 minutes
     select: (data: any) => data || []
   })
