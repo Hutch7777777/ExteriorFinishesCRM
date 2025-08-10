@@ -48,7 +48,7 @@ export function Header() {
           >
             <Menu className="w-5 h-5 text-slate-600 dark:text-slate-400" />
           </Button>
-          <ExteriorFinishesLogo className="w-10 h-6" />
+          <ExteriorFinishesLogo className="w-12 h-8" />
           <div>
             <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-50">
               Exterior Finishes
