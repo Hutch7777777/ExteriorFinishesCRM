@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { apiRequest } from '@/lib/queryClient'
 import { useParams, useNavigate } from '@tanstack/react-router'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
@@ -28,6 +30,7 @@ import {
 } from 'lucide-react'
 import { EmptyState } from '@/components/ui/empty-state'
 import KanbanBoard from '@/components/KanbanBoard'
+import { CreateProposalDialog } from '@/components/CreateProposalDialog'
 
 // Mock data for demonstration
 const leads = [
@@ -156,6 +159,12 @@ export default function LeadManagement() {
   const division = (params as any).division || 'mfnc'
   const [activeTab, setActiveTab] = useState('pipeline')
 
+  // Fetch proposals for the current division
+  const { data: proposals = [] } = useQuery({
+    queryKey: ['proposals', division],
+    queryFn: () => apiRequest(`/api/trpc/proposals.list?divisionKey=${division}`),
+  })
+
   // Summary stats
   const stats = {
     totalLeads: leads.length,
@@ -271,55 +280,75 @@ export default function LeadManagement() {
                   <CardTitle>Proposals</CardTitle>
                   <CardDescription>Create and manage project proposals</CardDescription>
                 </div>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Proposal
-                </Button>
+                <CreateProposalDialog>
+                  <Button>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Proposal
+                  </Button>
+                </CreateProposalDialog>
               </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {proposals.map((proposal) => (
-                  <div key={proposal.id} className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="font-medium text-slate-900 dark:text-slate-50">{proposal.title}</h3>
-                        <div className="flex items-center space-x-4 text-sm text-slate-600 dark:text-slate-400 mt-1">
-                          <span className="flex items-center">
-                            <Users className="h-3 w-3 mr-1" />
-                            {proposal.client}
-                          </span>
-                          <span className="flex items-center">
-                            <DollarSign className="h-3 w-3 mr-1" />
-                            ${proposal.value.toLocaleString()}
-                          </span>
-                          {proposal.sentDate && (
+                {proposals.length === 0 ? (
+                  <EmptyState
+                    icon={FileText}
+                    title="No proposals found"
+                    description="Create your first proposal to get started"
+                    action={
+                      <CreateProposalDialog>
+                        <Button>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Create Proposal
+                        </Button>
+                      </CreateProposalDialog>
+                    }
+                  />
+                ) : (
+                  proposals.map((proposal: any) => (
+                    <div key={proposal.id} className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="font-medium text-slate-900 dark:text-slate-50">{proposal.title}</h3>
+                          <div className="flex items-center space-x-4 text-sm text-slate-600 dark:text-slate-400 mt-1">
+                            <span className="flex items-center">
+                              <Users className="h-3 w-3 mr-1" />
+                              {proposal.homeowner}
+                            </span>
+                            <span className="flex items-center">
+                              <DollarSign className="h-3 w-3 mr-1" />
+                              ${(proposal.baseCostCents / 100).toLocaleString()}
+                            </span>
                             <span className="flex items-center">
                               <Calendar className="h-3 w-3 mr-1" />
-                              Sent {new Date(proposal.sentDate).toLocaleDateString()}
+                              {new Date(proposal.createdAt).toLocaleDateString()}
                             </span>
-                          )}
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex items-center space-x-3">
-                        <Badge className={getStatusColor(proposal.status)}>
-                          {proposal.status.charAt(0).toUpperCase() + proposal.status.slice(1)}
-                        </Badge>
-                        <div className="flex space-x-1">
-                          <Button variant="ghost" size="sm">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm">
-                            <Send className="h-4 w-4" />
-                          </Button>
+                        <div className="flex items-center space-x-3">
+                          <Badge className={getStatusColor(proposal.status)}>
+                            {proposal.status.charAt(0).toUpperCase() + proposal.status.slice(1)}
+                          </Badge>
+                          <div className="flex space-x-1">
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => navigate({ to: `/${division}/proposal/${proposal.id}` })}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm">
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm">
+                              <Send className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>

@@ -101,6 +101,15 @@ const leadDetailRoute = createRoute({
   }
 })
 
+// Proposal view route
+const proposalViewRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/$division/proposal/$proposalId',
+  component: () => {
+    return <AppShell />
+  }
+})
+
 const editJobRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/$division/jobs/edit/$id',
@@ -133,6 +142,7 @@ const routeTree = rootRoute.addChildren([
   shellRoute,
   editCustomerRoute,
   leadDetailRoute,
+  proposalViewRoute,
   editJobRoute,
   editEstimateRoute,
   notFoundRoute

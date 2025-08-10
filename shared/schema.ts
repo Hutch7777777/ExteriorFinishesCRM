@@ -28,6 +28,7 @@ export const userRoleEnum = pgEnum('user_role', ['admin', 'staff']);
 export const divisionKeyEnum = pgEnum('division_key', ['mfnc', 'sfnc', 'rr']);
 export const jobStatusEnum = pgEnum('job_status', ['draft', 'active', 'closed', 'planning', 'in_progress', 'completed']);
 export const estimateStatusEnum = pgEnum('estimate_status', ['draft', 'sent', 'approved', 'rejected']);
+export const proposalStatusEnum = pgEnum('proposal_status', ['draft', 'sent', 'accepted', 'rejected', 'expired']);
 
 // Users table
 export const users = pgTable("users", {
@@ -134,10 +135,63 @@ export const jobRelations = relations(jobs, ({ one, many }) => ({
   estimates: many(estimates),
 }));
 
+// Proposals table
+export const proposals = pgTable("proposals", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  customerId: uuid("customer_id").notNull().references(() => customers.id),
+  divisionId: uuid("division_id").notNull().references(() => divisions.id),
+  title: varchar("title", { length: 200 }).notNull(),
+  homeowner: varchar("homeowner", { length: 200 }).notNull(),
+  address: text("address").notNull(),
+  dateCreated: timestamp("date_created").notNull().defaultNow(),
+  validDays: integer("valid_days").notNull().default(60),
+  status: proposalStatusEnum("status").notNull().default('draft'),
+  
+  // Project details
+  projectDescription: text("project_description").notNull(),
+  projectInclusions: jsonb("project_inclusions").notNull().default(sql`'[]'::jsonb`),
+  
+  // Pricing
+  baseCostCents: integer("base_cost_cents").notNull().default(0),
+  options: jsonb("options").notNull().default(sql`'[]'::jsonb`),
+  
+  // Exclusions
+  projectExclusions: jsonb("project_exclusions").notNull().default(sql`'[]'::jsonb`),
+  baseExclusions: jsonb("base_exclusions").notNull().default(sql`'[]'::jsonb`),
+  
+  // Insurance & company info
+  insuranceLimits: text("insurance_limits"),
+  additionalNotes: text("additional_notes"),
+  
+  createdBy: uuid("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_proposals_customer_id").on(table.customerId),
+  index("idx_proposals_division_id").on(table.divisionId),
+  index("idx_proposals_created_by").on(table.createdBy),
+  index("idx_proposals_status").on(table.status),
+]);
+
 export const estimateRelations = relations(estimates, ({ one }) => ({
   job: one(jobs, {
     fields: [estimates.jobId],
     references: [jobs.id],
+  }),
+}));
+
+export const proposalRelations = relations(proposals, ({ one }) => ({
+  customer: one(customers, {
+    fields: [proposals.customerId],
+    references: [customers.id],
+  }),
+  division: one(divisions, {
+    fields: [proposals.divisionId],
+    references: [divisions.id],
+  }),
+  createdByUser: one(users, {
+    fields: [proposals.createdBy],
+    references: [users.id],
   }),
 }));
 
@@ -167,6 +221,12 @@ export const insertEstimateSchema = createInsertSchema(estimates).omit({
   createdAt: true 
 });
 
+export const insertProposalSchema = createInsertSchema(proposals).omit({ 
+  id: true, 
+  createdAt: true,
+  updatedAt: true
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof insertUserSchema._type;
@@ -182,6 +242,9 @@ export type InsertJob = typeof insertJobSchema._type;
 
 export type Estimate = typeof estimates.$inferSelect;
 export type InsertEstimate = typeof insertEstimateSchema._type;
+
+export type Proposal = typeof proposals.$inferSelect;
+export type InsertProposal = typeof insertProposalSchema._type;
 
 // Extended types with relations
 export type UserWithRelations = User & {
@@ -202,6 +265,12 @@ export type JobWithRelations = Job & {
 
 export type EstimateWithRelations = Estimate & {
   job?: JobWithRelations;
+};
+
+export type ProposalWithRelations = Proposal & {
+  customer?: Customer;
+  division?: Division;
+  createdByUser?: User;
 };
 
 // For Replit Auth compatibility

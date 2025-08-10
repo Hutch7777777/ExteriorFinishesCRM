@@ -13,6 +13,7 @@ const Communication = lazy(() => import('@/pages/Communication'))
 const Reports = lazy(() => import('@/pages/Reports'))
 const EditCustomer = lazy(() => import('@/pages/EditCustomer'))
 const LeadDetail = lazy(() => import('@/pages/LeadDetail'))
+const ProposalView = lazy(() => import('@/pages/ProposalView'))
 
 export default function AppShell() {
   const currentPath = window.location.pathname
@@ -86,6 +87,15 @@ export default function AppShell() {
       return (
         <Suspense fallback={<PageSkeleton />}>
           <LeadDetail />
+        </Suspense>
+      )
+    }
+    
+    // Handle proposal view route
+    if (currentPath.includes('/proposal/') && pathSegments[1] === 'proposal') {
+      return (
+        <Suspense fallback={<PageSkeleton />}>
+          <ProposalView />
         </Suspense>
       )
     }

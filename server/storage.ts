@@ -3,6 +3,7 @@ import {
   customers,
   jobs,
   estimates,
+  proposals,
   divisions,
   type User,
   type InsertUser,
@@ -16,6 +17,9 @@ import {
   type Estimate,
   type InsertEstimate,
   type EstimateWithRelations,
+  type Proposal,
+  type InsertProposal,
+  type ProposalWithRelations,
   type Division,
   type InsertDivision,
 } from "@shared/schema";
@@ -59,6 +63,13 @@ export interface IStorage {
   createEstimate(estimate: InsertEstimate): Promise<Estimate>;
   updateEstimate(id: string, estimate: Partial<InsertEstimate>): Promise<Estimate>;
   deleteEstimate(id: string): Promise<void>;
+
+  // Proposal operations
+  getProposals(divisionId?: string): Promise<ProposalWithRelations[]>;
+  getProposal(id: string): Promise<ProposalWithRelations | undefined>;
+  createProposal(proposal: InsertProposal): Promise<Proposal>;
+  updateProposal(id: string, proposal: Partial<InsertProposal>): Promise<Proposal>;
+  deleteProposal(id: string): Promise<void>;
 
   // Dashboard metrics
   getDashboardMetrics(): Promise<{
@@ -330,6 +341,72 @@ export class DatabaseStorage implements IStorage {
 
   async deleteEstimate(id: string): Promise<void> {
     await db.delete(estimates).where(eq(estimates.id, id));
+  }
+
+  // Proposal operations
+  async getProposals(divisionId?: string): Promise<ProposalWithRelations[]> {
+    const query = db
+      .select()
+      .from(proposals)
+      .leftJoin(customers, eq(proposals.customerId, customers.id))
+      .leftJoin(divisions, eq(proposals.divisionId, divisions.id))
+      .leftJoin(users, eq(proposals.createdBy, users.id))
+      .orderBy(desc(proposals.createdAt));
+
+    if (divisionId) {
+      query.where(eq(proposals.divisionId, divisionId));
+    }
+
+    const results = await query;
+    return results.map(row => ({
+      ...row.proposals,
+      customer: row.customers || undefined,
+      division: row.divisions || undefined,
+      createdByUser: row.users || undefined,
+    }));
+  }
+
+  async getProposal(id: string): Promise<ProposalWithRelations | undefined> {
+    const [result] = await db
+      .select()
+      .from(proposals)
+      .leftJoin(customers, eq(proposals.customerId, customers.id))
+      .leftJoin(divisions, eq(proposals.divisionId, divisions.id))
+      .leftJoin(users, eq(proposals.createdBy, users.id))
+      .where(eq(proposals.id, id));
+
+    if (!result) return undefined;
+
+    return {
+      ...result.proposals,
+      customer: result.customers || undefined,
+      division: result.divisions || undefined,
+      createdByUser: result.users || undefined,
+    };
+  }
+
+  async createProposal(proposal: InsertProposal): Promise<Proposal> {
+    const [newProposal] = await db.insert(proposals).values({
+      ...proposal,
+      updatedAt: new Date()
+    }).returning();
+    return newProposal;
+  }
+
+  async updateProposal(id: string, proposal: Partial<InsertProposal>): Promise<Proposal> {
+    const [updatedProposal] = await db
+      .update(proposals)
+      .set({
+        ...proposal,
+        updatedAt: new Date()
+      })
+      .where(eq(proposals.id, id))
+      .returning();
+    return updatedProposal;
+  }
+
+  async deleteProposal(id: string): Promise<void> {
+    await db.delete(proposals).where(eq(proposals.id, id));
   }
 
   // Dashboard metrics

@@ -7,6 +7,7 @@ import {
   insertCustomerSchema, 
   insertJobSchema, 
   insertEstimateSchema,
+  insertProposalSchema,
   insertUserSchema 
 } from '@shared/schema';
 
@@ -518,6 +519,171 @@ export const createAppRouter = () => {
       };
       
       const result = await storage.updateEstimate(input.id, updateData);
+      res.json({ result: superjson.serialize(result) });
+    } catch (error) {
+      if (error instanceof TRPCError) {
+        res.status(error.statusCode).json({ error: { message: error.message, code: error.code } });
+      } else {
+        res.status(500).json({ error: { message: 'Internal server error' } });
+      }
+    }
+  });
+
+  // Proposals endpoints
+  router.get('/proposals.list', async (req, res) => {
+    try {
+      const ctx = await createContext(req, res);
+      const user = requireRole('staff')(ctx);
+      
+      const inputSchema = z.object({
+        divisionKey: z.enum(['mfnc', 'sfnc', 'rr', 'all']).optional(),
+        status: z.enum(['draft', 'sent', 'accepted', 'rejected', 'expired']).optional(),
+        page: z.coerce.number().min(1).default(1),
+      });
+      
+      const input = inputSchema.parse(req.query);
+      
+      // Get proposals with division filtering
+      let result = await storage.getProposals();
+      
+      // Filter by division if user is staff or division specified (but not "all")
+      if ((input.divisionKey && input.divisionKey !== 'all') || user.role === 'staff') {
+        const scopedDivisionId = await getDivisionScope(user, input.divisionKey);
+        if (scopedDivisionId) {
+          result = result.filter(proposal => proposal.divisionId === scopedDivisionId);
+        }
+      }
+      
+      // Filter by status if provided
+      if (input.status) {
+        result = result.filter(proposal => proposal.status === input.status);
+      }
+      
+      // Simple pagination
+      const pageSize = 20;
+      const startIndex = (input.page - 1) * pageSize;
+      const paginatedResult = result.slice(startIndex, startIndex + pageSize);
+      
+      res.json({ result: superjson.serialize(paginatedResult) });
+    } catch (error) {
+      if (error instanceof TRPCError) {
+        res.status(error.statusCode).json({ error: { message: error.message, code: error.code } });
+      } else {
+        res.status(500).json({ error: { message: 'Internal server error' } });
+      }
+    }
+  });
+
+  router.post('/proposals.create', async (req, res) => {
+    try {
+      const ctx = await createContext(req, res);
+      const user = requireRole('staff')(ctx);
+      
+      const inputSchema = insertProposalSchema.extend({
+        divisionKey: z.enum(['mfnc', 'sfnc', 'rr']).optional(),
+      });
+      
+      const input = inputSchema.parse(req.body?.input || {});
+      
+      // Get the division ID from the division key or user's division
+      const scopedDivisionId = await getDivisionScope(user, input.divisionKey);
+      if (!scopedDivisionId) {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'Access denied to division' });
+      }
+      
+      // Verify customer exists and user has access to it
+      const customer = await storage.getCustomer(input.customerId);
+      if (!customer) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Customer not found' });
+      }
+      
+      if (customer.divisionId !== scopedDivisionId) {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'Customer not accessible in this division' });
+      }
+      
+      const proposalData = {
+        ...input,
+        divisionId: scopedDivisionId,
+        createdBy: user.id,
+      };
+      
+      // Remove divisionKey from the data as it's not part of the schema
+      const { divisionKey, ...finalProposalData } = proposalData;
+      
+      const result = await storage.createProposal(finalProposalData);
+      res.json({ result: superjson.serialize(result) });
+    } catch (error) {
+      if (error instanceof TRPCError) {
+        res.status(error.statusCode).json({ error: { message: error.message, code: error.code } });
+      } else {
+        res.status(500).json({ error: { message: 'Internal server error' } });
+      }
+    }
+  });
+
+  router.post('/proposals.update', async (req, res) => {
+    try {
+      const ctx = await createContext(req, res);
+      const user = requireRole('staff')(ctx);
+      
+      const inputSchema = z.object({
+        id: z.string().uuid(),
+      }).merge(insertProposalSchema.partial());
+      
+      const input = inputSchema.parse(req.body?.input || {});
+      
+      // Verify proposal exists and user has access
+      const existing = await storage.getProposal(input.id);
+      if (!existing) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Proposal not found' });
+      }
+      
+      // Check division access
+      if (existing.divisionId) {
+        const division = await storage.getDivision(existing.divisionId);
+        if (division) {
+          const scopedDivisionId = await getDivisionScope(user, division.key);
+          if (scopedDivisionId !== division.id) {
+            throw new TRPCError({ code: 'FORBIDDEN', message: 'Access denied to this division' });
+          }
+        }
+      }
+      
+      const { id, ...updateData } = input;
+      const result = await storage.updateProposal(id, updateData);
+      res.json({ result: superjson.serialize(result) });
+    } catch (error) {
+      if (error instanceof TRPCError) {
+        res.status(error.statusCode).json({ error: { message: error.message, code: error.code } });
+      } else {
+        res.status(500).json({ error: { message: 'Internal server error' } });
+      }
+    }
+  });
+
+  router.get('/proposals.getById', async (req, res) => {
+    try {
+      const ctx = await createContext(req, res);
+      const user = requireRole('staff')(ctx);
+      
+      const input = z.object({ id: z.string().uuid() }).parse(req.query);
+      const result = await storage.getProposal(input.id);
+      
+      if (!result) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Proposal not found' });
+      }
+      
+      // Check division access
+      if (result.divisionId) {
+        const division = await storage.getDivision(result.divisionId);
+        if (division) {
+          const scopedDivisionId = await getDivisionScope(user, division.key);
+          if (scopedDivisionId !== division.id) {
+            throw new TRPCError({ code: 'FORBIDDEN', message: 'Access denied to this division' });
+          }
+        }
+      }
+      
       res.json({ result: superjson.serialize(result) });
     } catch (error) {
       if (error instanceof TRPCError) {
