@@ -27,6 +27,7 @@ import {
   Target
 } from 'lucide-react'
 import { EmptyState } from '@/components/ui/empty-state'
+import KanbanBoard from '@/components/KanbanBoard'
 
 // Mock data for demonstration
 const leads = [
@@ -258,92 +259,7 @@ export default function LeadManagement() {
 
         {/* Pipeline Tab */}
         <TabsContent value="pipeline" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Sales Pipeline</CardTitle>
-                  <CardDescription>Track leads through your sales process</CardDescription>
-                </div>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Lead
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {leads.map((lead) => (
-                  <div 
-                    key={lead.id} 
-                    className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                    onClick={() => navigate({ to: `/${division}/lead-management/lead/${lead.id}` })}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-4">
-                        <div>
-                          <h3 className="font-medium text-slate-900 dark:text-slate-50">{lead.name}</h3>
-                          <div className="flex items-center space-x-4 text-sm text-slate-600 dark:text-slate-400 mt-1">
-                            <span className="flex items-center">
-                              <Users className="h-3 w-3 mr-1" />
-                              {lead.contact}
-                            </span>
-                            <span className="flex items-center">
-                              <Mail className="h-3 w-3 mr-1" />
-                              {lead.email}
-                            </span>
-                            <span className="flex items-center">
-                              <Phone className="h-3 w-3 mr-1" />
-                              {lead.phone}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-3">
-                        <Badge className={getStatusColor(lead.status)}>
-                          {lead.status.charAt(0).toUpperCase() + lead.status.slice(1)}
-                        </Badge>
-                        <span className="font-medium text-slate-900 dark:text-slate-50">
-                          ${lead.value.toLocaleString()}
-                        </span>
-                        <div className="flex space-x-1">
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              navigate({ to: `/${division}/lead-management/lead/${lead.id}` })
-                            }}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                    {lead.notes && (
-                      <p className="text-sm text-slate-600 dark:text-slate-400 mt-2 ml-0">
-                        {lead.notes}
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          <KanbanBoard />
         </TabsContent>
 
         {/* Proposals Tab */}
