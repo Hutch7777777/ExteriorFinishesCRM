@@ -146,12 +146,12 @@ export default function AppShell() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 overflow-x-hidden">
       <Header />
       <div className="flex">
         <Sidebar />
-        <main className="flex-1">
-          <div className="p-6 lg:p-8">
+        <main className="flex-1 overflow-x-hidden">
+          <div className="p-6 lg:p-8 max-w-full">
             {renderContent()}
           </div>
         </main>
