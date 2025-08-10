@@ -88,22 +88,10 @@ export function Sidebar() {
           </h2>
           <nav className="space-y-1">
             <NavLink
-              href={`/${currentDivision}/pipeline`}
+              href={`/${currentDivision}/lead-management`}
               icon={<Trello className="w-5 h-5" />}
-              label="Pipeline"
-              isActive={currentPath.includes('/pipeline')}
-            />
-            <NavLink
-              href={`/${currentDivision}/proposals`}
-              icon={<FileText className="w-5 h-5" />}
-              label="Proposals"
-              isActive={currentPath.includes('/proposals')}
-            />
-            <NavLink
-              href={`/${currentDivision}/contracts`}
-              icon={<FileCheck className="w-5 h-5" />}
-              label="Contracts"
-              isActive={currentPath.includes('/contracts')}
+              label="Lead Management"
+              isActive={currentPath.includes('/lead-management')}
             />
           </nav>
         </div>

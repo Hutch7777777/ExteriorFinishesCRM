@@ -8,9 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 const Customers = lazy(() => import('@/pages/Customers'))
 const Jobs = lazy(() => import('@/pages/Jobs'))
 const Estimates = lazy(() => import('@/pages/Estimates'))
-const Pipeline = lazy(() => import('@/pages/Pipeline'))
-const Proposals = lazy(() => import('@/pages/Proposals'))
-const Contracts = lazy(() => import('@/pages/Contracts'))
+const LeadManagement = lazy(() => import('@/pages/LeadManagement'))
 const Contacts = lazy(() => import('@/pages/Contacts'))
 const Communication = lazy(() => import('@/pages/Communication'))
 const Reports = lazy(() => import('@/pages/Reports'))
@@ -95,9 +93,10 @@ export default function AppShell() {
         case 'customers': return Customers
         case 'jobs': return Jobs
         case 'estimates': return Estimates
-        case 'pipeline': return Pipeline
-        case 'proposals': return Proposals
-        case 'contracts': return Contracts
+        case 'lead-management': return LeadManagement
+        case 'pipeline': return LeadManagement // backward compatibility
+        case 'proposals': return LeadManagement // redirect to lead management
+        case 'contracts': return LeadManagement // redirect to lead management
         case 'contacts': return Contacts
         case 'communication': return Communication
         case 'reports': return Reports
