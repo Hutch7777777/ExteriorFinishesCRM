@@ -69,11 +69,80 @@ export function CreateProposalDialog({ children }: CreateProposalDialogProps) {
   const { toast } = useToast()
   const queryClient = useQueryClient()
 
-  // Fetch leads for the current division
-  const { data: customers = [] } = useQuery({
-    queryKey: ['customers', division],
-    queryFn: () => apiRequest(`/api/trpc/customers.list?divisionKey=${division}`),
-  })
+  // Use leads from the pipeline instead of customers
+  // Mock leads data matching the pipeline
+  const leads = [
+    {
+      id: '1',
+      name: 'Acme Corporation',
+      contact: 'John Smith',
+      email: 'john@acme.com',
+      phone: '(555) 123-4567',
+      status: 'qualified',
+      value: 150000,
+      source: 'Website',
+      createdAt: '2025-01-08',
+      nextAction: 'Send proposal',
+      notes: 'Interested in siding renovation for 5-story building'
+    },
+    {
+      id: '2',
+      name: 'Downtown Apartments',
+      contact: 'Sarah Johnson',
+      email: 'sarah@downtown.com',
+      phone: '(555) 987-6543',
+      status: 'proposal',
+      value: 250000,
+      source: 'Referral',
+      createdAt: '2025-01-05',
+      nextAction: 'Follow up on proposal',
+      notes: 'Large residential complex, decision expected this week'
+    },
+    {
+      id: '3',
+      name: 'Tech Startup HQ',
+      contact: 'Mike Chen',
+      email: 'mike@techstartup.com',
+      phone: '(555) 456-7890',
+      status: 'negotiation',
+      value: 85000,
+      source: 'Cold Call',
+      createdAt: '2025-01-03',
+      nextAction: 'Schedule site visit',
+      notes: 'Budget constraints, looking for cost-effective solutions'
+    },
+    {
+      id: '4',
+      name: 'Retail Plaza LLC',
+      contact: 'Lisa Brown',
+      email: 'lisa@retailplaza.com',
+      phone: '(555) 234-5678',
+      status: 'contacted',
+      value: 180000,
+      source: 'Trade Show',
+      createdAt: '2025-01-10',
+      nextAction: 'Send information packet',
+      notes: 'Shopping center renovation project'
+    },
+    {
+      id: '5',
+      name: 'Manufacturing Co',
+      contact: 'David Wilson',
+      email: 'david@manufacturing.com',
+      phone: '(555) 345-6789',
+      status: 'lead',
+      value: 120000,
+      source: 'Cold Call',
+      createdAt: '2025-01-12',
+      nextAction: 'Initial contact made',
+      notes: 'Industrial facility siding replacement'
+    }
+  ]
+
+  // Filter leads that are ready for proposals (qualified, proposal, or negotiation stages)
+  const proposalReadyLeads = leads.filter(lead => 
+    ['qualified', 'proposal', 'negotiation'].includes(lead.status)
+  )
 
   const form = useForm<ProposalFormData>({
     resolver: zodResolver(proposalSchema),
@@ -174,9 +243,9 @@ export function CreateProposalDialog({ children }: CreateProposalDialogProps) {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {customers.map((customer: any) => (
-                          <SelectItem key={customer.id} value={customer.id}>
-                            {customer.name}
+                        {proposalReadyLeads.map((lead) => (
+                          <SelectItem key={lead.id} value={lead.id}>
+                            {lead.name} - {lead.contact}
                           </SelectItem>
                         ))}
                       </SelectContent>
