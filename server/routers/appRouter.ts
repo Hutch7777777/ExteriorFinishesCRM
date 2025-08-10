@@ -729,6 +729,274 @@ export const createAppRouter = () => {
     }
   });
 
+  // Field Management endpoints
+  router.get('/fieldLogs.list', async (req, res) => {
+    try {
+      const ctx = await createContext(req, res);
+      const user = requireRole('staff')(ctx);
+      
+      const inputSchema = z.object({
+        jobId: z.string().uuid(),
+        divisionKey: z.enum(['mfnc', 'sfnc', 'rr']).optional(),
+      });
+      
+      const input = inputSchema.parse(req.query);
+      
+      // Verify job exists and user has access
+      const job = await storage.getJob(input.jobId);
+      if (!job) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Job not found' });
+      }
+      
+      // Check division access
+      if (job.divisionId) {
+        const division = await storage.getDivision(job.divisionId);
+        if (division) {
+          const scopedDivisionId = await getDivisionScope(user, division.key);
+          if (scopedDivisionId !== division.id) {
+            throw new TRPCError({ code: 'FORBIDDEN', message: 'Access denied to this division' });
+          }
+        }
+      }
+      
+      const result = await storage.getFieldLogs(input.jobId);
+      res.json({ result: superjson.serialize(result) });
+    } catch (error) {
+      if (error instanceof TRPCError) {
+        res.status(error.statusCode).json({ error: { message: error.message, code: error.code } });
+      } else {
+        res.status(500).json({ error: { message: 'Internal server error' } });
+      }
+    }
+  });
+
+  router.post('/fieldLogs.create', async (req, res) => {
+    try {
+      const ctx = await createContext(req, res);
+      const user = requireRole('staff')(ctx);
+      
+      const inputSchema = z.object({
+        jobId: z.string().uuid(),
+        logType: z.enum(['progress', 'issue', 'completion', 'weather', 'safety']).default('progress'),
+        title: z.string().min(1),
+        description: z.string().min(1),
+        weatherConditions: z.string().optional(),
+        crewMembers: z.any().default([]),
+        hoursWorked: z.number().optional(),
+        photosJson: z.any().default([]),
+      });
+      
+      const input = inputSchema.parse(req.body?.input || {});
+      
+      // Verify job exists and user has access
+      const job = await storage.getJob(input.jobId);
+      if (!job) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Job not found' });
+      }
+      
+      // Check division access
+      if (job.divisionId) {
+        const division = await storage.getDivision(job.divisionId);
+        if (division) {
+          const scopedDivisionId = await getDivisionScope(user, division.key);
+          if (scopedDivisionId !== division.id) {
+            throw new TRPCError({ code: 'FORBIDDEN', message: 'Access denied to this division' });
+          }
+        }
+      }
+      
+      const logData = {
+        jobId: input.jobId,
+        createdBy: user.id,
+        logType: input.logType,
+        title: input.title,
+        description: input.description,
+        weatherConditions: input.weatherConditions || null,
+        crewMembers: input.crewMembers || [],
+        hoursWorked: input.hoursWorked || null,
+        photosJson: input.photosJson || [],
+      };
+      
+      const result = await storage.createFieldLog(logData);
+      res.json({ result: superjson.serialize(result) });
+    } catch (error) {
+      if (error instanceof TRPCError) {
+        res.status(error.statusCode).json({ error: { message: error.message, code: error.code } });
+      } else {
+        res.status(500).json({ error: { message: 'Internal server error' } });
+      }
+    }
+  });
+
+  router.get('/punchListItems.list', async (req, res) => {
+    try {
+      const ctx = await createContext(req, res);
+      const user = requireRole('staff')(ctx);
+      
+      const inputSchema = z.object({
+        jobId: z.string().uuid(),
+        status: z.enum(['open', 'in_progress', 'completed', 'verified']).optional(),
+      });
+      
+      const input = inputSchema.parse(req.query);
+      
+      // Verify job exists and user has access
+      const job = await storage.getJob(input.jobId);
+      if (!job) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Job not found' });
+      }
+      
+      // Check division access
+      if (job.divisionId) {
+        const division = await storage.getDivision(job.divisionId);
+        if (division) {
+          const scopedDivisionId = await getDivisionScope(user, division.key);
+          if (scopedDivisionId !== division.id) {
+            throw new TRPCError({ code: 'FORBIDDEN', message: 'Access denied to this division' });
+          }
+        }
+      }
+      
+      let result = await storage.getPunchListItems(input.jobId);
+      
+      // Filter by status if provided
+      if (input.status) {
+        result = result.filter(item => item.status === input.status);
+      }
+      
+      res.json({ result: superjson.serialize(result) });
+    } catch (error) {
+      if (error instanceof TRPCError) {
+        res.status(error.statusCode).json({ error: { message: error.message, code: error.code } });
+      } else {
+        res.status(500).json({ error: { message: 'Internal server error' } });
+      }
+    }
+  });
+
+  router.post('/punchListItems.create', async (req, res) => {
+    try {
+      const ctx = await createContext(req, res);
+      const user = requireRole('staff')(ctx);
+      
+      const inputSchema = z.object({
+        jobId: z.string().uuid(),
+        title: z.string().min(1),
+        description: z.string().min(1),
+        location: z.string().optional(),
+        priority: z.enum(['low', 'medium', 'high', 'critical']).default('medium'),
+        assignedTo: z.string().uuid().optional(),
+        dueDate: z.coerce.date().optional(),
+      });
+      
+      const input = inputSchema.parse(req.body?.input || {});
+      
+      // Verify job exists and user has access
+      const job = await storage.getJob(input.jobId);
+      if (!job) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Job not found' });
+      }
+      
+      // Check division access
+      if (job.divisionId) {
+        const division = await storage.getDivision(job.divisionId);
+        if (division) {
+          const scopedDivisionId = await getDivisionScope(user, division.key);
+          if (scopedDivisionId !== division.id) {
+            throw new TRPCError({ code: 'FORBIDDEN', message: 'Access denied to this division' });
+          }
+        }
+      }
+      
+      const itemData = {
+        jobId: input.jobId,
+        createdBy: user.id,
+        assignedTo: input.assignedTo || null,
+        title: input.title,
+        description: input.description,
+        location: input.location || null,
+        priority: input.priority,
+        status: 'open' as const,
+        dueDate: input.dueDate || null,
+        photosJson: [],
+        notesJson: [],
+      };
+      
+      const result = await storage.createPunchListItem(itemData);
+      res.json({ result: superjson.serialize(result) });
+    } catch (error) {
+      if (error instanceof TRPCError) {
+        res.status(error.statusCode).json({ error: { message: error.message, code: error.code } });
+      } else {
+        res.status(500).json({ error: { message: 'Internal server error' } });
+      }
+    }
+  });
+
+  router.post('/punchListItems.update', async (req, res) => {
+    try {
+      const ctx = await createContext(req, res);
+      const user = requireRole('staff')(ctx);
+      
+      const inputSchema = z.object({
+        id: z.string().uuid(),
+        status: z.enum(['open', 'in_progress', 'completed', 'verified']).optional(),
+        assignedTo: z.string().uuid().optional(),
+        dueDate: z.coerce.date().optional(),
+        photosJson: z.any().optional(),
+        notesJson: z.any().optional(),
+      });
+      
+      const input = inputSchema.parse(req.body?.input || {});
+      
+      // Verify punch list item exists and user has access
+      const existing = await storage.getPunchListItem(input.id);
+      if (!existing) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Punch list item not found' });
+      }
+      
+      // Verify job access
+      const job = await storage.getJob(existing.jobId);
+      if (!job) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Associated job not found' });
+      }
+      
+      // Check division access
+      if (job.divisionId) {
+        const division = await storage.getDivision(job.divisionId);
+        if (division) {
+          const scopedDivisionId = await getDivisionScope(user, division.key);
+          if (scopedDivisionId !== division.id) {
+            throw new TRPCError({ code: 'FORBIDDEN', message: 'Access denied to this division' });
+          }
+        }
+      }
+      
+      const updateData: any = {
+        ...(input.status && { status: input.status }),
+        ...(input.assignedTo !== undefined && { assignedTo: input.assignedTo }),
+        ...(input.dueDate !== undefined && { dueDate: input.dueDate }),
+        ...(input.photosJson !== undefined && { photosJson: input.photosJson }),
+        ...(input.notesJson !== undefined && { notesJson: input.notesJson }),
+      };
+      
+      // If marking as completed, set completion details
+      if (input.status === 'completed') {
+        updateData.completedAt = new Date();
+        updateData.completedBy = user.id;
+      }
+      
+      const result = await storage.updatePunchListItem(input.id, updateData);
+      res.json({ result: superjson.serialize(result) });
+    } catch (error) {
+      if (error instanceof TRPCError) {
+        res.status(error.statusCode).json({ error: { message: error.message, code: error.code } });
+      } else {
+        res.status(500).json({ error: { message: 'Internal server error' } });
+      }
+    }
+  });
+
   return router;
 };
 

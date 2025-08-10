@@ -29,6 +29,9 @@ export const divisionKeyEnum = pgEnum('division_key', ['mfnc', 'sfnc', 'rr']);
 export const jobStatusEnum = pgEnum('job_status', ['draft', 'active', 'closed', 'planning', 'in_progress', 'completed']);
 export const estimateStatusEnum = pgEnum('estimate_status', ['draft', 'sent', 'approved', 'rejected']);
 export const proposalStatusEnum = pgEnum('proposal_status', ['draft', 'sent', 'accepted', 'rejected', 'expired']);
+export const logTypeEnum = pgEnum('log_type', ['progress', 'issue', 'completion', 'weather', 'safety']);
+export const punchItemStatusEnum = pgEnum('punch_item_status', ['open', 'in_progress', 'completed', 'verified']);
+export const punchItemPriorityEnum = pgEnum('punch_item_priority', ['low', 'medium', 'high', 'critical']);
 
 // Users table
 export const users = pgTable("users", {
@@ -133,6 +136,8 @@ export const jobRelations = relations(jobs, ({ one, many }) => ({
     references: [users.id],
   }),
   estimates: many(estimates),
+  fieldLogs: many(fieldLogs),
+  punchListItems: many(punchListItems),
 }));
 
 // Proposals table
@@ -173,6 +178,53 @@ export const proposals = pgTable("proposals", {
   index("idx_proposals_status").on(table.status),
 ]);
 
+// Daily field logs table
+export const fieldLogs = pgTable("field_logs", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  jobId: uuid("job_id").notNull().references(() => jobs.id),
+  createdBy: uuid("created_by").notNull().references(() => users.id),
+  logType: logTypeEnum("log_type").notNull().default('progress'),
+  title: varchar("title", { length: 200 }).notNull(),
+  description: text("description").notNull(),
+  weatherConditions: varchar("weather_conditions", { length: 100 }),
+  crewMembers: jsonb("crew_members").notNull().default(sql`'[]'::jsonb`),
+  hoursWorked: integer("hours_worked"),
+  photosJson: jsonb("photos_json").notNull().default(sql`'[]'::jsonb`),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_field_logs_job_id").on(table.jobId),
+  index("idx_field_logs_created_by").on(table.createdBy),
+  index("idx_field_logs_log_type").on(table.logType),
+  index("idx_field_logs_created_at").on(table.createdAt),
+]);
+
+// Punch list items table
+export const punchListItems = pgTable("punch_list_items", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  jobId: uuid("job_id").notNull().references(() => jobs.id),
+  createdBy: uuid("created_by").notNull().references(() => users.id),
+  assignedTo: uuid("assigned_to").references(() => users.id),
+  title: varchar("title", { length: 200 }).notNull(),
+  description: text("description").notNull(),
+  location: varchar("location", { length: 200 }),
+  priority: punchItemPriorityEnum("priority").notNull().default('medium'),
+  status: punchItemStatusEnum("status").notNull().default('open'),
+  dueDate: timestamp("due_date"),
+  completedAt: timestamp("completed_at"),
+  completedBy: uuid("completed_by").references(() => users.id),
+  photosJson: jsonb("photos_json").notNull().default(sql`'[]'::jsonb`),
+  notesJson: jsonb("notes_json").notNull().default(sql`'[]'::jsonb`),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_punch_list_items_job_id").on(table.jobId),
+  index("idx_punch_list_items_created_by").on(table.createdBy),
+  index("idx_punch_list_items_assigned_to").on(table.assignedTo),
+  index("idx_punch_list_items_status").on(table.status),
+  index("idx_punch_list_items_priority").on(table.priority),
+  index("idx_punch_list_items_due_date").on(table.dueDate),
+]);
+
 export const estimateRelations = relations(estimates, ({ one }) => ({
   job: one(jobs, {
     fields: [estimates.jobId],
@@ -191,6 +243,36 @@ export const proposalRelations = relations(proposals, ({ one }) => ({
   }),
   createdByUser: one(users, {
     fields: [proposals.createdBy],
+    references: [users.id],
+  }),
+}));
+
+export const fieldLogRelations = relations(fieldLogs, ({ one }) => ({
+  job: one(jobs, {
+    fields: [fieldLogs.jobId],
+    references: [jobs.id],
+  }),
+  createdByUser: one(users, {
+    fields: [fieldLogs.createdBy],
+    references: [users.id],
+  }),
+}));
+
+export const punchListItemRelations = relations(punchListItems, ({ one }) => ({
+  job: one(jobs, {
+    fields: [punchListItems.jobId],
+    references: [jobs.id],
+  }),
+  createdByUser: one(users, {
+    fields: [punchListItems.createdBy],
+    references: [users.id],
+  }),
+  assignedToUser: one(users, {
+    fields: [punchListItems.assignedTo],
+    references: [users.id],
+  }),
+  completedByUser: one(users, {
+    fields: [punchListItems.completedBy],
     references: [users.id],
   }),
 }));
@@ -227,6 +309,17 @@ export const insertProposalSchema = createInsertSchema(proposals).omit({
   updatedAt: true
 });
 
+export const insertFieldLogSchema = createInsertSchema(fieldLogs).omit({
+  id: true,
+  createdAt: true
+});
+
+export const insertPunchListItemSchema = createInsertSchema(punchListItems).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof insertUserSchema._type;
@@ -246,6 +339,12 @@ export type InsertEstimate = typeof insertEstimateSchema._type;
 export type Proposal = typeof proposals.$inferSelect;
 export type InsertProposal = typeof insertProposalSchema._type;
 
+export type FieldLog = typeof fieldLogs.$inferSelect;
+export type InsertFieldLog = typeof insertFieldLogSchema._type;
+
+export type PunchListItem = typeof punchListItems.$inferSelect;
+export type InsertPunchListItem = typeof insertPunchListItemSchema._type;
+
 // Extended types with relations
 export type UserWithRelations = User & {
   division?: Division;
@@ -261,6 +360,8 @@ export type JobWithRelations = Job & {
   division?: Division;
   createdByUser?: User;
   estimates?: Estimate[];
+  fieldLogs?: FieldLog[];
+  punchListItems?: PunchListItem[];
 };
 
 export type EstimateWithRelations = Estimate & {

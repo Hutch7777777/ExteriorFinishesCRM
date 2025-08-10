@@ -15,6 +15,7 @@ const Reports = lazy(() => import('@/pages/Reports'))
 const EditCustomer = lazy(() => import('@/pages/EditCustomer'))
 const LeadDetail = lazy(() => import('@/pages/LeadDetail'))
 const ProposalView = lazy(() => import('@/pages/ProposalView'))
+const FieldManagement = lazy(() => import('@/pages/FieldManagement'))
 
 export default function AppShell() {
   const currentPath = window.location.pathname
@@ -101,6 +102,15 @@ export default function AppShell() {
       )
     }
     
+    // Handle field management with job ID route
+    if (currentPath.includes('/field-management/') && pathSegments.length >= 3) {
+      return (
+        <Suspense fallback={<PageSkeleton />}>
+          <FieldManagement />
+        </Suspense>
+      )
+    }
+    
     if (currentPath.includes('/jobs/edit/')) {
       return <div className="text-center py-8 text-slate-500">Edit Job (Coming Soon)</div>
     }
@@ -122,6 +132,9 @@ export default function AppShell() {
         case 'estimates': 
           console.log('Loading Estimates component')
           return Estimates
+        case 'field-management':
+          console.log('Loading FieldManagement component')
+          return FieldManagement
         case 'lead-management': 
           console.log('Loading LeadManagement component')
           return LeadManagement

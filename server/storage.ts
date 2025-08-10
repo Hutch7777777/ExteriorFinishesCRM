@@ -5,6 +5,8 @@ import {
   estimates,
   proposals,
   divisions,
+  fieldLogs,
+  punchListItems,
   type User,
   type InsertUser,
   type UpsertUser,
@@ -22,6 +24,10 @@ import {
   type ProposalWithRelations,
   type Division,
   type InsertDivision,
+  type FieldLog,
+  type InsertFieldLog,
+  type PunchListItem,
+  type InsertPunchListItem,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql, count } from "drizzle-orm";
@@ -70,6 +76,18 @@ export interface IStorage {
   createProposal(proposal: InsertProposal): Promise<Proposal>;
   updateProposal(id: string, proposal: Partial<InsertProposal>): Promise<Proposal>;
   deleteProposal(id: string): Promise<void>;
+
+  // Field Management operations
+  getFieldLogs(jobId: string): Promise<FieldLog[]>;
+  createFieldLog(fieldLog: InsertFieldLog): Promise<FieldLog>;
+  updateFieldLog(id: string, fieldLog: Partial<InsertFieldLog>): Promise<FieldLog>;
+  deleteFieldLog(id: string): Promise<void>;
+
+  getPunchListItems(jobId: string): Promise<PunchListItem[]>;
+  getPunchListItem(id: string): Promise<PunchListItem | undefined>;
+  createPunchListItem(item: InsertPunchListItem): Promise<PunchListItem>;
+  updatePunchListItem(id: string, item: Partial<InsertPunchListItem>): Promise<PunchListItem>;
+  deletePunchListItem(id: string): Promise<void>;
 
   // Dashboard metrics
   getDashboardMetrics(): Promise<{
@@ -407,6 +425,75 @@ export class DatabaseStorage implements IStorage {
 
   async deleteProposal(id: string): Promise<void> {
     await db.delete(proposals).where(eq(proposals.id, id));
+  }
+
+  // Field Management operations
+  async getFieldLogs(jobId: string): Promise<FieldLog[]> {
+    const results = await db
+      .select()
+      .from(fieldLogs)
+      .where(eq(fieldLogs.jobId, jobId))
+      .orderBy(desc(fieldLogs.createdAt));
+    return results;
+  }
+
+  async createFieldLog(fieldLog: InsertFieldLog): Promise<FieldLog> {
+    const [newFieldLog] = await db.insert(fieldLogs).values(fieldLog).returning();
+    return newFieldLog;
+  }
+
+  async updateFieldLog(id: string, fieldLog: Partial<InsertFieldLog>): Promise<FieldLog> {
+    const [updatedFieldLog] = await db
+      .update(fieldLogs)
+      .set(fieldLog)
+      .where(eq(fieldLogs.id, id))
+      .returning();
+    return updatedFieldLog;
+  }
+
+  async deleteFieldLog(id: string): Promise<void> {
+    await db.delete(fieldLogs).where(eq(fieldLogs.id, id));
+  }
+
+  async getPunchListItems(jobId: string): Promise<PunchListItem[]> {
+    const results = await db
+      .select()
+      .from(punchListItems)
+      .where(eq(punchListItems.jobId, jobId))
+      .orderBy(punchListItems.priority, desc(punchListItems.createdAt));
+    return results;
+  }
+
+  async getPunchListItem(id: string): Promise<PunchListItem | undefined> {
+    const [result] = await db
+      .select()
+      .from(punchListItems)
+      .where(eq(punchListItems.id, id));
+    return result;
+  }
+
+  async createPunchListItem(item: InsertPunchListItem): Promise<PunchListItem> {
+    const [newItem] = await db.insert(punchListItems).values({
+      ...item,
+      updatedAt: new Date()
+    }).returning();
+    return newItem;
+  }
+
+  async updatePunchListItem(id: string, item: Partial<InsertPunchListItem>): Promise<PunchListItem> {
+    const [updatedItem] = await db
+      .update(punchListItems)
+      .set({
+        ...item,
+        updatedAt: new Date()
+      })
+      .where(eq(punchListItems.id, id))
+      .returning();
+    return updatedItem;
+  }
+
+  async deletePunchListItem(id: string): Promise<void> {
+    await db.delete(punchListItems).where(eq(punchListItems.id, id));
   }
 
   // Dashboard metrics

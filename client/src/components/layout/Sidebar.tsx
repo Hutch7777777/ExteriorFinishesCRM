@@ -10,7 +10,8 @@ import {
   Building2,
   MessageSquare,
   BarChart3,
-  UserCircle
+  UserCircle,
+  Wrench
 } from 'lucide-react'
 
 interface NavLinkProps {
@@ -84,6 +85,13 @@ export function Sidebar() {
               icon={<Calculator className="w-5 h-5" />}
               label="Estimates"
               isActive={currentPath.includes('/estimates')}
+              isCollapsed={isCollapsed}
+            />
+            <NavLink
+              href={`/${currentDivision}/field-management`}
+              icon={<Wrench className="w-5 h-5" />}
+              label="Field Management"
+              isActive={currentPath.includes('/field-management')}
               isCollapsed={isCollapsed}
             />
           </nav>

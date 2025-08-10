@@ -64,6 +64,7 @@ const shellRoute = createRoute({
       'customers', 
       'jobs', 
       'estimates', 
+      'field-management',
       'lead-management', 
       'pipeline', 
       'proposals', 
@@ -96,6 +97,15 @@ const editCustomerRoute = createRoute({
 const leadDetailRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/$division/lead-management/lead/$id',
+  component: () => {
+    return <AppShell />
+  }
+})
+
+// Field management with job ID route
+const fieldManagementJobRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/$division/field-management/$jobId',
   component: () => {
     return <AppShell />
   }
@@ -142,6 +152,7 @@ const routeTree = rootRoute.addChildren([
   shellRoute,
   editCustomerRoute,
   leadDetailRoute,
+  fieldManagementJobRoute,
   proposalViewRoute,
   editJobRoute,
   editEstimateRoute,
