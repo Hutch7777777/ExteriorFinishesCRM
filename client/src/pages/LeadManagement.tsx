@@ -31,9 +31,16 @@ import {
 import { EmptyState } from '@/components/ui/empty-state'
 import KanbanBoard from '@/components/KanbanBoard'
 import { CreateProposalDialog } from '@/components/CreateProposalDialog'
+import { AddLeadDialog } from '@/components/AddLeadDialog'
 
-// Mock data for demonstration
-const leads = [
+export default function LeadManagement() {
+  const params = useParams({ strict: false })
+  const navigate = useNavigate()
+  const division = (params as any).division || 'mfnc'
+  const [activeTab, setActiveTab] = useState('pipeline')
+
+  // Mock data for demonstration - will be managed as state
+  const [leads, setLeads] = useState([
   {
     id: '1',
     name: 'Acme Corporation',
@@ -73,7 +80,7 @@ const leads = [
     nextAction: 'Schedule site visit',
     notes: 'Budget constraints, looking for cost-effective solutions'
   }
-]
+  ])
 
 const proposals = [
   {
@@ -159,6 +166,11 @@ export default function LeadManagement() {
   const division = (params as any).division || 'mfnc'
   const [activeTab, setActiveTab] = useState('pipeline')
 
+  // Function to handle adding new leads to the pipeline
+  const handleLeadAdded = (newLead: any) => {
+    setLeads(prevLeads => [newLead, ...prevLeads])
+  }
+
   // Fetch proposals for the current division
   const { data: proposals = [], isLoading: proposalsLoading } = useQuery({
     queryKey: ['proposals', division],
@@ -195,10 +207,12 @@ export default function LeadManagement() {
             <Filter className="h-4 w-4 mr-2" />
             Filter
           </Button>
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Lead
-          </Button>
+          <AddLeadDialog onLeadAdded={handleLeadAdded}>
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Lead
+            </Button>
+          </AddLeadDialog>
         </div>
       </div>
 
@@ -271,7 +285,7 @@ export default function LeadManagement() {
 
         {/* Pipeline Tab */}
         <TabsContent value="pipeline" className="space-y-4">
-          <KanbanBoard />
+          <KanbanBoard leads={leads} onLeadAdded={handleLeadAdded} />
         </TabsContent>
 
         {/* Proposals Tab */}

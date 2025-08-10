@@ -34,6 +34,7 @@ import {
   Edit,
   Building
 } from 'lucide-react'
+import { AddLeadDialog } from './AddLeadDialog'
 
 // Define sales stages
 const SALES_STAGES = [
@@ -271,9 +272,10 @@ interface KanbanColumnProps {
   stage: typeof SALES_STAGES[0]
   leads: typeof mockLeads
   division: string
+  onLeadAdded?: (lead: any) => void
 }
 
-function KanbanColumn({ stage, leads, division }: KanbanColumnProps) {
+function KanbanColumn({ stage, leads, division, onLeadAdded }: KanbanColumnProps) {
   const stageLeads = leads.filter(lead => lead.status === stage.id)
   const totalValue = stageLeads.reduce((sum, lead) => sum + lead.value, 0)
 
@@ -293,9 +295,11 @@ function KanbanColumn({ stage, leads, division }: KanbanColumnProps) {
           <h3 className="font-semibold text-slate-900 dark:text-slate-50">
             {stage.title}
           </h3>
-          <Button variant="outline" size="sm" className="h-6 w-6 p-0">
-            <Plus className="h-3 w-3" />
-          </Button>
+          <AddLeadDialog onLeadAdded={onLeadAdded}>
+            <Button variant="outline" size="sm" className="h-6 w-6 p-0">
+              <Plus className="h-3 w-3" />
+            </Button>
+          </AddLeadDialog>
         </div>
         <div className="flex items-center justify-between text-sm">
           <span className="text-slate-600 dark:text-slate-400">
@@ -324,11 +328,16 @@ function KanbanColumn({ stage, leads, division }: KanbanColumnProps) {
   )
 }
 
-export default function KanbanBoard() {
+interface KanbanBoardProps {
+  leads?: typeof mockLeads
+  onLeadAdded?: (lead: any) => void
+}
+
+export default function KanbanBoard({ leads: propLeads, onLeadAdded }: KanbanBoardProps = {}) {
   const params = useParams({ strict: false })
   const division = (params as any).division || 'mfnc'
   
-  const [leads, setLeads] = useState(mockLeads)
+  const [leads, setLeads] = useState(propLeads || mockLeads)
   const [activeId, setActiveId] = useState<string | null>(null)
 
   const sensors = useSensors(
@@ -405,10 +414,12 @@ export default function KanbanBoard() {
               Drag and drop leads between stages to update their status
             </p>
           </div>
-          <Button className="flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            Add Lead
-          </Button>
+          <AddLeadDialog onLeadAdded={onLeadAdded}>
+            <Button className="flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              Add Lead
+            </Button>
+          </AddLeadDialog>
         </div>
 
         {/* Kanban Board */}
@@ -421,6 +432,7 @@ export default function KanbanBoard() {
                     stage={stage}
                     leads={leads}
                     division={division}
+                    onLeadAdded={onLeadAdded}
                   />
                 </div>
               ))}
