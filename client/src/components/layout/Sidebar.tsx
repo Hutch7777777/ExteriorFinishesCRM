@@ -22,10 +22,8 @@ interface NavLinkProps {
 function NavLink({ href, icon, label, isActive }: NavLinkProps) {
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault()
-    // Use history API for faster navigation without full page reload
-    window.history.pushState(null, '', href)
-    // Trigger a custom event to update the app state
-    window.dispatchEvent(new PopStateEvent('popstate'))
+    // Force a full page navigation to ensure routing works
+    window.location.href = href
   }
 
   return (

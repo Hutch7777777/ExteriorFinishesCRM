@@ -1,4 +1,3 @@
-import { useParams } from '@tanstack/react-router'
 import { Suspense, lazy, useEffect } from 'react'
 import { Header } from '@/components/layout/Header'
 import { Sidebar } from '@/components/layout/Sidebar'
@@ -15,21 +14,14 @@ const Reports = lazy(() => import('@/pages/Reports'))
 const EditCustomer = lazy(() => import('@/pages/EditCustomer'))
 
 export default function AppShell() {
-  const params = useParams({ strict: false })
-  const division = (params as any).division || 'mfnc'
-  const section = (params as any).section || 'customers'
   const currentPath = window.location.pathname
+  
+  // Extract division and section from URL path: /:division/:section
+  const pathSegments = currentPath.split('/').filter(Boolean)
+  const division = pathSegments[0] || 'mfnc'
+  const section = pathSegments[1] || 'customers'
 
-  // Listen for navigation changes from sidebar
-  useEffect(() => {
-    const handlePopState = () => {
-      // Force re-render when navigation happens
-      window.location.reload()
-    }
-    
-    window.addEventListener('popstate', handlePopState)
-    return () => window.removeEventListener('popstate', handlePopState)
-  }, [])
+
 
   // Loading skeleton component
   const PageSkeleton = () => (
@@ -89,6 +81,8 @@ export default function AppShell() {
 
     // Handle main sections with suspense for lazy loading
     const ComponentToRender = (() => {
+      console.log('Current section:', section, 'Full path:', currentPath) // Debug log
+      
       switch (section) {
         case 'customers': return Customers
         case 'jobs': return Jobs
@@ -100,7 +94,9 @@ export default function AppShell() {
         case 'contacts': return Contacts
         case 'communication': return Communication
         case 'reports': return Reports
-        default: return Customers
+        default: 
+          console.log('No match found for section:', section, 'defaulting to Customers')
+          return Customers
       }
     })()
 
