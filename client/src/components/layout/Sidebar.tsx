@@ -1,5 +1,16 @@
 import { useParams } from '@tanstack/react-router'
-import { Users, Briefcase, Calculator } from 'lucide-react'
+import { 
+  Users, 
+  Briefcase, 
+  Calculator, 
+  FileText,
+  FileCheck,
+  Trello,
+  Building2,
+  MessageSquare,
+  BarChart3,
+  UserCircle
+} from 'lucide-react'
 
 interface NavLinkProps {
   href: string
@@ -34,10 +45,10 @@ export function Sidebar() {
   return (
     <aside className="w-64 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 sidebar-shadow">
       <div className="p-6">
-        {/* Navigation section */}
-        <div className="mb-8">
+        {/* Core Business section */}
+        <div className="mb-6">
           <h2 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3">
-            Navigation
+            Core Business
           </h2>
           <nav className="space-y-1">
             <NavLink
@@ -57,6 +68,60 @@ export function Sidebar() {
               icon={<Calculator className="w-5 h-5" />}
               label="Estimates"
               isActive={currentPath.includes('/estimates')}
+            />
+          </nav>
+        </div>
+
+        {/* Sales & Marketing section */}
+        <div className="mb-6">
+          <h2 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3">
+            Sales & Marketing
+          </h2>
+          <nav className="space-y-1">
+            <NavLink
+              href={`/${currentDivision}/pipeline`}
+              icon={<Trello className="w-5 h-5" />}
+              label="Pipeline"
+              isActive={currentPath.includes('/pipeline')}
+            />
+            <NavLink
+              href={`/${currentDivision}/proposals`}
+              icon={<FileText className="w-5 h-5" />}
+              label="Proposals"
+              isActive={currentPath.includes('/proposals')}
+            />
+            <NavLink
+              href={`/${currentDivision}/contracts`}
+              icon={<FileCheck className="w-5 h-5" />}
+              label="Contracts"
+              isActive={currentPath.includes('/contracts')}
+            />
+          </nav>
+        </div>
+
+        {/* Business Operations section */}
+        <div className="mb-6">
+          <h2 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3">
+            Operations
+          </h2>
+          <nav className="space-y-1">
+            <NavLink
+              href={`/${currentDivision}/contacts`}
+              icon={<Building2 className="w-5 h-5" />}
+              label="Contacts"
+              isActive={currentPath.includes('/contacts')}
+            />
+            <NavLink
+              href={`/${currentDivision}/communication`}
+              icon={<MessageSquare className="w-5 h-5" />}
+              label="Team Chat"
+              isActive={currentPath.includes('/communication')}
+            />
+            <NavLink
+              href={`/${currentDivision}/reports`}
+              icon={<BarChart3 className="w-5 h-5" />}
+              label="Reports"
+              isActive={currentPath.includes('/reports')}
             />
           </nav>
         </div>

@@ -4,6 +4,12 @@ import { Sidebar } from '@/components/layout/Sidebar'
 import Customers from '@/pages/Customers'
 import Jobs from '@/pages/Jobs'
 import Estimates from '@/pages/Estimates'
+import Pipeline from '@/pages/Pipeline'
+import Proposals from '@/pages/Proposals'
+import Contracts from '@/pages/Contracts'
+import Contacts from '@/pages/Contacts'
+import Communication from '@/pages/Communication'
+import Reports from '@/pages/Reports'
 import EditCustomer from '@/pages/EditCustomer'
 
 export default function AppShell() {
@@ -33,6 +39,18 @@ export default function AppShell() {
         return <Jobs />
       case 'estimates':
         return <Estimates />
+      case 'pipeline':
+        return <Pipeline />
+      case 'proposals':
+        return <Proposals />
+      case 'contracts':
+        return <Contracts />
+      case 'contacts':
+        return <Contacts />
+      case 'communication':
+        return <Communication />
+      case 'reports':
+        return <Reports />
       default:
         return <Customers />
     }
