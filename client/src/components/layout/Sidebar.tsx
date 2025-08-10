@@ -35,8 +35,8 @@ function NavLink({ href, icon, label, isActive, isCollapsed }: NavLinkProps) {
       onClick={handleClick}
       className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group ${
         isActive
-          ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-sm'
-          : 'text-slate-600 hover:text-slate-900 hover:bg-blue-50 dark:text-slate-400 dark:hover:text-slate-50 dark:hover:bg-slate-800'
+          ? 'bg-gradient-to-r from-[#4A6FA5] to-[#2C3E50] text-white shadow-sm'
+          : 'text-slate-600 hover:text-slate-900 hover:bg-[#D4E4F7] dark:text-slate-400 dark:hover:text-slate-50 dark:hover:bg-slate-800'
       } ${isCollapsed ? 'justify-center' : ''}`}
       title={isCollapsed ? label : undefined}
     >

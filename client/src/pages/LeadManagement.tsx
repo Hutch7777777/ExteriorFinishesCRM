@@ -206,7 +206,7 @@ export default function LeadManagement() {
             Filter
           </Button>
           <AddLeadDialog onLeadAdded={handleLeadAdded}>
-            <Button className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md">
+            <Button className="bg-gradient-to-r from-[#4A6FA5] to-[#2C3E50] hover:from-[#2C3E50] hover:to-[#1A252F] text-white shadow-md">
               <Plus className="h-4 w-4 mr-2" />
               Add Lead
             </Button>
@@ -223,8 +223,8 @@ export default function LeadManagement() {
                 <p className="text-sm text-slate-600 dark:text-slate-400">Total Leads</p>
                 <p className="text-2xl font-semibold">{stats.totalLeads}</p>
               </div>
-              <div className="h-10 w-10 bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg flex items-center justify-center">
-                <Users className="h-5 w-5 text-blue-700" />
+              <div className="h-10 w-10 bg-gradient-to-br from-[#A8C8EC] to-[#8BB5E8] rounded-lg flex items-center justify-center">
+                <Users className="h-5 w-5 text-[#2C3E50]" />
               </div>
             </div>
           </CardContent>
@@ -237,8 +237,8 @@ export default function LeadManagement() {
                 <p className="text-sm text-slate-600 dark:text-slate-400">Pipeline Value</p>
                 <p className="text-2xl font-semibold">${stats.pipelineValue.toLocaleString()}</p>
               </div>
-              <div className="h-10 w-10 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg flex items-center justify-center">
-                <DollarSign className="h-5 w-5 text-blue-600" />
+              <div className="h-10 w-10 bg-gradient-to-br from-[#D4E4F7] to-[#A8C8EC] rounded-lg flex items-center justify-center">
+                <DollarSign className="h-5 w-5 text-[#4A6FA5]" />
               </div>
             </div>
           </CardContent>
@@ -251,8 +251,8 @@ export default function LeadManagement() {
                 <p className="text-sm text-slate-600 dark:text-slate-400">Active Proposals</p>
                 <p className="text-2xl font-semibold">{stats.proposalsSent}</p>
               </div>
-              <div className="h-10 w-10 bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg flex items-center justify-center">
-                <FileText className="h-5 w-5 text-blue-600" />
+              <div className="h-10 w-10 bg-gradient-to-br from-[#A8C8EC] to-[#8BB5E8] rounded-lg flex items-center justify-center">
+                <FileText className="h-5 w-5 text-[#4A6FA5]" />
               </div>
             </div>
           </CardContent>
@@ -265,8 +265,8 @@ export default function LeadManagement() {
                 <p className="text-sm text-slate-600 dark:text-slate-400">Active Contracts</p>
                 <p className="text-2xl font-semibold">{stats.activeContracts}</p>
               </div>
-              <div className="h-10 w-10 bg-gradient-to-br from-blue-200 to-blue-300 rounded-lg flex items-center justify-center">
-                <FileCheck className="h-5 w-5 text-blue-700" />
+              <div className="h-10 w-10 bg-gradient-to-br from-[#8BB5E8] to-[#6FA3E0] rounded-lg flex items-center justify-center">
+                <FileCheck className="h-5 w-5 text-[#2C3E50]" />
               </div>
             </div>
           </CardContent>
@@ -296,7 +296,7 @@ export default function LeadManagement() {
                   <CardDescription>Create and manage project proposals</CardDescription>
                 </div>
                 <CreateProposalDialog>
-                  <Button className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md">
+                  <Button className="bg-gradient-to-r from-[#4A6FA5] to-[#2C3E50] hover:from-[#2C3E50] hover:to-[#1A252F] text-white shadow-md">
                     <Plus className="h-4 w-4 mr-2" />
                     Create Proposal
                   </Button>

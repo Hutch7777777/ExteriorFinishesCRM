@@ -11,9 +11,9 @@
   --card-foreground: hsl(210 25% 7.8431%);
   --popover: hsl(0 0% 100%);
   --popover-foreground: hsl(210 25% 7.8431%);
-  --primary: hsl(221 83% 53%);
+  --primary: hsl(213 32% 52%);
   --primary-foreground: hsl(0 0% 100%);
-  --secondary: hsl(215 19% 35%);
+  --secondary: hsl(215 25% 27%);
   --secondary-foreground: hsl(0 0% 100%);
   --muted: hsl(214 32% 91%);
   --muted-foreground: hsl(215 16% 47%);
@@ -31,10 +31,10 @@
   --chart-5: hsl(341.4894 75.2000% 50.9804%);
   --sidebar: hsl(180 6.6667% 97.0588%);
   --sidebar-foreground: hsl(210 25% 7.8431%);
-  --sidebar-primary: hsl(203.8863 88.2845% 53.1373%);
+  --sidebar-primary: hsl(213 32% 52%);
   --sidebar-primary-foreground: hsl(0 0% 100%);
-  --sidebar-accent: hsl(211.5789 51.3514% 92.7451%);
-  --sidebar-accent-foreground: hsl(203.8863 88.2845% 53.1373%);
+  --sidebar-accent: hsl(207 90% 90%);
+  --sidebar-accent-foreground: hsl(215 25% 27%);
   --sidebar-border: hsl(205.0000 25.0000% 90.5882%);
   --sidebar-ring: hsl(202.8169 89.1213% 53.1373%);
   --font-sans: 'Inter', system-ui, sans-serif;
@@ -68,11 +68,11 @@
   --blue-100: hsl(214 95% 93%);
   --blue-200: hsl(213 97% 87%);
   --blue-300: hsl(212 96% 78%);
-  --blue-400: hsl(213 94% 68%);
-  --blue-500: hsl(217 91% 60%);
-  --blue-600: hsl(221 83% 53%);
-  --blue-700: hsl(224 76% 48%);
-  --blue-800: hsl(226 71% 40%);
+  --blue-400: hsl(207 90% 77%);
+  --blue-500: hsl(213 32% 52%);
+  --blue-600: hsl(215 25% 27%);
+  --blue-700: hsl(217 33% 17%);
+  --blue-800: hsl(222 84% 5%);
   --blue-900: hsl(226 57% 21%);
   --blue-900: hsl(224 64% 33%);
 }
