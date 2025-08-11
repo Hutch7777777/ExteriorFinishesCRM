@@ -49,7 +49,7 @@ const indexRoute = createRoute({
   path: '/dashboard',
   component: () => {
     // Use window.location to do immediate redirect
-    window.location.href = '/mfnc/customers'
+    window.location.href = '/mfnc/lead-management'
     return null
   }
 })
@@ -62,7 +62,6 @@ const shellRoute = createRoute({
     const validDivisions = ['mfnc', 'sfnc', 'rr', 'all']
     const validSections = [
       'customers', 
-      'jobs', 
       'estimates', 
       'field-management',
       'lead-management', 
@@ -75,7 +74,7 @@ const shellRoute = createRoute({
     ]
     
     if (!validDivisions.includes(params.division) || !validSections.includes(params.section)) {
-      window.location.href = '/mfnc/customers'
+      window.location.href = '/mfnc/lead-management'
       return
     }
   },
@@ -120,13 +119,7 @@ const proposalViewRoute = createRoute({
   }
 })
 
-const editJobRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/$division/jobs/edit/$id',
-  component: () => {
-    return <AppShell />
-  }
-})
+
 
 const editEstimateRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -154,7 +147,7 @@ const routeTree = rootRoute.addChildren([
   leadDetailRoute,
   fieldManagementJobRoute,
   proposalViewRoute,
-  editJobRoute,
+
   editEstimateRoute,
   notFoundRoute
 ])

@@ -67,17 +67,10 @@ export function Sidebar() {
           )}
           <nav className="space-y-1">
             <NavLink
-              href={`/${currentDivision}/customers`}
-              icon={<Users className="w-5 h-5" />}
-              label="Customers"
-              isActive={currentPath.includes('/customers')}
-              isCollapsed={isCollapsed}
-            />
-            <NavLink
-              href={`/${currentDivision}/jobs`}
-              icon={<Briefcase className="w-5 h-5" />}
-              label="Jobs"
-              isActive={currentPath.includes('/jobs')}
+              href={`/${currentDivision}/lead-management`}
+              icon={<Trello className="w-5 h-5" />}
+              label="Lead Management"
+              isActive={currentPath.includes('/lead-management')}
               isCollapsed={isCollapsed}
             />
             <NavLink
@@ -85,6 +78,13 @@ export function Sidebar() {
               icon={<Calculator className="w-5 h-5" />}
               label="Estimates"
               isActive={currentPath.includes('/estimates')}
+              isCollapsed={isCollapsed}
+            />
+            <NavLink
+              href={`/${currentDivision}/customers`}
+              icon={<Users className="w-5 h-5" />}
+              label="Customers"
+              isActive={currentPath.includes('/customers')}
               isCollapsed={isCollapsed}
             />
             <NavLink
@@ -97,7 +97,7 @@ export function Sidebar() {
           </nav>
         </div>
 
-        {/* Sales & Marketing section */}
+        {/* Sales & Marketing section - keeping this for other features */}
         <div className="mb-6">
           {!isCollapsed && (
             <h2 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3">
@@ -105,13 +105,6 @@ export function Sidebar() {
             </h2>
           )}
           <nav className="space-y-1">
-            <NavLink
-              href={`/${currentDivision}/lead-management`}
-              icon={<Trello className="w-5 h-5" />}
-              label="Lead Management"
-              isActive={currentPath.includes('/lead-management')}
-              isCollapsed={isCollapsed}
-            />
           </nav>
         </div>
 

@@ -70,6 +70,9 @@ The system features a React-based frontend with TypeScript, a Node.js Express ba
 - ✅ Applied gradient styling to primary buttons and active navigation states
 - ✅ Streamlined header design with larger logo display and clean layout
 - ✅ Coordinated blue color theme across sidebar navigation, buttons, icons, and cards
+- ✅ Reordered sidebar navigation: Lead Management first, Estimates second, Customers third, Field Management fourth
+- ✅ Removed Jobs tab from navigation as requested by user
+- ✅ Updated default routing to start with Lead Management instead of Customers
 
 # User Preferences
 

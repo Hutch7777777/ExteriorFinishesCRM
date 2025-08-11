@@ -6,7 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 // Lazy load all page components for better performance
 const Customers = lazy(() => import('@/pages/Customers'))
-const Jobs = lazy(() => import('@/pages/Jobs'))
+
 const Estimates = lazy(() => import('@/pages/Estimates'))
 const LeadManagement = lazy(() => import('@/pages/LeadManagement'))
 const Contacts = lazy(() => import('@/pages/Contacts'))
@@ -111,9 +111,7 @@ export default function AppShell() {
       )
     }
     
-    if (currentPath.includes('/jobs/edit/')) {
-      return <div className="text-center py-8 text-slate-500">Edit Job (Coming Soon)</div>
-    }
+
     if (currentPath.includes('/estimates/edit/')) {
       return <div className="text-center py-8 text-slate-500">Edit Estimate (Coming Soon)</div>
     }
@@ -126,9 +124,7 @@ export default function AppShell() {
         case 'customers': 
           console.log('Loading Customers component')
           return Customers
-        case 'jobs': 
-          console.log('Loading Jobs component')
-          return Jobs
+
         case 'estimates': 
           console.log('Loading Estimates component')
           return Estimates
