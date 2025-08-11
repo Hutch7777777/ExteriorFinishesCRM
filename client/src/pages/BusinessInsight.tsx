@@ -255,7 +255,7 @@ export default function BusinessInsight() {
               
               <CardContent className="flex-1 flex flex-col p-0">
                 {/* Messages Area */}
-                <ScrollArea className="flex-1 p-6 pb-0">
+                <ScrollArea className="flex-1 p-6 pb-0 max-h-[65vh]">
                   <div className="space-y-4">
                     {messages.map((message) => (
                       <div
@@ -269,7 +269,9 @@ export default function BusinessInsight() {
                               : 'bg-slate-50 dark:bg-slate-800 border'
                           }`}
                         >
-                          <div className="whitespace-pre-wrap text-sm leading-relaxed break-words">
+                          <div className={`whitespace-pre-wrap text-sm leading-relaxed break-words ${
+                            message.role === 'assistant' ? 'max-h-80 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-100 dark:scrollbar-thumb-slate-600 dark:scrollbar-track-slate-800 pr-2' : ''
+                          }`}>
                             {message.content}
                           </div>
                           <div className={`text-xs mt-2 opacity-70 ${
