@@ -43,35 +43,35 @@ const suggestedReports: SuggestedReport[] = [
   {
     id: 'competition-analysis',
     title: 'Competition Analysis',
-    description: 'Analyze competitors in the Seattle siding market including pricing, services, and market positioning',
+    description: 'Analyze Seattle market competitors, pricing, and positioning strategies',
     icon: <Target className="w-5 h-5" />,
     prompt: 'Provide a comprehensive analysis of the competition in the Seattle siding market. Include major competitors, their pricing strategies, service offerings, market share, and how Exterior Finishes can differentiate itself.'
   },
   {
     id: 'market-trends',
     title: 'Market Trends Report',
-    description: 'Current trends in the siding industry, material preferences, and seasonal patterns',
+    description: 'Current siding industry trends, materials, and seasonal patterns',
     icon: <TrendingUp className="w-5 h-5" />,
     prompt: 'Generate a report on current market trends in the siding industry for the Seattle area. Include material preferences, seasonal demand patterns, emerging technologies, and customer preferences.'
   },
   {
     id: 'customer-insights',
     title: 'Customer Insights',
-    description: 'Analysis of customer demographics, preferences, and behavior patterns in our CRM data',
+    description: 'Demographics, preferences, and behavior analysis from CRM data',
     icon: <Users className="w-5 h-5" />,
     prompt: 'Analyze our customer data to provide insights on demographics, project preferences, seasonal patterns, and recommendations for targeting high-value customers.'
   },
   {
     id: 'pricing-strategy',
     title: 'Pricing Strategy',
-    description: 'Recommendations for competitive pricing based on market analysis and cost structures',
+    description: 'Competitive pricing recommendations based on market analysis',
     icon: <DollarSign className="w-5 h-5" />,
     prompt: 'Provide pricing strategy recommendations for Exterior Finishes based on market analysis, competitor pricing, and our service offerings. Include recommendations for different project types and customer segments.'
   },
   {
     id: 'sales-performance',
     title: 'Sales Performance',
-    description: 'Analysis of sales pipeline, conversion rates, and recommendations for improvement',
+    description: 'Pipeline analysis, conversion rates, and improvement strategies',
     icon: <Building className="w-5 h-5" />,
     prompt: 'Analyze our sales performance including lead conversion rates, pipeline health, average deal size, and provide recommendations for improving sales outcomes.'
   }
@@ -225,11 +225,11 @@ export default function BusinessInsight() {
                       <div className="text-[#4A6FA5] mt-0.5 flex-shrink-0">
                         {report.icon}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-sm mb-1 text-slate-900 dark:text-white">
+                      <div className="flex-1 min-w-0 overflow-hidden">
+                        <div className="font-medium text-sm mb-1 text-slate-900 dark:text-white truncate">
                           {report.title}
                         </div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed break-words">
+                        <div className="text-xs text-slate-500 dark:text-slate-400 leading-tight line-clamp-2 break-words overflow-hidden">
                           {report.description}
                         </div>
                       </div>
