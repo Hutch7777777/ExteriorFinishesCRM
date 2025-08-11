@@ -94,7 +94,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Business Insight API - Claude AI integration
-  app.post('/api/business-insight/generate', authenticateToken, async (req: AuthenticatedRequest, res) => {
+  app.post('/api/business-insight/generate', authenticateToken, async (req: any, res) => {
     try {
       const { prompt, division, context } = req.body;
 
@@ -148,7 +148,7 @@ Format your response in clear sections with actionable insights.`;
         ]
       });
 
-      const insight = response.content[0]?.text || 'I apologize, but I was unable to generate insights at this time.';
+      const insight = response.content[0]?.type === 'text' ? response.content[0].text : 'I apologize, but I was unable to generate insights at this time.';
 
       // Determine report type based on prompt content
       let reportType = 'general';

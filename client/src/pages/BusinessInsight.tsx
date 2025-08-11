@@ -217,19 +217,19 @@ export default function BusinessInsight() {
                   <Button
                     key={report.id}
                     variant="outline"
-                    className="w-full justify-start h-auto p-4 text-left"
+                    className="w-full justify-start h-auto p-4 text-left hover:bg-blue-50 dark:hover:bg-slate-800"
                     onClick={() => handleSuggestedReport(report)}
                     disabled={isGenerating}
                   >
-                    <div className="flex items-start gap-3">
-                      <div className="text-[#4A6FA5] mt-0.5">
+                    <div className="flex items-start gap-3 w-full min-w-0">
+                      <div className="text-[#4A6FA5] mt-0.5 flex-shrink-0">
                         {report.icon}
                       </div>
-                      <div className="flex-1">
-                        <div className="font-medium text-sm mb-1">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm mb-1 text-slate-900 dark:text-white">
                           {report.title}
                         </div>
-                        <div className="text-xs text-slate-500 leading-relaxed">
+                        <div className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed break-words">
                           {report.description}
                         </div>
                       </div>
@@ -263,13 +263,13 @@ export default function BusinessInsight() {
                         className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                       >
                         <div
-                          className={`max-w-[80%] rounded-lg p-4 ${
+                          className={`max-w-[85%] rounded-lg p-4 ${
                             message.role === 'user'
                               ? 'bg-gradient-to-r from-[#4A6FA5] to-[#2C3E50] text-white'
                               : 'bg-slate-50 dark:bg-slate-800 border'
                           }`}
                         >
-                          <div className="whitespace-pre-wrap text-sm leading-relaxed">
+                          <div className="whitespace-pre-wrap text-sm leading-relaxed break-words">
                             {message.content}
                           </div>
                           <div className={`text-xs mt-2 opacity-70 ${
