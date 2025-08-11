@@ -11,7 +11,8 @@ import {
   MessageSquare,
   BarChart3,
   UserCircle,
-  Wrench
+  Wrench,
+  Brain
 } from 'lucide-react'
 
 interface NavLinkProps {
@@ -124,6 +125,13 @@ export function Sidebar() {
               icon={<BarChart3 className="w-5 h-5" />}
               label="Reports"
               isActive={currentPath.includes('/reports')}
+              isCollapsed={isCollapsed}
+            />
+            <NavLink
+              href={`/${currentDivision}/business-insight`}
+              icon={<Brain className="w-5 h-5" />}
+              label="Business Insight"
+              isActive={currentPath.includes('/business-insight')}
               isCollapsed={isCollapsed}
             />
           </nav>

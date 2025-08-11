@@ -70,7 +70,8 @@ const shellRoute = createRoute({
       'contracts', 
       'contacts', 
       'communication', 
-      'reports'
+      'reports',
+      'business-insight'
     ]
     
     if (!validDivisions.includes(params.division) || !validSections.includes(params.section)) {

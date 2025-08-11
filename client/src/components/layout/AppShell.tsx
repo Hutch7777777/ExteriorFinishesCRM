@@ -16,6 +16,7 @@ const EditCustomer = lazy(() => import('@/pages/EditCustomer'))
 const LeadDetail = lazy(() => import('@/pages/LeadDetail'))
 const ProposalView = lazy(() => import('@/pages/ProposalView'))
 const FieldManagement = lazy(() => import('@/pages/FieldManagement'))
+const BusinessInsight = lazy(() => import('@/pages/BusinessInsight'))
 
 export default function AppShell() {
   const currentPath = window.location.pathname
@@ -152,6 +153,9 @@ export default function AppShell() {
         case 'reports': 
           console.log('Loading Reports component')
           return Reports
+        case 'business-insight':
+          console.log('Loading BusinessInsight component')
+          return BusinessInsight
         default: 
           console.log('No match found for section:', section, 'defaulting to Customers')
           return Customers

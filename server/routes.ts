@@ -12,6 +12,7 @@ import {
   insertJobSchema,
   insertEstimateSchema,
 } from "@shared/schema";
+import Anthropic from '@anthropic-ai/sdk';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // JWT Auth routes
@@ -89,6 +90,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching recent activity:", error);
       res.status(500).json({ message: "Failed to fetch recent activity" });
+    }
+  });
+
+  // Business Insight API - Claude AI integration
+  app.post('/api/business-insight/generate', authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { prompt, division, context } = req.body;
+
+      if (!prompt) {
+        return res.status(400).json({ error: 'Prompt is required' });
+      }
+
+      // Initialize Anthropic client
+      const anthropic = new Anthropic({
+        apiKey: process.env.ANTHROPIC_API_KEY,
+      });
+
+      // Create a comprehensive context-aware prompt for Claude
+      const enhancedPrompt = `You are a business intelligence assistant for Exterior Finishes, a professional siding contractor in Seattle, Washington. 
+
+Business Context:
+- Company: Exterior Finishes (siding contractor)
+- Location: Seattle, Washington market
+- Current Division: ${division || 'Multi-Family'}
+- Customer Count: ${context?.customerCount || 0}
+- Estimate Count: ${context?.estimateCount || 0}
+
+You have expertise in:
+- Seattle construction and siding market analysis
+- Residential and commercial exterior finishing
+- Competition analysis for siding contractors
+- Market trends and pricing strategies
+- Lead generation and customer acquisition
+- Project management and operational efficiency
+
+User Request: ${prompt}
+
+Please provide a comprehensive, actionable response that:
+1. Addresses the specific request with market-relevant insights
+2. Includes concrete recommendations for Exterior Finishes
+3. References Seattle market conditions when relevant
+4. Provides data-driven insights when possible
+5. Maintains a professional, consultative tone
+
+Format your response in clear sections with actionable insights.`;
+
+      // Generate response using Claude
+      const response = await anthropic.messages.create({
+        model: 'claude-3-5-sonnet-20241022',
+        max_tokens: 2000,
+        messages: [
+          {
+            role: 'user',
+            content: enhancedPrompt
+          }
+        ]
+      });
+
+      const insight = response.content[0]?.text || 'I apologize, but I was unable to generate insights at this time.';
+
+      // Determine report type based on prompt content
+      let reportType = 'general';
+      if (prompt.toLowerCase().includes('competitor') || prompt.toLowerCase().includes('competition')) {
+        reportType = 'competition';
+      } else if (prompt.toLowerCase().includes('market') || prompt.toLowerCase().includes('trend')) {
+        reportType = 'market_analysis';
+      } else if (prompt.toLowerCase().includes('lead') || prompt.toLowerCase().includes('customer')) {
+        reportType = 'customer_insights';
+      } else if (prompt.toLowerCase().includes('price') || prompt.toLowerCase().includes('cost')) {
+        reportType = 'pricing';
+      }
+
+      res.json({
+        insight,
+        reportType,
+        timestamp: new Date().toISOString(),
+        context: {
+          division,
+          location: 'Seattle, WA'
+        }
+      });
+
+    } catch (error: any) {
+      console.error('Business insight generation error:', error);
+      res.status(500).json({ 
+        error: 'Failed to generate business insight',
+        details: error.message 
+      });
     }
   });
 
