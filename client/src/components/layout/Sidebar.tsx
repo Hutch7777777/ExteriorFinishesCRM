@@ -97,22 +97,11 @@ export function Sidebar() {
           </nav>
         </div>
 
-        {/* Sales & Marketing section - keeping this for other features */}
+        {/* Tools section */}
         <div className="mb-6">
           {!isCollapsed && (
             <h2 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3">
-              Sales & Marketing
-            </h2>
-          )}
-          <nav className="space-y-1">
-          </nav>
-        </div>
-
-        {/* Business Operations section */}
-        <div className="mb-6">
-          {!isCollapsed && (
-            <h2 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3">
-              Operations
+              Tools
             </h2>
           )}
           <nav className="space-y-1">
