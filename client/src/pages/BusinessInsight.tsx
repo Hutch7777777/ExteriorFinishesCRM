@@ -221,15 +221,15 @@ export default function BusinessInsight() {
                     onClick={() => handleSuggestedReport(report)}
                     disabled={isGenerating}
                   >
-                    <div className="flex items-start gap-3 w-full min-w-0">
+                    <div className="flex items-start gap-3 w-full">
                       <div className="text-[#4A6FA5] mt-0.5 flex-shrink-0">
                         {report.icon}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-sm mb-1 text-slate-900 dark:text-white">
+                      <div className="flex-1 overflow-hidden">
+                        <div className="font-medium text-sm mb-1 text-slate-900 dark:text-white break-words">
                           {report.title}
                         </div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed break-words">
+                        <div className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed break-words word-wrap">
                           {report.description}
                         </div>
                       </div>
