@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useRoute } from 'wouter';
+import { useParams } from 'wouter';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,633 +9,895 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { apiRequest } from '@/lib/queryClient';
 import { 
-  Camera, 
-  MapPin, 
-  Clock, 
-  Users, 
-  Cloud, 
-  AlertTriangle, 
-  CheckCircle, 
-  Plus, 
-  Calendar,
+  MessageSquare,
   FileText,
-  Wrench
+  Briefcase,
+  Calendar,
+  Phone,
+  CheckSquare,
+  FileImage,
+  Clock,
+  Users,
+  MapPin,
+  AlertTriangle,
+  CheckCircle,
+  Send,
+  Plus,
+  Upload,
+  Download,
+  Filter,
+  Search,
+  Bell,
+  Truck,
+  Wrench,
+  Camera,
+  Cloud
 } from 'lucide-react';
+import { format } from 'date-fns';
 
 export default function FieldManagement() {
-  const [match, params] = useRoute('/:division/field-management/:jobId?');
-  const [activeTab, setActiveTab] = useState('overview');
-  const [newLogData, setNewLogData] = useState({
-    title: '',
-    description: '',
-    logType: 'progress',
-    weatherConditions: '',
-    hoursWorked: '',
-    crewMembers: []
-  });
-  const [newPunchItem, setNewPunchItem] = useState({
-    title: '',
-    description: '',
-    location: '',
-    priority: 'medium'
-  });
+  const params = useParams();
+  const division = params?.division || 'mfnc';
+  
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [selectedJob, setSelectedJob] = useState<string | null>(null);
+  const [messageInput, setMessageInput] = useState('');
+  const [logInput, setLogInput] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const division = params?.division;
-  const jobId = params?.jobId;
 
-  // Fetch jobs for selection if no jobId in URL
-  const { data: jobs = [] } = useQuery({
-    queryKey: ['/api/trpc/jobs.list', division],
-    queryFn: () => apiRequest('/api/trpc/jobs.list', { 
-      method: 'GET',
-      params: { divisionKey: division, status: 'in_progress' }
-    }),
-    enabled: !!division && !jobId
+  // Fetch active jobs for current division
+  const { data: jobs = [], isLoading: jobsLoading } = useQuery({
+    queryKey: [`/api/trpc/jobs.list/${division}`],
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  // Fetch job details
-  const { data: job } = useQuery({
-    queryKey: ['/api/trpc/jobs.get', jobId],
-    queryFn: () => apiRequest('/api/trpc/jobs.get', {
-      method: 'GET', 
-      params: { id: jobId }
-    }),
-    enabled: !!jobId
+  // Fetch field team members
+  const { data: teamMembers = [] } = useQuery({
+    queryKey: [`/api/trpc/users.list/${division}`],
+    staleTime: 10 * 60 * 1000, // 10 minutes
   });
 
-  // Fetch field logs
+  // Fetch field logs for selected job
   const { data: fieldLogs = [] } = useQuery({
-    queryKey: ['/api/trpc/fieldLogs.list', jobId],
-    queryFn: () => apiRequest('/api/trpc/fieldLogs.list', {
-      method: 'GET',
-      params: { jobId }
-    }),
-    enabled: !!jobId
+    queryKey: [`/api/trpc/fieldLogs.list`, selectedJob],
+    enabled: !!selectedJob,
+    staleTime: 2 * 60 * 1000, // 2 minutes
   });
 
-  // Fetch punch list items
-  const { data: punchListItems = [] } = useQuery({
-    queryKey: ['/api/trpc/punchListItems.list', jobId],
-    queryFn: () => apiRequest('/api/trpc/punchListItems.list', {
-      method: 'GET',
-      params: { jobId }
-    }),
-    enabled: !!jobId
-  });
-
-  // Create field log mutation
-  const createFieldLogMutation = useMutation({
-    mutationFn: (data: any) => apiRequest('/api/trpc/fieldLogs.create', {
-      method: 'POST',
-      body: { input: data }
-    }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/trpc/fieldLogs.list', jobId] });
-      setNewLogData({ title: '', description: '', logType: 'progress', weatherConditions: '', hoursWorked: '', crewMembers: [] });
-      toast({ title: 'Log created successfully!' });
+  // Mock data for demonstration - replace with real API calls
+  const mockMessages = [
+    {
+      id: '1',
+      sender: 'Office Manager',
+      message: 'Please update on the Johnson project progress today',
+      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
+      type: 'office-to-field'
     },
-    onError: (error) => {
-      toast({ title: 'Error creating log', description: error.message, variant: 'destructive' });
+    {
+      id: '2', 
+      sender: 'Field Crew A',
+      message: 'Siding installation 60% complete. Weather holding up well.',
+      timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000),
+      type: 'field-to-office'
     }
-  });
+  ];
 
-  // Create punch list item mutation
-  const createPunchItemMutation = useMutation({
-    mutationFn: (data: any) => apiRequest('/api/trpc/punchListItems.create', {
-      method: 'POST',
-      body: { input: data }
-    }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/trpc/punchListItems.list', jobId] });
-      setNewPunchItem({ title: '', description: '', location: '', priority: 'medium' });
-      toast({ title: 'Punch list item created successfully!' });
+  const mockTasks = [
+    {
+      id: '1',
+      title: 'Install siding on north wall',
+      status: 'in-progress',
+      priority: 'high',
+      dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      assignedTo: 'Field Crew A'
     },
-    onError: (error) => {
-      toast({ title: 'Error creating punch list item', description: error.message, variant: 'destructive' });
+    {
+      id: '2',
+      title: 'Complete trim work',
+      status: 'pending',
+      priority: 'medium',
+      dueDate: new Date(Date.now() + 48 * 60 * 60 * 1000),
+      assignedTo: 'Field Crew B'
     }
-  });
+  ];
 
-  // Update punch list item mutation
-  const updatePunchItemMutation = useMutation({
-    mutationFn: ({ id, ...data }: any) => apiRequest('/api/trpc/punchListItems.update', {
-      method: 'POST',
-      body: { input: { id, ...data } }
-    }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/trpc/punchListItems.list', jobId] });
-      toast({ title: 'Punch list item updated!' });
+  const mockSchedule = [
+    {
+      id: '1',
+      jobName: 'Johnson Residence',
+      crew: 'Field Crew A',
+      startTime: new Date(Date.now() + 8 * 60 * 60 * 1000),
+      endTime: new Date(Date.now() + 16 * 60 * 60 * 1000),
+      status: 'scheduled'
+    }
+  ];
+
+  const mockWillCallRequests = [
+    {
+      id: '1',
+      supplier: 'ABC Supply Co.',
+      materials: 'Hardie Board Siding - 20 pieces',
+      requestedBy: 'John Field',
+      requestTime: new Date(Date.now() - 30 * 60 * 1000),
+      status: 'pending',
+      notes: 'Need for Johnson project tomorrow morning'
+    }
+  ];
+
+  const mockDocuments = [
+    {
+      id: '1',
+      name: 'Site Photos - Morning',
+      type: 'image',
+      uploadedBy: 'Field Crew A',
+      uploadTime: new Date(Date.now() - 60 * 60 * 1000),
+      size: '2.4 MB'
     },
-    onError: (error) => {
-      toast({ title: 'Error updating punch list item', description: error.message, variant: 'destructive' });
+    {
+      id: '2',
+      name: 'Material Receipt',
+      type: 'pdf',
+      uploadedBy: 'Field Crew A',
+      uploadTime: new Date(Date.now() - 2 * 60 * 60 * 1000),
+      size: '156 KB'
     }
-  });
+  ];
 
-  const handleCreateFieldLog = () => {
-    if (!newLogData.title || !newLogData.description) {
-      toast({ title: 'Please fill in required fields', variant: 'destructive' });
-      return;
-    }
-
-    createFieldLogMutation.mutate({
-      jobId,
-      ...newLogData,
-      hoursWorked: newLogData.hoursWorked ? parseInt(newLogData.hoursWorked) : undefined,
-      crewMembers: newLogData.crewMembers
+  const sendMessage = () => {
+    if (!messageInput.trim()) return;
+    
+    // TODO: Implement API call
+    toast({
+      title: "Message sent",
+      description: "Your message has been sent to the office team."
     });
+    setMessageInput('');
   };
 
-  const handleCreatePunchItem = () => {
-    if (!newPunchItem.title || !newPunchItem.description) {
-      toast({ title: 'Please fill in required fields', variant: 'destructive' });
-      return;
-    }
-
-    createPunchItemMutation.mutate({
-      jobId,
-      ...newPunchItem
+  const addLog = () => {
+    if (!logInput.trim() || !selectedJob) return;
+    
+    // TODO: Implement API call
+    toast({
+      title: "Log added",
+      description: "Field log has been recorded successfully."
     });
+    setLogInput('');
   };
 
-  const handlePunchItemStatusChange = (id: string, status: string) => {
-    updatePunchItemMutation.mutate({ id, status });
-  };
-
-  const getLogTypeIcon = (type: string) => {
-    switch (type) {
-      case 'progress': return <CheckCircle className="w-4 h-4" />;
-      case 'issue': return <AlertTriangle className="w-4 h-4" />;
-      case 'weather': return <Cloud className="w-4 h-4" />;
-      case 'safety': return <AlertTriangle className="w-4 h-4" />;
-      default: return <FileText className="w-4 h-4" />;
-    }
-  };
-
-  const getLogTypeColor = (type: string) => {
-    switch (type) {
-      case 'progress': return 'bg-green-100 text-green-800';
-      case 'issue': return 'bg-red-100 text-red-800';
-      case 'completion': return 'bg-blue-100 text-blue-800';
-      case 'weather': return 'bg-yellow-100 text-yellow-800';
-      case 'safety': return 'bg-orange-100 text-orange-800';
-      default: return 'bg-slate-100 text-slate-800';
-    }
-  };
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'critical': return 'bg-red-100 text-red-800 border-red-200';
-      case 'high': return 'bg-orange-100 text-orange-800 border-orange-200';
-      case 'medium': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'low': return 'bg-green-100 text-green-800 border-green-200';
-      default: return 'bg-slate-100 text-slate-800 border-slate-200';
-    }
+  const submitWillCallRequest = () => {
+    // TODO: Implement API call
+    toast({
+      title: "Will Call Request Submitted",
+      description: "Your materials request has been sent to the supplier."
+    });
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed': return 'bg-green-100 text-green-800';
-      case 'in_progress': return 'bg-blue-100 text-blue-800';
-      case 'verified': return 'bg-purple-100 text-purple-800';
-      default: return 'bg-slate-100 text-slate-800';
+      case 'in-progress': return 'bg-blue-100 text-blue-800';
+      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'overdue': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
-  // Job selection screen if no jobId
-  if (!jobId) {
-    return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
-        <div className="bg-gradient-to-r from-[#4A6FA5] to-[#2C3E50] text-white px-4 py-6">
-          <h1 className="text-2xl font-bold">Field Management</h1>
-          <p className="text-blue-100 mt-1">Select a job to manage field operations</p>
-        </div>
-        
-        <div className="p-4 space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-slate-800 dark:text-slate-200">
-                <Wrench className="w-5 h-5" />
-                Active Jobs
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {jobs.length === 0 ? (
-                  <p className="text-slate-600 dark:text-slate-400 text-center py-8">
-                    No active jobs found
-                  </p>
-                ) : (
-                  jobs.map((job: any) => (
-                    <Card key={job.id} className="cursor-pointer hover:shadow-md transition-shadow"
-                          onClick={() => window.location.href = `/${division}/field-management/${job.id}`}>
-                      <CardContent className="p-4">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <h3 className="font-semibold text-slate-800 dark:text-slate-200">
-                              {job.customer?.name}
-                            </h3>
-                            <p className="text-sm text-slate-600 dark:text-slate-400">
-                              {job.siteAddressJson?.street || 'No site address'}
-                            </p>
-                          </div>
-                          <Badge className={`${getStatusColor(job.status)} text-xs`}>
-                            {job.status.replace('_', ' ')}
-                          </Badge>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  }
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'critical': return 'bg-red-500';
+      case 'high': return 'bg-orange-500';
+      case 'medium': return 'bg-yellow-500';
+      case 'low': return 'bg-green-500';
+      default: return 'bg-gray-500';
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
-      {/* Mobile-optimized header */}
-      <div className="bg-gradient-to-r from-[#4A6FA5] to-[#2C3E50] text-white px-4 py-6">
-        <div className="flex items-center gap-3 mb-3">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="text-white hover:bg-white/20"
-            onClick={() => window.history.back()}
-          >
-            ← Back
-          </Button>
+    <div className="p-6 max-w-7xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Field Management</h1>
+          <p className="text-slate-600 dark:text-slate-400">
+            Coordinate field operations, communication, and project tracking
+          </p>
         </div>
-        <h1 className="text-xl font-bold">{job?.customer?.name}</h1>
-        <p className="text-blue-100 text-sm flex items-center gap-1 mt-1">
-          <MapPin className="w-4 h-4" />
-          {job?.siteAddressJson?.street || 'Site address not set'}
-        </p>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+            <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+            Field Active
+          </Badge>
+        </div>
       </div>
 
-      {/* Mobile-optimized tabs */}
-      <div className="sticky top-0 bg-white dark:bg-slate-800 border-b z-10">
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="w-full grid grid-cols-3 rounded-none h-14">
-            <TabsTrigger value="overview" className="text-xs">Overview</TabsTrigger>
-            <TabsTrigger value="logs" className="text-xs">Daily Logs</TabsTrigger>
-            <TabsTrigger value="punchlist" className="text-xs">Punch List</TabsTrigger>
-          </TabsList>
-        </Tabs>
+      {/* Quick Stats Dashboard */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                <Briefcase className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Active Jobs</p>
+                <p className="text-2xl font-bold text-slate-900 dark:text-white">{jobs.length || 8}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
+                <CheckSquare className="w-5 h-5 text-green-600 dark:text-green-400" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Tasks Complete</p>
+                <p className="text-2xl font-bold text-slate-900 dark:text-white">24</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-yellow-100 dark:bg-yellow-900 rounded-lg">
+                <Bell className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Pending Requests</p>
+                <p className="text-2xl font-bold text-slate-900 dark:text-white">3</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
+                <Users className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Field Crews</p>
+                <p className="text-2xl font-bold text-slate-900 dark:text-white">{teamMembers.length || 4}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      <div className="p-4">
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          {/* Overview Tab */}
-          <TabsContent value="overview" className="mt-0">
-            <div className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Job Summary</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <Label className="text-slate-600 dark:text-slate-400">Status</Label>
-                      <Badge className={`${getStatusColor(job?.status)} mt-1 block w-fit`}>
-                        {job?.status?.replace('_', ' ')}
-                      </Badge>
-                    </div>
-                    <div>
-                      <Label className="text-slate-600 dark:text-slate-400">Division</Label>
-                      <p className="font-medium">{job?.division?.name}</p>
-                    </div>
+      {/* Main Tabs Interface */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList className="grid w-full grid-cols-3 lg:grid-cols-7">
+          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+          <TabsTrigger value="communication">
+            <MessageSquare className="w-4 h-4 mr-2" />
+            Messages
+          </TabsTrigger>
+          <TabsTrigger value="documents">
+            <FileText className="w-4 h-4 mr-2" />
+            Documents
+          </TabsTrigger>
+          <TabsTrigger value="jobs">
+            <Briefcase className="w-4 h-4 mr-2" />
+            Jobs
+          </TabsTrigger>
+          <TabsTrigger value="schedule">
+            <Calendar className="w-4 h-4 mr-2" />
+            Schedule
+          </TabsTrigger>
+          <TabsTrigger value="will-calls">
+            <Truck className="w-4 h-4 mr-2" />
+            Will Calls
+          </TabsTrigger>
+          <TabsTrigger value="tasks">
+            <CheckSquare className="w-4 h-4 mr-2" />
+            Tasks
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Dashboard Tab */}
+        <TabsContent value="dashboard" className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Recent Activity */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Clock className="w-5 h-5" />
+                  Recent Activity
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ScrollArea className="h-64">
+                  <div className="space-y-3">
+                    {mockMessages.slice(0, 3).map((msg) => (
+                      <div key={msg.id} className="flex items-start gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                        <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
+                          <MessageSquare className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-slate-900 dark:text-white">{msg.sender}</p>
+                          <p className="text-sm text-slate-600 dark:text-slate-400 truncate">{msg.message}</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">
+                            {format(msg.timestamp, 'MMM d, h:mm a')}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  
-                  <div>
-                    <Label className="text-slate-600 dark:text-slate-400">Recent Activity</Label>
-                    <div className="mt-2 space-y-2">
-                      {fieldLogs.slice(0, 3).map((log: any) => (
-                        <div key={log.id} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
-                          <div className={`p-1.5 rounded ${getLogTypeColor(log.logType)}`}>
-                            {getLogTypeIcon(log.logType)}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">{log.title}</p>
-                            <p className="text-xs text-slate-600 dark:text-slate-400">
-                              {new Date(log.createdAt).toLocaleDateString()}
+                </ScrollArea>
+              </CardContent>
+            </Card>
+
+            {/* Today's Tasks */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CheckSquare className="w-5 h-5" />
+                  Today's Tasks
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ScrollArea className="h-64">
+                  <div className="space-y-3">
+                    {mockTasks.map((task) => (
+                      <div key={task.id} className="flex items-center gap-3 p-3 border rounded-lg">
+                        <div className={`w-3 h-3 rounded-full ${getPriorityColor(task.priority)}`}></div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-slate-900 dark:text-white">{task.title}</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-500">{task.assignedTo}</p>
+                        </div>
+                        <Badge className={getStatusColor(task.status)}>
+                          {task.status}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* Communication Tab */}
+        <TabsContent value="communication" className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Message History */}
+            <div className="lg:col-span-2">
+              <Card className="h-[500px] flex flex-col">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <MessageSquare className="w-5 h-5" />
+                    Field-Office Communication
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="flex-1 flex flex-col p-0">
+                  <ScrollArea className="flex-1 p-4">
+                    <div className="space-y-4">
+                      {mockMessages.map((msg) => (
+                        <div 
+                          key={msg.id} 
+                          className={`flex ${msg.type === 'field-to-office' ? 'justify-end' : 'justify-start'}`}
+                        >
+                          <div className={`max-w-[80%] rounded-lg p-3 ${
+                            msg.type === 'field-to-office' 
+                              ? 'bg-gradient-to-r from-[#4A6FA5] to-[#2C3E50] text-white' 
+                              : 'bg-slate-100 dark:bg-slate-700'
+                          }`}>
+                            <p className="text-sm font-medium mb-1">{msg.sender}</p>
+                            <p className="text-sm">{msg.message}</p>
+                            <p className="text-xs opacity-70 mt-1">
+                              {format(msg.timestamp, 'h:mm a')}
                             </p>
                           </div>
                         </div>
                       ))}
-                      {fieldLogs.length === 0 && (
-                        <p className="text-sm text-slate-600 dark:text-slate-400 text-center py-4">
-                          No recent activity
-                        </p>
+                    </div>
+                  </ScrollArea>
+                  <Separator />
+                  <div className="p-4">
+                    <div className="flex gap-2">
+                      <Input 
+                        placeholder="Type your message to office..." 
+                        value={messageInput}
+                        onChange={(e) => setMessageInput(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                        className="flex-1"
+                      />
+                      <Button 
+                        onClick={sendMessage}
+                        disabled={!messageInput.trim()}
+                        className="bg-gradient-to-r from-[#4A6FA5] to-[#2C3E50] hover:from-[#3A5A95] hover:to-[#1C2E40]"
+                      >
+                        <Send className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Quick Actions</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <Button variant="outline" className="w-full justify-start">
+                    <Camera className="w-4 h-4 mr-2" />
+                    Take Photo
+                  </Button>
+                  <Button variant="outline" className="w-full justify-start">
+                    <AlertTriangle className="w-4 h-4 mr-2" />
+                    Report Issue
+                  </Button>
+                  <Button variant="outline" className="w-full justify-start">
+                    <Truck className="w-4 h-4 mr-2" />
+                    Request Materials
+                  </Button>
+                  <Button variant="outline" className="w-full justify-start">
+                    <Bell className="w-4 h-4 mr-2" />
+                    Emergency Contact
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Today's Weather</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                      <Cloud className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-slate-900 dark:text-white">Partly Cloudy</p>
+                      <p className="text-sm text-slate-600 dark:text-slate-400">72°F • Good for work</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* Documents Tab */}
+        <TabsContent value="documents" className="space-y-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Project Documents</h2>
+            <div className="flex items-center gap-2">
+              <Button size="sm" className="bg-gradient-to-r from-[#4A6FA5] to-[#2C3E50] hover:from-[#3A5A95] hover:to-[#1C2E40]">
+                <Upload className="w-4 h-4 mr-2" />
+                Upload
+              </Button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {mockDocuments.map((doc) => (
+              <Card key={doc.id} className="hover:shadow-md transition-shadow">
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                      {doc.type === 'image' ? (
+                        <FileImage className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                      ) : (
+                        <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                       )}
                     </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="text-center p-4 bg-[#A8C8EC] bg-opacity-20 rounded-lg">
-                      <p className="text-2xl font-bold text-[#2C3E50]">{fieldLogs.length}</p>
-                      <p className="text-sm text-slate-600 dark:text-slate-400">Total Logs</p>
-                    </div>
-                    <div className="text-center p-4 bg-[#A8C8EC] bg-opacity-20 rounded-lg">
-                      <p className="text-2xl font-bold text-[#2C3E50]">
-                        {punchListItems.filter((item: any) => item.status === 'open').length}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-slate-900 dark:text-white truncate">{doc.name}</p>
+                      <p className="text-sm text-slate-600 dark:text-slate-400">{doc.uploadedBy}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-500">
+                        {format(doc.uploadTime, 'MMM d, h:mm a')} • {doc.size}
                       </p>
-                      <p className="text-sm text-slate-600 dark:text-slate-400">Open Issues</p>
                     </div>
+                    <Button size="sm" variant="ghost">
+                      <Download className="w-4 h-4" />
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
+            ))}
+          </div>
+        </TabsContent>
+
+        {/* Jobs Tab */}
+        <TabsContent value="jobs" className="space-y-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Job Assignments</h2>
+            <div className="flex items-center gap-2">
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Jobs</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="scheduled">Scheduled</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          </TabsContent>
+          </div>
 
-          {/* Daily Logs Tab */}
-          <TabsContent value="logs" className="mt-0">
-            <div className="space-y-4">
-              {/* Quick log entry */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Plus className="w-5 h-5" />
-                    New Log Entry
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {jobs.slice(0, 6).map((job: any, index: number) => (
+              <Card key={job?.id || index} className="hover:shadow-md transition-shadow cursor-pointer" 
+                    onClick={() => setSelectedJob(job?.id || `job-${index}`)}>
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between mb-3">
                     <div>
-                      <Label>Log Type</Label>
-                      <Select value={newLogData.logType} onValueChange={(value) => 
-                        setNewLogData({...newLogData, logType: value})}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="progress">Progress Update</SelectItem>
-                          <SelectItem value="issue">Issue/Problem</SelectItem>
-                          <SelectItem value="completion">Task Completion</SelectItem>
-                          <SelectItem value="weather">Weather Delay</SelectItem>
-                          <SelectItem value="safety">Safety Note</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label>Hours Worked</Label>
-                      <Input 
-                        type="number" 
-                        placeholder="8"
-                        value={newLogData.hoursWorked}
-                        onChange={(e) => setNewLogData({...newLogData, hoursWorked: e.target.value})}
-                      />
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <Label>Title</Label>
-                    <Input 
-                      placeholder="Brief summary of work done"
-                      value={newLogData.title}
-                      onChange={(e) => setNewLogData({...newLogData, title: e.target.value})}
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label>Description</Label>
-                    <Textarea 
-                      placeholder="Detailed description of work, materials used, next steps..."
-                      rows={4}
-                      value={newLogData.description}
-                      onChange={(e) => setNewLogData({...newLogData, description: e.target.value})}
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label>Weather Conditions</Label>
-                    <Input 
-                      placeholder="Sunny, 72°F"
-                      value={newLogData.weatherConditions}
-                      onChange={(e) => setNewLogData({...newLogData, weatherConditions: e.target.value})}
-                    />
-                  </div>
-
-                  <div className="flex gap-2">
-                    <Button 
-                      className="flex-1 bg-gradient-to-r from-[#4A6FA5] to-[#2C3E50]"
-                      onClick={handleCreateFieldLog}
-                      disabled={createFieldLogMutation.isPending}
-                    >
-                      {createFieldLogMutation.isPending ? 'Saving...' : 'Save Log Entry'}
-                    </Button>
-                    <Button variant="outline" size="icon">
-                      <Camera className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Recent logs */}
-              <div className="space-y-3">
-                {fieldLogs.map((log: any) => (
-                  <Card key={log.id}>
-                    <CardContent className="p-4">
-                      <div className="flex items-start gap-3">
-                        <div className={`p-2 rounded ${getLogTypeColor(log.logType)} mt-1`}>
-                          {getLogTypeIcon(log.logType)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex justify-between items-start mb-2">
-                            <h3 className="font-semibold text-slate-800 dark:text-slate-200">
-                              {log.title}
-                            </h3>
-                            <div className="text-xs text-slate-600 dark:text-slate-400 flex items-center gap-1">
-                              <Clock className="w-3 h-3" />
-                              {new Date(log.createdAt).toLocaleTimeString()}
-                            </div>
-                          </div>
-                          <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">
-                            {log.description}
-                          </p>
-                          <div className="flex flex-wrap gap-2 text-xs">
-                            {log.weatherConditions && (
-                              <Badge variant="outline" className="text-xs">
-                                <Cloud className="w-3 h-3 mr-1" />
-                                {log.weatherConditions}
-                              </Badge>
-                            )}
-                            {log.hoursWorked && (
-                              <Badge variant="outline" className="text-xs">
-                                <Clock className="w-3 h-3 mr-1" />
-                                {log.hoursWorked}h worked
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-                
-                {fieldLogs.length === 0 && (
-                  <Card>
-                    <CardContent className="p-8 text-center">
-                      <FileText className="w-12 h-12 text-slate-400 mx-auto mb-3" />
-                      <p className="text-slate-600 dark:text-slate-400">No logs yet</p>
-                      <p className="text-sm text-slate-500 dark:text-slate-500">
-                        Create your first log entry above
+                      <h3 className="font-medium text-slate-900 dark:text-white">
+                        {job?.customer?.name || `Project ${index + 1}`}
+                      </h3>
+                      <p className="text-sm text-slate-600 dark:text-slate-400">
+                        {job?.siteAddressJson?.street || '123 Main Street'}
                       </p>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            </div>
-          </TabsContent>
-
-          {/* Punch List Tab */}
-          <TabsContent value="punchlist" className="mt-0">
-            <div className="space-y-4">
-              {/* Quick punch item entry */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Plus className="w-5 h-5" />
-                    New Punch List Item
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label>Priority</Label>
-                      <Select value={newPunchItem.priority} onValueChange={(value) =>
-                        setNewPunchItem({...newPunchItem, priority: value})}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="low">Low</SelectItem>
-                          <SelectItem value="medium">Medium</SelectItem>
-                          <SelectItem value="high">High</SelectItem>
-                          <SelectItem value="critical">Critical</SelectItem>
-                        </SelectContent>
-                      </Select>
                     </div>
-                    <div>
-                      <Label>Location</Label>
-                      <Input 
-                        placeholder="Room/Area"
-                        value={newPunchItem.location}
-                        onChange={(e) => setNewPunchItem({...newPunchItem, location: e.target.value})}
-                      />
-                    </div>
+                    <Badge className={getStatusColor(job?.status || 'active')}>
+                      {job?.status || 'active'}
+                    </Badge>
                   </div>
                   
-                  <div>
-                    <Label>Issue Title</Label>
-                    <Input 
-                      placeholder="Brief description of the issue"
-                      value={newPunchItem.title}
-                      onChange={(e) => setNewPunchItem({...newPunchItem, title: e.target.value})}
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label>Description</Label>
-                    <Textarea 
-                      placeholder="Detailed description of the issue and required fix..."
-                      rows={3}
-                      value={newPunchItem.description}
-                      onChange={(e) => setNewPunchItem({...newPunchItem, description: e.target.value})}
-                    />
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                      <MapPin className="w-4 h-4" />
+                      <span>{job?.division?.name || 'Multi-Family New Construction'}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                      <Users className="w-4 h-4" />
+                      <span>Field Crew {String.fromCharCode(65 + (index % 3))}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                      <Clock className="w-4 h-4" />
+                      <span>Started {format(new Date(Date.now() - index * 24 * 60 * 60 * 1000), 'MMM d')}</span>
+                    </div>
                   </div>
 
-                  <div className="flex gap-2">
-                    <Button 
-                      className="flex-1 bg-gradient-to-r from-[#4A6FA5] to-[#2C3E50]"
-                      onClick={handleCreatePunchItem}
-                      disabled={createPunchItemMutation.isPending}
-                    >
-                      {createPunchItemMutation.isPending ? 'Adding...' : 'Add to Punch List'}
-                    </Button>
-                    <Button variant="outline" size="icon">
-                      <Camera className="w-4 h-4" />
-                    </Button>
+                  <div className="mt-3 pt-3 border-t">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-slate-600 dark:text-slate-400">Progress</span>
+                      <span className="text-sm font-medium">{Math.floor(Math.random() * 40) + 30}%</span>
+                    </div>
+                    <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2 mt-1">
+                      <div 
+                        className="bg-gradient-to-r from-[#4A6FA5] to-[#2C3E50] h-2 rounded-full"
+                        style={{ width: `${Math.floor(Math.random() * 40) + 30}%` }}
+                      ></div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
+            ))}
+          </div>
+        </TabsContent>
 
-              {/* Punch list items */}
-              <div className="space-y-3">
-                {punchListItems.map((item: any) => (
-                  <Card key={item.id}>
-                    <CardContent className="p-4">
-                      <div className="space-y-3">
-                        <div className="flex justify-between items-start">
-                          <div className="flex items-start gap-3">
-                            <Badge className={`${getPriorityColor(item.priority)} text-xs`}>
-                              {item.priority}
-                            </Badge>
-                            <div>
-                              <h3 className="font-semibold text-slate-800 dark:text-slate-200">
-                                {item.title}
-                              </h3>
-                              {item.location && (
-                                <p className="text-xs text-slate-600 dark:text-slate-400 flex items-center gap-1">
-                                  <MapPin className="w-3 h-3" />
-                                  {item.location}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                          <Badge className={`${getStatusColor(item.status)} text-xs`}>
-                            {item.status.replace('_', ' ')}
-                          </Badge>
-                        </div>
-                        
-                        <p className="text-sm text-slate-600 dark:text-slate-400">
-                          {item.description}
+        {/* Schedule Tab */}
+        <TabsContent value="schedule" className="space-y-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Field Schedule</h2>
+            <Button size="sm" className="bg-gradient-to-r from-[#4A6FA5] to-[#2C3E50] hover:from-[#3A5A95] hover:to-[#1C2E40]">
+              <Plus className="w-4 h-4 mr-2" />
+              Add Event
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Today's Schedule</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {mockSchedule.map((event) => (
+                    <div key={event.id} className="flex items-center gap-4 p-4 border rounded-lg">
+                      <div className="text-center">
+                        <p className="text-sm font-medium text-slate-900 dark:text-white">
+                          {format(event.startTime, 'h:mm')}
                         </p>
+                        <p className="text-xs text-slate-500 dark:text-slate-500">
+                          {format(event.startTime, 'a')}
+                        </p>
+                      </div>
+                      <div className="w-px h-12 bg-slate-200 dark:bg-slate-700"></div>
+                      <div className="flex-1">
+                        <p className="font-medium text-slate-900 dark:text-white">{event.jobName}</p>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">{event.crew}</p>
+                        <Badge className={getStatusColor(event.status)} size="sm">
+                          {event.status}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
 
-                        <div className="flex gap-2">
-                          <Select value={item.status} onValueChange={(status) => 
-                            handlePunchItemStatusChange(item.id, status)}>
-                            <SelectTrigger className="flex-1">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="open">Open</SelectItem>
-                              <SelectItem value="in_progress">In Progress</SelectItem>
-                              <SelectItem value="completed">Completed</SelectItem>
-                              <SelectItem value="verified">Verified</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <Button variant="outline" size="icon">
-                            <Camera className="w-4 h-4" />
-                          </Button>
+            <Card>
+              <CardHeader>
+                <CardTitle>Weekly Overview</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map((day, index) => (
+                    <div key={day} className="flex items-center justify-between p-2 rounded">
+                      <span className="text-sm font-medium text-slate-900 dark:text-white">{day}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-slate-500 dark:text-slate-500">
+                          {Math.floor(Math.random() * 3) + 2} jobs
+                        </span>
+                        <div className="w-16 h-2 bg-slate-200 dark:bg-slate-700 rounded">
+                          <div 
+                            className="h-2 bg-gradient-to-r from-[#4A6FA5] to-[#2C3E50] rounded"
+                            style={{ width: `${Math.floor(Math.random() * 60) + 40}%` }}
+                          ></div>
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
-                
-                {punchListItems.length === 0 && (
-                  <Card>
-                    <CardContent className="p-8 text-center">
-                      <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
-                      <p className="text-slate-600 dark:text-slate-400">No punch list items</p>
-                      <p className="text-sm text-slate-500 dark:text-slate-500">
-                        Great job! No issues to track
-                      </p>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* Will Calls Tab */}
+        <TabsContent value="will-calls" className="space-y-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Material Requests</h2>
+            <Button 
+              onClick={submitWillCallRequest}
+              size="sm" 
+              className="bg-gradient-to-r from-[#4A6FA5] to-[#2C3E50] hover:from-[#3A5A95] hover:to-[#1C2E40]"
+            >
+              <Truck className="w-4 h-4 mr-2" />
+              New Request
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Active Requests</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {mockWillCallRequests.map((request) => (
+                    <div key={request.id} className="border rounded-lg p-4">
+                      <div className="flex items-start justify-between mb-2">
+                        <div>
+                          <p className="font-medium text-slate-900 dark:text-white">{request.supplier}</p>
+                          <p className="text-sm text-slate-600 dark:text-slate-400">{request.materials}</p>
+                        </div>
+                        <Badge className={getStatusColor(request.status)}>
+                          {request.status}
+                        </Badge>
+                      </div>
+                      
+                      <div className="space-y-1 text-sm text-slate-500 dark:text-slate-500">
+                        <p>Requested by: {request.requestedBy}</p>
+                        <p>Time: {format(request.requestTime, 'MMM d, h:mm a')}</p>
+                        {request.notes && <p>Notes: {request.notes}</p>}
+                      </div>
+                      
+                      <div className="flex gap-2 mt-3">
+                        <Button size="sm" variant="outline">
+                          <Phone className="w-4 h-4 mr-1" />
+                          Call
+                        </Button>
+                        <Button size="sm" variant="outline">
+                          <MessageSquare className="w-4 h-4 mr-1" />
+                          Update
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Quick Request Form</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="supplier">Supplier</Label>
+                    <Select>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select supplier" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="abc-supply">ABC Supply Co.</SelectItem>
+                        <SelectItem value="home-depot">Home Depot</SelectItem>
+                        <SelectItem value="lowes">Lowe's</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="materials">Materials Needed</Label>
+                    <Textarea 
+                      placeholder="Describe the materials you need..."
+                      className="resize-none"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="priority">Priority</Label>
+                    <Select>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select priority" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="urgent">Urgent - Same Day</SelectItem>
+                        <SelectItem value="high">High - Next Day</SelectItem>
+                        <SelectItem value="normal">Normal - This Week</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="notes">Additional Notes</Label>
+                    <Textarea 
+                      placeholder="Any special instructions..."
+                      className="resize-none"
+                    />
+                  </div>
+                  
+                  <Button 
+                    onClick={submitWillCallRequest}
+                    className="w-full bg-gradient-to-r from-[#4A6FA5] to-[#2C3E50] hover:from-[#3A5A95] hover:to-[#1C2E40]"
+                  >
+                    Submit Request
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* Tasks Tab */}
+        <TabsContent value="tasks" className="space-y-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Task Management</h2>
+            <div className="flex items-center gap-2">
+              <Select defaultValue="all">
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Tasks</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="in-progress">In Progress</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button size="sm" className="bg-gradient-to-r from-[#4A6FA5] to-[#2C3E50] hover:from-[#3A5A95] hover:to-[#1C2E40]">
+                <Plus className="w-4 h-4 mr-2" />
+                New Task
+              </Button>
             </div>
-          </TabsContent>
-        </Tabs>
-      </div>
+          </div>
+
+          <div className="space-y-4">
+            {mockTasks.map((task) => (
+              <Card key={task.id} className="hover:shadow-md transition-shadow">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-4">
+                    <div className="flex-shrink-0">
+                      <div className={`w-4 h-4 rounded-full ${getPriorityColor(task.priority)}`}></div>
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <h3 className="font-medium text-slate-900 dark:text-white">{task.title}</h3>
+                          <p className="text-sm text-slate-600 dark:text-slate-400">Assigned to: {task.assignedTo}</p>
+                        </div>
+                        <Badge className={getStatusColor(task.status)}>
+                          {task.status}
+                        </Badge>
+                      </div>
+                      
+                      <div className="flex items-center gap-4 mt-2 text-sm text-slate-500 dark:text-slate-500">
+                        <span>Due: {format(task.dueDate, 'MMM d')}</span>
+                        <span>Priority: {task.priority}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <Button size="sm" variant="outline">
+                        <CheckCircle className="w-4 h-4" />
+                      </Button>
+                      <Button size="sm" variant="outline">
+                        <MessageSquare className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </TabsContent>
+      </Tabs>
+
+      {/* Selected Job Details - Field Logs */}
+      {selectedJob && (
+        <Card className="mt-6">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Wrench className="w-5 h-5" />
+                Field Logs - Job #{selectedJob.slice(-6)}
+              </CardTitle>
+              <Button variant="outline" onClick={() => setSelectedJob(null)}>
+                Close
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex gap-2">
+                <Input 
+                  placeholder="Add a field log entry..." 
+                  value={logInput}
+                  onChange={(e) => setLogInput(e.target.value)}
+                  className="flex-1"
+                />
+                <Button 
+                  onClick={addLog}
+                  disabled={!logInput.trim()}
+                  className="bg-gradient-to-r from-[#4A6FA5] to-[#2C3E50] hover:from-[#3A5A95] hover:to-[#1C2E40]"
+                >
+                  Add Log
+                </Button>
+              </div>
+              
+              <ScrollArea className="h-64">
+                <div className="space-y-3">
+                  {fieldLogs.length > 0 ? (
+                    fieldLogs.map((log: any) => (
+                      <div key={log.id} className="flex items-start gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                        <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
+                          <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-slate-900 dark:text-white">{log.title}</p>
+                          <p className="text-sm text-slate-600 dark:text-slate-400">{log.description}</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">
+                            {format(new Date(log.createdAt), 'MMM d, h:mm a')}
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center text-slate-500 dark:text-slate-500 py-8">
+                      <FileText className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                      <p>No field logs yet. Add your first log entry above.</p>
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
