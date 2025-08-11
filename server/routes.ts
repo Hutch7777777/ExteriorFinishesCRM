@@ -94,7 +94,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Business Insight API - Claude AI integration
-  app.post('/api/business-insight/generate', authenticateToken, async (req: any, res) => {
+  app.post('/api/business-insight/generate', isAuthenticated, async (req: any, res) => {
     try {
       const { prompt, division, context } = req.body;
 
