@@ -217,7 +217,7 @@ export default function BusinessInsight() {
                   <Button
                     key={report.id}
                     variant="outline"
-                    className="w-full justify-start h-auto p-4 text-left hover:bg-blue-50 dark:hover:bg-slate-800"
+                    className="w-full justify-start h-auto p-4 text-left hover:bg-blue-50 dark:hover:bg-slate-800 min-h-[80px]"
                     onClick={() => handleSuggestedReport(report)}
                     disabled={isGenerating}
                   >
@@ -225,11 +225,11 @@ export default function BusinessInsight() {
                       <div className="text-[#4A6FA5] mt-0.5 flex-shrink-0">
                         {report.icon}
                       </div>
-                      <div className="flex-1 min-w-0 overflow-hidden">
-                        <div className="font-medium text-sm mb-1 text-slate-900 dark:text-white truncate">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm mb-1 text-slate-900 dark:text-white">
                           {report.title}
                         </div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400 leading-tight line-clamp-2 break-words overflow-hidden">
+                        <div className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed break-words">
                           {report.description}
                         </div>
                       </div>
