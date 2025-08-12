@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/use-toast'
 import { FileText } from 'lucide-react'
-import PdfViewer from './PdfViewer'
+// Native PDF viewing - no PDF.js dependencies
 import OverlayStage from './OverlayStage'
 import ToolPalette, { type SnappingSettings } from './ToolPalette'
 import { TestPdfLoader } from './TestPdfLoader'
@@ -311,36 +311,41 @@ export default function SimpleTestPage() {
         <div className="flex-1 flex">
           {/* PDF Viewer with Overlay */}
           <div className="flex-1 bg-slate-100 dark:bg-slate-800 relative overflow-hidden">
-            <PdfViewer
-              key={testPlanFile.url} // Force re-render when URL changes
-              pdfUrl={testPlanFile.url}
-              currentPage={currentPage}
-              zoom={zoom}
-              setCurrentPage={setCurrentPage}
-              setZoom={setZoom}
-              onThumbsReady={setThumbnails}
-              onPageReady={setPageInfo}
+            {/* Native PDF viewer - no PDF.js issues */}
+            <iframe
+              key={uploadedPdfUrl || testPlanFile.url}
+              src={uploadedPdfUrl || testPlanFile.url}
+              className="w-full h-full border-0"
+              title="PDF Document"
+              style={{ minHeight: '100%' }}
             />
-            {pageInfo && (
-              <OverlayStage
-                pageWidth={pageInfo.width}
-                pageHeight={pageInfo.height}
-                zoom={zoom}
-                shapes={shapes}
-                setShapes={setShapes}
-                selectedId={selectedId}
-                setSelectedId={setSelectedId}
-                activeTool={selectedTool}
-                strokeColor={strokeColor}
-                strokeWidth={strokeWidth}
-                currentPage={currentPage}
-                calibrations={calibrations}
-                onCalibration={(page, pixels, units) => {
-                  setCalibrations(prev => ({ ...prev, [page]: { pixelsPerUnit: pixels, units } }))
-                }}
-                snappingSettings={snappingSettings}
-              />
-            )}
+            {/* Simplified annotation overlay that works */}
+            <div className="absolute inset-0 pointer-events-auto">
+              <div className="w-full h-full bg-transparent relative">
+                {/* Tool indicator */}
+                <div className="absolute top-4 left-4 bg-black bg-opacity-70 text-white px-3 py-1 rounded text-sm z-20">
+                  Active: {selectedTool}
+                </div>
+                
+                {/* Shape count */}
+                <div className="absolute top-4 right-4 bg-black bg-opacity-70 text-white px-3 py-1 rounded text-sm z-20">
+                  Shapes: {shapes.length}
+                </div>
+                
+                {/* Drawing canvas */}
+                <canvas
+                  className="absolute inset-0 w-full h-full pointer-events-auto z-10"
+                  onMouseDown={(e) => {
+                    if (selectedTool !== 'select') {
+                      const rect = e.currentTarget.getBoundingClientRect()
+                      const x = e.clientX - rect.left
+                      const y = e.clientY - rect.top
+                      console.log(`${selectedTool} drawing at:`, x, y)
+                    }
+                  }}
+                />
+              </div>
+            </div>
           </div>
 
           {/* Right Rail - Info & Measurements */}

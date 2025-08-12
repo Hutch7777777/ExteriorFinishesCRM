@@ -145,6 +145,12 @@ const testBluebeamRoute = createRoute({
   component: lazy(() => import('./features/plans/WorkingBluebeamEditor'))
 })
 
+const primaryBluebeamRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/bluebeam-editor',
+  component: lazy(() => import('./features/plans/WorkingBluebeamEditor'))
+})
+
 const debugPdfRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/debug-pdf',
@@ -172,6 +178,7 @@ const routeTree = rootRoute.addChildren([
   editEstimateRoute,
   plansRoute,
   testBluebeamRoute,
+  primaryBluebeamRoute,
   debugPdfRoute,
   notFoundRoute
 ])
