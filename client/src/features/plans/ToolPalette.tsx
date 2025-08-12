@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
+import { Checkbox } from '@/components/ui/checkbox'
 import { 
   MousePointer, 
   Type, 
@@ -17,6 +18,15 @@ import {
   Calculator
 } from 'lucide-react'
 
+export interface SnappingSettings {
+  enabled: boolean
+  snapToVertices: boolean
+  snapToAngles: boolean
+  snapToGrid: boolean
+  gridSpacing: number
+  tolerance: number
+}
+
 interface ToolPaletteProps {
   selectedTool: string
   onToolSelect: (tool: string) => void
@@ -24,6 +34,8 @@ interface ToolPaletteProps {
   onStrokeWidthChange: (width: number) => void
   strokeColor: string
   onStrokeColorChange: (color: string) => void
+  snappingSettings: SnappingSettings
+  onSnappingSettingsChange: (settings: SnappingSettings) => void
 }
 
 const tools = [
@@ -60,7 +72,9 @@ export default function ToolPalette({
   strokeWidth,
   onStrokeWidthChange,
   strokeColor,
-  onStrokeColorChange
+  onStrokeColorChange,
+  snappingSettings,
+  onSnappingSettingsChange
 }: ToolPaletteProps) {
   return (
     <div className="h-full flex flex-col">
@@ -198,15 +212,129 @@ export default function ToolPalette({
         </CardContent>
       </Card>
 
-      {/* Measurements (Future) */}
+      {/* Snapping */}
       <Card className="mx-4 mb-2">
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm">Measurements</CardTitle>
+          <CardTitle className="text-sm">Snapping</CardTitle>
         </CardHeader>
-        <CardContent className="pt-0">
-          <div className="text-xs text-slate-500 text-center py-4">
-            Measurement tools coming soon
+        <CardContent className="pt-0 space-y-3">
+          {/* Snapping Toggle */}
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="snap-enabled"
+              checked={snappingSettings.enabled}
+              onCheckedChange={(checked) =>
+                onSnappingSettingsChange({
+                  ...snappingSettings,
+                  enabled: checked as boolean,
+                })
+              }
+            />
+            <Label htmlFor="snap-enabled" className="text-xs font-medium">
+              Enable Snapping
+            </Label>
           </div>
+          
+          {snappingSettings.enabled && (
+            <div className="space-y-2 pl-6">
+              {/* Snap to Vertices */}
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="snap-vertices"
+                  checked={snappingSettings.snapToVertices}
+                  onCheckedChange={(checked) =>
+                    onSnappingSettingsChange({
+                      ...snappingSettings,
+                      snapToVertices: checked as boolean,
+                    })
+                  }
+                />
+                <Label htmlFor="snap-vertices" className="text-xs">
+                  Vertices
+                </Label>
+              </div>
+              
+              {/* Snap to Angles */}
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="snap-angles"
+                  checked={snappingSettings.snapToAngles}
+                  onCheckedChange={(checked) =>
+                    onSnappingSettingsChange({
+                      ...snappingSettings,
+                      snapToAngles: checked as boolean,
+                    })
+                  }
+                />
+                <Label htmlFor="snap-angles" className="text-xs">
+                  Angles (0°/45°/90°)
+                </Label>
+              </div>
+              
+              {/* Snap to Grid */}
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="snap-grid"
+                  checked={snappingSettings.snapToGrid}
+                  onCheckedChange={(checked) =>
+                    onSnappingSettingsChange({
+                      ...snappingSettings,
+                      snapToGrid: checked as boolean,
+                    })
+                  }
+                />
+                <Label htmlFor="snap-grid" className="text-xs">
+                  Grid
+                </Label>
+              </div>
+              
+              {/* Grid Spacing */}
+              {snappingSettings.snapToGrid && (
+                <div>
+                  <Label htmlFor="grid-spacing" className="text-xs font-medium">
+                    Grid Spacing (px)
+                  </Label>
+                  <Input
+                    id="grid-spacing"
+                    type="number"
+                    min="5"
+                    max="100"
+                    value={snappingSettings.gridSpacing}
+                    onChange={(e) =>
+                      onSnappingSettingsChange({
+                        ...snappingSettings,
+                        gridSpacing: parseInt(e.target.value) || 10,
+                      })
+                    }
+                    className="mt-1"
+                    size={1}
+                  />
+                </div>
+              )}
+              
+              {/* Snap Tolerance */}
+              <div>
+                <Label htmlFor="snap-tolerance" className="text-xs font-medium">
+                  Tolerance (px)
+                </Label>
+                <Input
+                  id="snap-tolerance"
+                  type="number"
+                  min="1"
+                  max="50"
+                  value={snappingSettings.tolerance}
+                  onChange={(e) =>
+                    onSnappingSettingsChange({
+                      ...snappingSettings,
+                      tolerance: parseInt(e.target.value) || 10,
+                    })
+                  }
+                  className="mt-1"
+                  size={1}
+                />
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

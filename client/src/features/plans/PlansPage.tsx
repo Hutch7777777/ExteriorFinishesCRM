@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
 import PdfViewer from './PdfViewer'
 import OverlayStage from './OverlayStage'
-import ToolPalette from './ToolPalette'
+import ToolPalette, { type SnappingSettings } from './ToolPalette'
 import { FileText, ChevronLeft, Upload, File } from 'lucide-react'
 
 interface PageInfo {
@@ -79,6 +79,14 @@ export default function PlansPage() {
   const [saveError, setSaveError] = useState<string | null>(null)
   const [selectedPlanFile, setSelectedPlanFile] = useState<any | null>(null)
   const [showUploadDialog, setShowUploadDialog] = useState(false)
+  const [snappingSettings, setSnappingSettings] = useState<SnappingSettings>({
+    enabled: true,
+    snapToVertices: true,
+    snapToAngles: true,
+    snapToGrid: false,
+    gridSpacing: 20,
+    tolerance: 10
+  })
   
   const queryClient = useQueryClient()
   const { toast } = useToast()
@@ -591,6 +599,7 @@ export default function PlansPage() {
                 strokeColor={strokeColor}
                 calibrations={calibrations}
                 onCalibration={handleCalibration}
+                snappingSettings={snappingSettings}
               />
             </div>
           ) : (
@@ -621,6 +630,8 @@ export default function PlansPage() {
             onStrokeWidthChange={setStrokeWidth}
             strokeColor={strokeColor}
             onStrokeColorChange={setStrokeColor}
+            snappingSettings={snappingSettings}
+            onSnappingSettingsChange={setSnappingSettings}
           />
           
           {/* Measurement Summary */}

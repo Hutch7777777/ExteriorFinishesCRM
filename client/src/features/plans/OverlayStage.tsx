@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
 import { Stage, Layer, Rect, Ellipse, Line, Text, Arrow, Group, Transformer } from 'react-konva'
 import Konva from 'konva'
+import type { SnappingSettings } from './ToolPalette'
 
 interface ShapeStyle {
   stroke: string
@@ -50,6 +51,7 @@ interface OverlayStageProps {
   strokeColor: string
   calibrations: Record<number, CalibrationData>
   onCalibration: (page: number, pixelsPerUnit: number, units: string) => void
+  snappingSettings: SnappingSettings
 }
 
 export default function OverlayStage({
@@ -65,7 +67,8 @@ export default function OverlayStage({
   strokeWidth,
   strokeColor,
   calibrations,
-  onCalibration
+  onCalibration,
+  snappingSettings
 }: OverlayStageProps) {
   const stageRef = useRef<Konva.Stage>(null)
   const transformerRef = useRef<Konva.Transformer>(null)
@@ -75,6 +78,14 @@ export default function OverlayStage({
   const [calibrationPoints, setCalibrationPoints] = useState<number[]>([])
   const [showCalibrationDialog, setShowCalibrationDialog] = useState(false)
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
+  const [snapGuides, setSnapGuides] = useState<Array<{
+    type: 'vertex' | 'angle' | 'grid'
+    x?: number
+    y?: number
+    angle?: number
+    isActive: boolean
+  }>>([])
+  const [snappedPoint, setSnappedPoint] = useState<{ x: number; y: number } | null>(null)
 
   const stageWidth = pageWidth * zoom
   const stageHeight = pageHeight * zoom
@@ -96,6 +107,111 @@ export default function OverlayStage({
 
   // Filter shapes for current page
   const currentPageShapes = (shapes || []).filter(shape => shape.page === currentPage)
+
+  // Snapping helper functions
+  const getAllVertices = useCallback(() => {
+    const vertices: Array<{ x: number; y: number; type: 'endpoint' | 'midpoint' }> = []
+    
+    currentPageShapes.forEach(shape => {
+      if (shape.points && shape.points.length >= 4) {
+        // Add endpoints
+        for (let i = 0; i < shape.points.length; i += 2) {
+          vertices.push({
+            x: normalizedToPixel(shape.points[i], 'width'),
+            y: normalizedToPixel(shape.points[i + 1], 'height'),
+            type: 'endpoint'
+          })
+        }
+        // Add midpoints
+        for (let i = 0; i < shape.points.length - 2; i += 2) {
+          const x1 = normalizedToPixel(shape.points[i], 'width')
+          const y1 = normalizedToPixel(shape.points[i + 1], 'height')
+          const x2 = normalizedToPixel(shape.points[i + 2], 'width')
+          const y2 = normalizedToPixel(shape.points[i + 3], 'height')
+          vertices.push({
+            x: (x1 + x2) / 2,
+            y: (y1 + y2) / 2,
+            type: 'midpoint'
+          })
+        }
+      } else if (shape.x !== undefined && shape.y !== undefined) {
+        // Rectangle/ellipse corners
+        const x = normalizedToPixel(shape.x, 'width')
+        const y = normalizedToPixel(shape.y, 'height')
+        const w = normalizedToPixel(shape.w || 0, 'width')
+        const h = normalizedToPixel(shape.h || 0, 'height')
+        
+        vertices.push(
+          { x, y, type: 'endpoint' },
+          { x: x + w, y, type: 'endpoint' },
+          { x: x + w, y: y + h, type: 'endpoint' },
+          { x, y: y + h, type: 'endpoint' }
+        )
+      }
+    })
+    
+    return vertices
+  }, [currentPageShapes, normalizedToPixel])
+
+  const snapToNearestPoint = useCallback((mouseX: number, mouseY: number) => {
+    if (!snappingSettings.enabled) {
+      return { x: mouseX, y: mouseY, snapped: false }
+    }
+
+    const tolerancePx = snappingSettings.tolerance
+    let bestSnap: { x: number; y: number; distance: number; type: string } | null = null
+
+    // Snap to vertices
+    if (snappingSettings.snapToVertices) {
+      const vertices = getAllVertices()
+      vertices.forEach(vertex => {
+        const distance = Math.sqrt(Math.pow(mouseX - vertex.x, 2) + Math.pow(mouseY - vertex.y, 2))
+        if (distance <= tolerancePx && (!bestSnap || distance < bestSnap.distance)) {
+          bestSnap = { x: vertex.x, y: vertex.y, distance, type: `vertex-${vertex.type}` }
+        }
+      })
+    }
+
+    // Snap to angles (0°, 45°, 90°)
+    if (snappingSettings.snapToAngles && currentPoints.length >= 2) {
+      const lastX = normalizedToPixel(currentPoints[currentPoints.length - 2], 'width')
+      const lastY = normalizedToPixel(currentPoints[currentPoints.length - 1], 'height')
+      
+      const angles = [0, 45, 90, 135, 180, 225, 270, 315]
+      const distance = Math.sqrt(Math.pow(mouseX - lastX, 2) + Math.pow(mouseY - lastY, 2))
+      
+      angles.forEach(angle => {
+        const radians = (angle * Math.PI) / 180
+        const snapX = lastX + distance * Math.cos(radians)
+        const snapY = lastY + distance * Math.sin(radians)
+        const snapDistance = Math.sqrt(Math.pow(mouseX - snapX, 2) + Math.pow(mouseY - snapY, 2))
+        
+        if (snapDistance <= tolerancePx && (!bestSnap || snapDistance < bestSnap.distance)) {
+          bestSnap = { x: snapX, y: snapY, distance: snapDistance, type: `angle-${angle}` }
+        }
+      })
+    }
+
+    // Snap to grid
+    if (snappingSettings.snapToGrid) {
+      const gridSize = snappingSettings.gridSpacing * zoom
+      const snapX = Math.round(mouseX / gridSize) * gridSize
+      const snapY = Math.round(mouseY / gridSize) * gridSize
+      const snapDistance = Math.sqrt(Math.pow(mouseX - snapX, 2) + Math.pow(mouseY - snapY, 2))
+      
+      if (snapDistance <= tolerancePx && (!bestSnap || snapDistance < bestSnap.distance)) {
+        bestSnap = { x: snapX, y: snapY, distance: snapDistance, type: 'grid' }
+      }
+    }
+
+    if (bestSnap) {
+      setSnappedPoint({ x: bestSnap.x, y: bestSnap.y })
+      return { x: bestSnap.x, y: bestSnap.y, snapped: true, snapType: bestSnap.type }
+    }
+
+    setSnappedPoint(null)
+    return { x: mouseX, y: mouseY, snapped: false }
+  }, [snappingSettings, getAllVertices, currentPoints, normalizedToPixel, zoom])
 
   // Set cursor based on active tool
   useEffect(() => {
@@ -261,8 +377,11 @@ export default function OverlayStage({
     if (activeTool === 'select') return
 
     setIsDrawing(true)
-    const normalizedX = pixelToNormalized(pos.x, 'width')
-    const normalizedY = pixelToNormalized(pos.y, 'height')
+    
+    // Apply snapping to the clicked position
+    const snappedPos = snapToNearestPoint(pos.x, pos.y)
+    const normalizedX = pixelToNormalized(snappedPos.x, 'width')
+    const normalizedY = pixelToNormalized(snappedPos.y, 'height')
 
     const newShape: Shape = {
       id: generateId(),
@@ -316,13 +435,16 @@ export default function OverlayStage({
     const pos = stage.getPointerPosition()
     if (!pos) return
     
+    // Apply snapping to the mouse position for preview
+    const snappedPos = snapToNearestPoint(pos.x, pos.y)
+    
     // Update mouse position for measurement display
-    setMousePos({ x: pos.x, y: pos.y })
+    setMousePos({ x: snappedPos.x, y: snappedPos.y })
 
     if (!isDrawing || !tempShape) return
 
-    const normalizedX = pixelToNormalized(pos.x, 'width')
-    const normalizedY = pixelToNormalized(pos.y, 'height')
+    const normalizedX = pixelToNormalized(snappedPos.x, 'width')
+    const normalizedY = pixelToNormalized(snappedPos.y, 'height')
 
     const updatedShape = { ...tempShape }
 
@@ -558,6 +680,74 @@ export default function OverlayStage({
           
           {/* Render temporary shape while drawing */}
           {tempShape && renderShape(tempShape)}
+          
+          {/* Render snap guides */}
+          {snappingSettings.enabled && snappedPoint && (
+            <>
+              {/* Snap point indicator */}
+              <Ellipse
+                x={snappedPoint.x}
+                y={snappedPoint.y}
+                radiusX={6}
+                radiusY={6}
+                stroke="#00ff00"
+                strokeWidth={2}
+                fill="rgba(0, 255, 0, 0.3)"
+              />
+              
+              {/* Grid visualization when grid snap is active */}
+              {snappingSettings.snapToGrid && (
+                <>
+                  {Array.from({ length: Math.ceil(stageWidth / (snappingSettings.gridSpacing * zoom)) + 1 }, (_, i) => (
+                    <Line
+                      key={`grid-v-${i}`}
+                      points={[
+                        i * snappingSettings.gridSpacing * zoom, 0,
+                        i * snappingSettings.gridSpacing * zoom, stageHeight
+                      ]}
+                      stroke="rgba(100, 100, 100, 0.2)"
+                      strokeWidth={1}
+                    />
+                  ))}
+                  {Array.from({ length: Math.ceil(stageHeight / (snappingSettings.gridSpacing * zoom)) + 1 }, (_, i) => (
+                    <Line
+                      key={`grid-h-${i}`}
+                      points={[
+                        0, i * snappingSettings.gridSpacing * zoom,
+                        stageWidth, i * snappingSettings.gridSpacing * zoom
+                      ]}
+                      stroke="rgba(100, 100, 100, 0.2)"
+                      strokeWidth={1}
+                    />
+                  ))}
+                </>
+              )}
+              
+              {/* Angle guide lines */}
+              {snappingSettings.snapToAngles && currentPoints.length >= 2 && (
+                <>
+                  {[0, 45, 90, 135, 180, 225, 270, 315].map(angle => {
+                    const lastX = normalizedToPixel(currentPoints[currentPoints.length - 2], 'width')
+                    const lastY = normalizedToPixel(currentPoints[currentPoints.length - 1], 'height')
+                    const radians = (angle * Math.PI) / 180
+                    const lineLength = 100
+                    const endX = lastX + lineLength * Math.cos(radians)
+                    const endY = lastY + lineLength * Math.sin(radians)
+                    
+                    return (
+                      <Line
+                        key={`angle-guide-${angle}`}
+                        points={[lastX, lastY, endX, endY]}
+                        stroke="rgba(255, 165, 0, 0.5)"
+                        strokeWidth={1}
+                        dash={[3, 3]}
+                      />
+                    )
+                  })}
+                </>
+              )}
+            </>
+          )}
           
           {/* Render calibration line if in progress */}
           {activeTool === 'calibrate' && calibrationPoints.length >= 2 && (
