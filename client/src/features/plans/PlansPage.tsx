@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import { useParams } from 'wouter'
+import { useParams, useLocation } from 'wouter'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -119,6 +119,7 @@ function ScaleCheckBar({ calibration }: ScaleCheckBarProps) {
 
 export default function PlansPage() {
   const params = useParams()
+  const [location, setLocation] = useLocation()
   const jobId = params?.jobId
   const division = params?.division || 'mfnc'
 
@@ -303,13 +304,22 @@ export default function PlansPage() {
       if (!response.ok) throw new Error('Failed to create plan file record');
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId, 'plan-files'] });
       toast({
         title: "Upload Complete",
-        description: "PDF plan file uploaded successfully",
+        description: "Redirecting to plan editor...",
       });
       setShowUploadDialog(false);
+      
+      // Set the uploaded plan as selected and navigate to editor view
+      const planFile = data.planFile;
+      setSelectedPlanFile(planFile);
+      
+      // Small delay to ensure state is set before showing editor
+      setTimeout(() => {
+        setSelectedPlan('editor'); // This will show the BlueBeam-style editor interface
+      }, 100);
     },
     onError: (error: Error) => {
       toast({
