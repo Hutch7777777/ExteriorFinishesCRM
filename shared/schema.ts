@@ -101,6 +101,8 @@ export const estimates = pgTable("estimates", {
   index("idx_estimates_status").on(table.status),
 ]);
 
+
+
 // Relations
 export const userRelations = relations(users, ({ one, many }) => ({
   division: one(divisions, {
@@ -123,6 +125,8 @@ export const customerRelations = relations(customers, ({ one, many }) => ({
   }),
   jobs: many(jobs),
 }));
+
+
 
 export const jobRelations = relations(jobs, ({ one, many }) => ({
   customer: one(customers, {

@@ -114,6 +114,9 @@ export interface IStorage {
   }): Promise<void>;
 
   // Plan operations
+  getPlanFilesByJobId(jobId: string): Promise<PlanFile[]>;
+  createPlanFile(planFileData: any): Promise<PlanFile>;
+  getJobWithDivisionAccess(jobId: string, userId: string): Promise<Job | undefined>;
   getPlanFileWithDivisionAccess(planFileId: string, userId: string): Promise<PlanFile | undefined>;
   getPlanAnnotations(planFileId: string): Promise<PlanAnnotation[]>;
   upsertPlanAnnotations(planFileId: string, annotations: any[], userId: string): Promise<PlanAnnotation[]>;
@@ -564,6 +567,39 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Plan operations
+  async getPlanFilesByJobId(jobId: string): Promise<PlanFile[]> {
+    return await db
+      .select()
+      .from(planFiles)
+      .where(eq(planFiles.jobId, jobId))
+      .orderBy(planFiles.createdAt);
+  }
+
+  async createPlanFile(planFileData: any): Promise<PlanFile> {
+    const [planFile] = await db
+      .insert(planFiles)
+      .values(planFileData)
+      .returning();
+    return planFile;
+  }
+
+  async getJobWithDivisionAccess(jobId: string, userId: string): Promise<Job | undefined> {
+    // Get the job and check division access
+    const [jobWithAccess] = await db
+      .select()
+      .from(jobs)
+      .leftJoin(users, eq(users.id, userId))
+      .where(
+        and(
+          eq(jobs.id, jobId),
+          // Admin can access all divisions, staff only their division
+          sql`(${users.role} = 'admin' OR ${jobs.divisionId} = ${users.divisionId})`
+        )
+      );
+    
+    return jobWithAccess?.jobs;
+  }
+
   async getPlanFileWithDivisionAccess(planFileId: string, userId: string): Promise<PlanFile | undefined> {
     // Get the plan file and check division access via job
     const [plan] = await db

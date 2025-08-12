@@ -4,11 +4,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
 import PdfViewer from './PdfViewer'
 import OverlayStage from './OverlayStage'
 import ToolPalette from './ToolPalette'
-import { FileText, ChevronLeft } from 'lucide-react'
+import { FileText, ChevronLeft, Upload, File } from 'lucide-react'
 
 interface PageInfo {
   pageNumber: number
@@ -74,13 +77,30 @@ export default function PlansPage() {
   const [calibrations, setCalibrations] = useState<Record<number, CalibrationData>>({})
   const [pageAnnotations, setPageAnnotations] = useState<Record<number, Shape[]>>({})
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [selectedPlanFile, setSelectedPlanFile] = useState<any | null>(null)
+  const [showUploadDialog, setShowUploadDialog] = useState(false)
   
   const queryClient = useQueryClient()
   const { toast } = useToast()
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   
-  // Hardcoded plan file ID
-  const planFileId = '550e8400-e29b-41d4-a716-446655440000'
+  // Current plan file ID from selection
+  const planFileId = selectedPlanFile?.id || '550e8400-e29b-41d4-a716-446655440000'
+
+  // Load plan files for this job
+  const { data: planFilesData, isLoading: planFilesLoading } = useQuery({
+    queryKey: ['/api/jobs', jobId, 'plan-files'],
+    queryFn: async () => {
+      const response = await fetch(`/api/jobs/${jobId}/plan-files`);
+      if (!response.ok) {
+        if (response.status === 404) return { planFiles: [] };
+        throw new Error('Failed to load plan files');
+      }
+      return response.json();
+    },
+    retry: 1,
+    staleTime: 30000, // Cache for 30 seconds
+  });
 
   // Load annotations from API
   const { data: annotationsData, isLoading: annotationsLoading } = useQuery({
@@ -180,6 +200,50 @@ export default function PlansPage() {
     }
   });
 
+  // Upload PDF mutations
+  const getUploadUrlMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch('/api/plans/upload-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!response.ok) throw new Error('Failed to get upload URL');
+      return response.json();
+    }
+  });
+
+  const createPlanFileMutation = useMutation({
+    mutationFn: async ({ jobId, url, filename, pages }: { 
+      jobId: string; 
+      url: string; 
+      filename: string; 
+      pages: number; 
+    }) => {
+      const response = await fetch('/api/plans/files', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jobId, url, filename, pages })
+      });
+      if (!response.ok) throw new Error('Failed to create plan file record');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/jobs', jobId, 'plan-files'] });
+      toast({
+        title: "Upload Complete",
+        description: "PDF plan file uploaded successfully",
+      });
+      setShowUploadDialog(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Upload Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+
   // Load and merge server data into local state keyed by page
   useEffect(() => {
     if (annotationsData?.annotations && !annotationsLoading) {
@@ -245,6 +309,67 @@ export default function PlansPage() {
       }
     };
   }, [shapes, currentPage, debouncedSave, annotationsLoading, annotationsData]);
+
+  // Set default plan file when plan files load
+  useEffect(() => {
+    if (planFilesData?.planFiles?.length > 0 && !selectedPlanFile) {
+      setSelectedPlanFile(planFilesData.planFiles[0]);
+    }
+  }, [planFilesData, selectedPlanFile]);
+
+  // Handle plan file selection change
+  const handlePlanFileSelect = useCallback((planFile: any) => {
+    if (planFile.id !== selectedPlanFile?.id) {
+      setSelectedPlanFile(planFile);
+      setCurrentPage(1);
+      setShapes([]);
+      setThumbnails([]);
+      setPageInfo(null);
+      
+      // Invalidate queries for new plan
+      queryClient.invalidateQueries({ queryKey: ['/api/plans', planFile.id, 'annotations'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/plans', planFile.id, 'scales'] });
+    }
+  }, [selectedPlanFile, queryClient]);
+
+  // Handle PDF upload
+  const handleUploadPDF = useCallback(async (file: File) => {
+    try {
+      // Get upload URL
+      const { uploadUrl } = await getUploadUrlMutation.mutateAsync();
+      
+      // Upload file to R2/S3
+      const uploadResponse = await fetch(uploadUrl, {
+        method: 'PUT',
+        body: file,
+        headers: {
+          'Content-Type': 'application/pdf',
+        },
+      });
+      
+      if (!uploadResponse.ok) {
+        throw new Error('Failed to upload file');
+      }
+      
+      // Extract file URL from upload response
+      const fileUrl = uploadUrl.split('?')[0]; // Remove query params to get clean URL
+      
+      // Create plan file record
+      await createPlanFileMutation.mutateAsync({
+        jobId: jobId!,
+        url: fileUrl,
+        filename: file.name,
+        pages: 1, // Will be updated by backend after PDF processing
+      });
+      
+    } catch (error) {
+      toast({
+        title: "Upload Failed",
+        description: error instanceof Error ? error.message : 'Unknown error occurred',
+        variant: "destructive",
+      });
+    }
+  }, [getUploadUrlMutation, createPlanFileMutation, jobId, toast]);
 
   // Sample PDF URLs for different plans
   const planUrls: Record<string, string> = {
@@ -333,78 +458,67 @@ export default function PlansPage() {
         <div className="w-80 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col">
           {/* Plans List */}
           <div className="p-4 border-b border-slate-200 dark:border-slate-700">
-            <h3 className="font-semibold text-slate-900 dark:text-white mb-3">Plans</h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-slate-900 dark:text-white">Plans</h3>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowUploadDialog(true)}
+                className="text-xs px-2 py-1"
+              >
+                <Upload className="w-3 h-3 mr-1" />
+                Upload
+              </Button>
+            </div>
+            
             <div className="space-y-2">
-              {/* Placeholder plan files */}
-              <div 
-                className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                  selectedPlan === 'plan-1' 
-                    ? 'border-[#4A6FA5] bg-blue-50 dark:bg-blue-950/20' 
-                    : 'border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500'
-                }`}
-                onClick={() => handlePlanSelect('plan-1')}
-              >
-                <div className="flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-slate-500" />
-                  <div>
-                    <div className="text-sm font-medium text-slate-900 dark:text-white">
-                      Floor Plan - First Floor
-                    </div>
-                    <div className="text-xs text-slate-500">
-                      floor-plan-1.pdf
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <div 
-                className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                  selectedPlan === 'plan-2' 
-                    ? 'border-[#4A6FA5] bg-blue-50 dark:bg-blue-950/20' 
-                    : 'border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500'
-                }`}
-                onClick={() => handlePlanSelect('plan-2')}
-              >
-                <div className="flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-slate-500" />
-                  <div>
-                    <div className="text-sm font-medium text-slate-900 dark:text-white">
-                      Elevation - Front
-                    </div>
-                    <div className="text-xs text-slate-500">
-                      elevation-front.pdf
+              {planFilesLoading ? (
+                <div className="text-sm text-slate-500 text-center py-4">Loading plans...</div>
+              ) : planFilesData?.planFiles?.length > 0 ? (
+                planFilesData.planFiles.map((planFile: any) => (
+                  <div
+                    key={planFile.id}
+                    className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                      selectedPlanFile?.id === planFile.id 
+                        ? 'border-[#4A6FA5] bg-blue-50 dark:bg-blue-950/20' 
+                        : 'border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500'
+                    }`}
+                    onClick={() => handlePlanFileSelect(planFile)}
+                  >
+                    <div className="flex items-center gap-2">
+                      <File className="w-4 h-4 text-slate-500" />
+                      <div>
+                        <div className="text-sm font-medium text-slate-900 dark:text-white">
+                          {planFile.filename.replace('.pdf', '')}
+                        </div>
+                        <div className="text-xs text-slate-500">
+                          {planFile.pages} pages • {planFile.filename}
+                        </div>
+                      </div>
                     </div>
                   </div>
+                ))
+              ) : (
+                <div className="text-sm text-slate-500 text-center py-8">
+                  No plans uploaded yet
+                  <br />
+                  <Button
+                    variant="link"
+                    size="sm"
+                    onClick={() => setShowUploadDialog(true)}
+                    className="text-xs mt-2"
+                  >
+                    Upload your first plan
+                  </Button>
                 </div>
-              </div>
-
-              <div 
-                className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                  selectedPlan === 'plan-3' 
-                    ? 'border-[#4A6FA5] bg-blue-50 dark:bg-blue-950/20' 
-                    : 'border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500'
-                }`}
-                onClick={() => handlePlanSelect('plan-3')}
-              >
-                <div className="flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-slate-500" />
-                  <div>
-                    <div className="text-sm font-medium text-slate-900 dark:text-white">
-                      Site Plan
-                    </div>
-                    <div className="text-xs text-slate-500">
-                      site-plan.pdf
-                    </div>
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
           </div>
 
           {/* Page Thumbnails */}
           <div className="flex-1 p-4">
             <h3 className="font-semibold text-slate-900 dark:text-white mb-3">Pages</h3>
-            {selectedPlan && thumbnails.length > 0 ? (
+            {selectedPlanFile && thumbnails.length > 0 ? (
               <div className="space-y-2">
                 {thumbnails.map((thumbnail) => (
                   <div 
@@ -437,14 +551,14 @@ export default function PlansPage() {
                   </div>
                 ))}
               </div>
-            ) : selectedPlan ? (
+            ) : selectedPlanFile ? (
               <div className="text-center text-slate-500 text-sm">
                 <div className="animate-spin w-6 h-6 border-2 border-slate-300 border-t-slate-600 rounded-full mx-auto mb-2"></div>
                 Loading pages...
               </div>
             ) : (
               <div className="text-center text-slate-500 text-sm">
-                Select a plan to view pages
+                Upload a plan to view pages
               </div>
             )}
           </div>
@@ -452,32 +566,50 @@ export default function PlansPage() {
 
         {/* Center - PDF Viewport */}
         <div className="flex-1 bg-slate-100 dark:bg-slate-900 relative">
-          <div className="absolute inset-0">
-            <PdfViewer 
-              pdfUrl={selectedPlan ? planUrls[selectedPlan] : ''}
-              onPageReady={handlePageReady}
-              onThumbsReady={handleThumbsReady}
-              zoom={zoom}
-              setZoom={setZoom}
-              currentPage={currentPage}
-              setCurrentPage={setCurrentPage}
-            />
-            <OverlayStage 
-              pageWidth={pageInfo?.width || 0}
-              pageHeight={pageInfo?.height || 0}
-              zoom={pageInfo?.scale || 1}
-              currentPage={currentPage}
-              activeTool={selectedTool}
-              shapes={shapes}
-              setShapes={setShapes}
-              selectedId={selectedId}
-              setSelectedId={setSelectedId}
-              strokeWidth={strokeWidth}
-              strokeColor={strokeColor}
-              calibrations={calibrations}
-              onCalibration={handleCalibration}
-            />
-          </div>
+          {selectedPlanFile ? (
+            <div className="absolute inset-0">
+              <PdfViewer 
+                pdfUrl={selectedPlanFile.url}
+                onPageReady={handlePageReady}
+                onThumbsReady={handleThumbsReady}
+                zoom={zoom}
+                setZoom={setZoom}
+                currentPage={currentPage}
+                setCurrentPage={setCurrentPage}
+              />
+              <OverlayStage 
+                pageWidth={pageInfo?.width || 0}
+                pageHeight={pageInfo?.height || 0}
+                zoom={pageInfo?.scale || 1}
+                currentPage={currentPage}
+                activeTool={selectedTool}
+                shapes={shapes}
+                setShapes={setShapes}
+                selectedId={selectedId}
+                setSelectedId={setSelectedId}
+                strokeWidth={strokeWidth}
+                strokeColor={strokeColor}
+                calibrations={calibrations}
+                onCalibration={handleCalibration}
+              />
+            </div>
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center">
+                <FileText className="w-16 h-16 text-slate-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">
+                  No Plan Selected
+                </h3>
+                <p className="text-slate-500 mb-4">
+                  Upload a PDF plan to get started with markups and measurements
+                </p>
+                <Button onClick={() => setShowUploadDialog(true)}>
+                  <Upload className="w-4 h-4 mr-2" />
+                  Upload PDF Plan
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right Rail - Tool Palette and Measurements */}
@@ -555,6 +687,43 @@ export default function PlansPage() {
           </div>
         </div>
       </div>
+
+      {/* Upload Dialog */}
+      <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Upload PDF Plan</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="pdf-upload">Select PDF File</Label>
+              <Input
+                id="pdf-upload"
+                type="file"
+                accept=".pdf"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (file && file.type === 'application/pdf') {
+                    await handleUploadPDF(file);
+                  } else {
+                    toast({
+                      title: "Invalid File",
+                      description: "Please select a PDF file",
+                      variant: "destructive",
+                    });
+                  }
+                }}
+                disabled={getUploadUrlMutation.isPending || createPlanFileMutation.isPending}
+              />
+            </div>
+            {(getUploadUrlMutation.isPending || createPlanFileMutation.isPending) && (
+              <div className="text-sm text-blue-600 text-center">
+                Uploading PDF...
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

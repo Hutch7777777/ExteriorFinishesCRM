@@ -516,6 +516,73 @@ Format your response in clear sections with actionable insights.`;
     }
   });
 
+  // Plan file management routes
+  app.get('/api/jobs/:jobId/plan-files', authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { jobId } = req.params;
+      const userId = req.user!.id;
+      
+      // Check if user has access to this job via division
+      const job = await storage.getJobWithDivisionAccess(jobId, userId);
+      if (!job) {
+        return res.status(404).json({ error: "Job not found or access denied" });
+      }
+      
+      const planFiles = await storage.getPlanFilesByJobId(jobId);
+      res.json({ planFiles });
+    } catch (error) {
+      console.error("Error fetching plan files:", error);
+      res.status(500).json({ error: "Failed to fetch plan files" });
+    }
+  });
+
+  app.post('/api/upload-url', authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      // Generate a signed upload URL for S3/R2
+      // For demo purposes, we'll return a mock URL - in production this would be a real presigned URL
+      const uploadId = Math.random().toString(36).substring(7);
+      const uploadUrl = `https://demo-bucket.s3.amazonaws.com/plans/${uploadId}.pdf`;
+      
+      res.json({ uploadUrl });
+    } catch (error) {
+      console.error("Error generating upload URL:", error);
+      res.status(500).json({ error: "Failed to generate upload URL" });
+    }
+  });
+
+  app.post('/api/jobs/:jobId/plan-files', authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { jobId } = req.params;
+      const { url, filename, pages } = req.body;
+      const userId = req.user!.id;
+      
+      // Check if user has access to this job via division
+      const job = await storage.getJobWithDivisionAccess(jobId, userId);
+      if (!job) {
+        return res.status(404).json({ error: "Job not found or access denied" });
+      }
+      
+      // Validate required fields
+      if (!url || !filename) {
+        return res.status(400).json({ error: "URL and filename are required" });
+      }
+      
+      const planFileData = {
+        jobId,
+        url,
+        filename,
+        pages: pages || 1,
+        uploadedBy: userId
+      };
+      
+      const planFile = await storage.createPlanFile(planFileData);
+      res.json({ planFile });
+    } catch (error: any) {
+      console.error("Error creating plan file:", error);
+      res.status(500).json({ error: error.message || "Failed to create plan file" });
+    }
+  });
+
   // Plan annotation routes
   app.get('/api/plans/:planId/annotations', authenticateToken, async (req: AuthenticatedRequest, res) => {
     try {
