@@ -198,31 +198,33 @@ export default function WorkingBluebeamEditor() {
                 style={{ minHeight: '100%' }}
               />
               
-              {/* Annotation overlay */}
+              {/* Annotation overlay - simplified version */}
               <div className="absolute inset-0 pointer-events-auto">
-                <OverlayStage
-                  shapes={shapes}
-                  selectedId={selectedId}
-                  onShapeSelect={setSelectedId}
-                  onShapeUpdate={(id, updates) => {
-                    setShapes(shapes => 
-                      shapes.map(shape => 
-                        shape.id === id ? { ...shape, ...updates } : shape
-                      )
-                    )
-                  }}
-                  onShapeDelete={(id) => {
-                    setShapes(shapes => shapes.filter(shape => shape.id !== id))
-                    setSelectedId(null)
-                  }}
-                  tool={selectedTool}
-                  strokeColor={strokeColor}
-                  strokeWidth={strokeWidth}
-                  onShapeCreate={(shape) => setShapes(shapes => [...shapes, shape])}
-                  stageWidth={window.innerWidth - 80}
-                  stageHeight={window.innerHeight - 80}
-                  calibration={calibrations[currentPage]}
-                />
+                <div 
+                  className="w-full h-full bg-transparent relative"
+                  style={{ minHeight: '100%' }}
+                >
+                  {/* Simple drawing canvas overlay */}
+                  <canvas
+                    className="absolute inset-0 w-full h-full pointer-events-auto"
+                    style={{ zIndex: 10 }}
+                    onMouseDown={(e) => {
+                      if (selectedTool === 'rectangle') {
+                        console.log('Rectangle drawing started at:', e.clientX, e.clientY)
+                      }
+                    }}
+                  />
+                  
+                  {/* Tool indicator */}
+                  <div className="absolute top-4 left-4 bg-black bg-opacity-70 text-white px-3 py-1 rounded text-sm">
+                    Active: {selectedTool}
+                  </div>
+                  
+                  {/* Shape count */}
+                  <div className="absolute top-4 right-4 bg-black bg-opacity-70 text-white px-3 py-1 rounded text-sm">
+                    Shapes: {shapes.length}
+                  </div>
+                </div>
               </div>
             </div>
           ) : (
