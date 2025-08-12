@@ -148,7 +148,7 @@ const testBluebeamRoute = createRoute({
 const primaryBluebeamRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/bluebeam-editor',
-  component: lazy(() => import('./features/plans/WorkingBluebeamEditor'))
+  component: lazy(() => import('./features/plans/FullBluebeamEditor'))
 })
 
 const debugPdfRoute = createRoute({
@@ -167,6 +167,12 @@ const simpleNavRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/simple-nav-pdf',
   component: lazy(() => import('./features/plans/SimpleNavPdf'))
+})
+
+const fullBluebeamRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/full-bluebeam-editor',
+  component: lazy(() => import('./features/plans/FullBluebeamEditor'))
 })
 
 // 404 route
@@ -194,6 +200,7 @@ const routeTree = rootRoute.addChildren([
   debugPdfRoute,
   testNavigationRoute,
   simpleNavRoute,
+  fullBluebeamRoute,
   notFoundRoute
 ])
 
