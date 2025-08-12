@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { FileText, Square, Circle, Type, Ruler, MousePointer, PenTool } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { PdfUploadButton } from './PdfUploadButton'
+import { DrawingCanvas } from './DrawingCanvas'
 
 interface Shape {
   id: string
@@ -161,25 +162,32 @@ export default function WorkingBluebeamEditor() {
                   className="w-full h-full bg-transparent relative"
                   style={{ minHeight: '100%' }}
                 >
-                  {/* Simple drawing canvas overlay */}
-                  <canvas
-                    className="absolute inset-0 w-full h-full pointer-events-auto"
-                    style={{ zIndex: 10 }}
-                    onMouseDown={(e) => {
-                      if (selectedTool === 'rectangle') {
-                        console.log('Rectangle drawing started at:', e.clientX, e.clientY)
-                      }
+                  {/* Functional drawing canvas */}
+                  <DrawingCanvas
+                    activeTool={selectedTool}
+                    strokeColor={strokeColor}
+                    strokeWidth={strokeWidth}
+                    onShapeComplete={(shape) => {
+                      console.log('Shape completed:', shape)
+                      setShapes(prev => [...prev, shape])
                     }}
                   />
                   
                   {/* Tool indicator */}
-                  <div className="absolute top-4 left-4 bg-black bg-opacity-70 text-white px-3 py-1 rounded text-sm">
+                  <div className="absolute top-4 left-4 bg-black bg-opacity-70 text-white px-3 py-1 rounded text-sm z-20 pointer-events-none">
                     Active: {selectedTool}
                   </div>
                   
                   {/* Shape count */}
-                  <div className="absolute top-4 right-4 bg-black bg-opacity-70 text-white px-3 py-1 rounded text-sm">
+                  <div className="absolute top-4 right-4 bg-black bg-opacity-70 text-white px-3 py-1 rounded text-sm z-20 pointer-events-none">
                     Shapes: {shapes.length}
+                  </div>
+                  
+                  {/* Instructions */}
+                  <div className="absolute bottom-4 left-4 bg-black bg-opacity-70 text-white px-3 py-1 rounded text-sm z-20 pointer-events-none">
+                    {selectedTool === 'select' ? 'Click shapes to select them' :
+                     selectedTool === 'text' ? 'Click to add text' :
+                     'Click and drag to draw ' + selectedTool}
                   </div>
                 </div>
               </div>
