@@ -11,7 +11,10 @@ import {
   Circle, 
   Minus, 
   Pentagon, 
-  Highlighter 
+  Highlighter,
+  Ruler,
+  Move3D,
+  Calculator
 } from 'lucide-react'
 
 interface ToolPaletteProps {
@@ -32,6 +35,12 @@ const tools = [
   { id: 'polyline', label: 'Polyline', icon: Minus },
   { id: 'polygon', label: 'Polygon', icon: Pentagon },
   { id: 'highlighter', label: 'Highlighter', icon: Highlighter },
+]
+
+const measureTools = [
+  { id: 'calibrate', label: 'Calibrate', icon: Move3D },
+  { id: 'measure_line', label: 'Measure Line', icon: Ruler },
+  { id: 'measure_area', label: 'Measure Area', icon: Calculator },
 ]
 
 const predefinedColors = [
@@ -78,6 +87,36 @@ export default function ToolPalette({
                 >
                   <Icon className="w-4 h-4" />
                   <span className="text-xs">{tool.label}</span>
+                </Button>
+              )
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Measurement Tools */}
+      <Card className="m-4 mb-2">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm">Measurement Tools</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="grid grid-cols-1 gap-2">
+            {measureTools.map((tool) => {
+              const Icon = tool.icon
+              return (
+                <Button
+                  key={tool.id}
+                  variant={selectedTool === tool.id ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => onToolSelect(tool.id)}
+                  className={`h-10 flex items-center gap-2 ${
+                    selectedTool === tool.id 
+                      ? 'bg-gradient-to-r from-[#4A6FA5] to-[#2C3E50] hover:from-[#3A5A95] hover:to-[#1C2E40]' 
+                      : ''
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span className="text-xs font-medium">{tool.label}</span>
                 </Button>
               )
             })}

@@ -13,7 +13,7 @@ interface ShapeStyle {
 
 interface Shape {
   id: string
-  type: 'rect' | 'ellipse' | 'polyline' | 'polygon' | 'arrow' | 'text' | 'highlighter'
+  type: 'rect' | 'ellipse' | 'polyline' | 'polygon' | 'arrow' | 'text' | 'highlighter' | 'measure_line' | 'measure_area'
   page: number
   points?: number[] // for polyline, polygon, arrow (normalized 0-1)
   x?: number // for rect, ellipse, text (normalized 0-1)
@@ -24,7 +24,16 @@ interface Shape {
   meta: {
     text?: string
     fontSize?: number
+    length?: number
+    area?: number
+    perimeter?: number
+    units?: string
   }
+}
+
+interface CalibrationData {
+  pixelsPerUnit: number
+  units: string
 }
 
 interface OverlayStageProps {
@@ -39,6 +48,8 @@ interface OverlayStageProps {
   setSelectedId: (id: string | null) => void
   strokeWidth: number
   strokeColor: string
+  calibrations: Record<number, CalibrationData>
+  setCalibrations: (calibrations: Record<number, CalibrationData>) => void
 }
 
 export default function OverlayStage({
@@ -52,16 +63,24 @@ export default function OverlayStage({
   selectedId,
   setSelectedId,
   strokeWidth,
-  strokeColor
+  strokeColor,
+  calibrations,
+  setCalibrations
 }: OverlayStageProps) {
   const stageRef = useRef<Konva.Stage>(null)
   const transformerRef = useRef<Konva.Transformer>(null)
   const [isDrawing, setIsDrawing] = useState(false)
   const [currentPoints, setCurrentPoints] = useState<number[]>([])
   const [tempShape, setTempShape] = useState<Shape | null>(null)
+  const [calibrationPoints, setCalibrationPoints] = useState<number[]>([])
+  const [showCalibrationDialog, setShowCalibrationDialog] = useState(false)
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
 
   const stageWidth = pageWidth * zoom
   const stageHeight = pageHeight * zoom
+  
+  // Get calibration for current page
+  const currentCalibration = calibrations?.[currentPage]
 
   // Convert normalized coordinates to pixel coordinates
   const normalizedToPixel = useCallback((normalizedCoord: number, dimension: 'width' | 'height') => {
@@ -96,6 +115,9 @@ export default function OverlayStage({
         case 'ellipse':
         case 'polyline':
         case 'polygon':
+        case 'measure_line':
+        case 'measure_area':
+        case 'calibrate':
           container.style.cursor = 'crosshair'
           break
         case 'highlighter':
@@ -118,6 +140,8 @@ export default function OverlayStage({
         setCurrentPoints([])
         setTempShape(null)
         setSelectedId(null)
+        setCalibrationPoints([])
+        setShowCalibrationDialog(false)
       }
     }
 
@@ -142,11 +166,93 @@ export default function OverlayStage({
 
   const generateId = () => `shape_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 
+  // Calculate distance between two points in pixels
+  const calculatePixelDistance = useCallback((points: number[]) => {
+    if (points.length < 4) return 0
+    let totalDistance = 0
+    for (let i = 0; i < points.length - 2; i += 2) {
+      const x1 = normalizedToPixel(points[i], 'width')
+      const y1 = normalizedToPixel(points[i + 1], 'height')
+      const x2 = normalizedToPixel(points[i + 2], 'width')
+      const y2 = normalizedToPixel(points[i + 3], 'height')
+      totalDistance += Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+    }
+    return totalDistance
+  }, [normalizedToPixel])
+
+  // Calculate polygon area using shoelace formula
+  const calculatePolygonArea = useCallback((points: number[]) => {
+    if (points.length < 6) return 0
+    let area = 0
+    const pixelPoints = []
+    for (let i = 0; i < points.length; i += 2) {
+      pixelPoints.push({
+        x: normalizedToPixel(points[i], 'width'),
+        y: normalizedToPixel(points[i + 1], 'height')
+      })
+    }
+    
+    for (let i = 0; i < pixelPoints.length; i++) {
+      const j = (i + 1) % pixelPoints.length
+      area += pixelPoints[i].x * pixelPoints[j].y
+      area -= pixelPoints[j].x * pixelPoints[i].y
+    }
+    return Math.abs(area) / 2
+  }, [normalizedToPixel])
+
+  // Convert measurements to real world units
+  const convertToRealUnits = useCallback((pixelValue: number, isArea = false) => {
+    if (!currentCalibration) return { value: pixelValue, units: 'px' }
+    
+    if (isArea) {
+      const realArea = pixelValue / (currentCalibration.pixelsPerUnit ** 2)
+      const units = currentCalibration.units === 'ft' ? 'ft²' : 
+                   currentCalibration.units === 'in' ? 'in²' : 'm²'
+      return { value: realArea, units }
+    } else {
+      const realLength = pixelValue / currentCalibration.pixelsPerUnit
+      return { value: realLength, units: currentCalibration.units }
+    }
+  }, [currentCalibration])
+
+  const handleCalibrationComplete = (distance: number, units: string) => {
+    if (calibrationPoints.length >= 4) {
+      const pixelDistance = Math.sqrt(
+        (normalizedToPixel(calibrationPoints[2], 'width') - normalizedToPixel(calibrationPoints[0], 'width')) ** 2 +
+        (normalizedToPixel(calibrationPoints[3], 'height') - normalizedToPixel(calibrationPoints[1], 'height')) ** 2
+      )
+      
+      const pixelsPerUnit = pixelDistance / distance
+      
+      setCalibrations({
+        ...calibrations,
+        [currentPage]: { pixelsPerUnit, units }
+      })
+    }
+    
+    setCalibrationPoints([])
+    setShowCalibrationDialog(false)
+  }
+
   const handleStageMouseDown = (e: any) => {
     const stage = e.target.getStage()
     const pos = stage.getPointerPosition()
     
     if (!pos) return
+
+    // Handle calibration tool
+    if (activeTool === 'calibrate') {
+      const normalizedX = pixelToNormalized(pos.x, 'width')
+      const normalizedY = pixelToNormalized(pos.y, 'height')
+      
+      if (calibrationPoints.length === 0) {
+        setCalibrationPoints([normalizedX, normalizedY])
+      } else if (calibrationPoints.length === 2) {
+        setCalibrationPoints([...calibrationPoints, normalizedX, normalizedY])
+        setShowCalibrationDialog(true)
+      }
+      return
+    }
 
     // If clicking on empty area with select tool, deselect
     if (activeTool === 'select' && e.target === stage) {
@@ -187,6 +293,8 @@ export default function OverlayStage({
       case 'polyline':
       case 'polygon':
       case 'arrow':
+      case 'measure_line':
+      case 'measure_area':
         newShape.points = [normalizedX, normalizedY]
         setCurrentPoints([normalizedX, normalizedY])
         break
@@ -207,11 +315,14 @@ export default function OverlayStage({
   }
 
   const handleStageMouseMove = (e: any) => {
-    if (!isDrawing || !tempShape) return
-
     const stage = e.target.getStage()
     const pos = stage.getPointerPosition()
     if (!pos) return
+    
+    // Update mouse position for measurement display
+    setMousePos({ x: pos.x, y: pos.y })
+
+    if (!isDrawing || !tempShape) return
 
     const normalizedX = pixelToNormalized(pos.x, 'width')
     const normalizedY = pixelToNormalized(pos.y, 'height')
@@ -227,8 +338,17 @@ export default function OverlayStage({
         break
       case 'polyline':
       case 'arrow':
+      case 'measure_line':
         if (tempShape.points) {
           updatedShape.points = [...tempShape.points.slice(0, -2), normalizedX, normalizedY]
+          
+          // Calculate live measurement for measure_line
+          if (activeTool === 'measure_line') {
+            const pixelDistance = calculatePixelDistance(updatedShape.points)
+            const realMeasurement = convertToRealUnits(pixelDistance)
+            updatedShape.meta.length = realMeasurement.value
+            updatedShape.meta.units = realMeasurement.units
+          }
         }
         break
     }
@@ -239,8 +359,8 @@ export default function OverlayStage({
   const handleStageMouseUp = () => {
     if (!isDrawing || !tempShape) return
 
-    if (activeTool === 'polyline' || activeTool === 'polygon') {
-      // Continue drawing for polyline/polygon - double click to finish
+    if (activeTool === 'polyline' || activeTool === 'polygon' || activeTool === 'measure_line' || activeTool === 'measure_area') {
+      // Continue drawing for polyline/polygon/measurements - double click to finish
       return
     }
 
@@ -252,13 +372,34 @@ export default function OverlayStage({
   }
 
   const handleStageDoubleClick = () => {
-    if (isDrawing && tempShape && (activeTool === 'polyline' || activeTool === 'polygon')) {
-      // Finish polyline/polygon
+    if (isDrawing && tempShape && (activeTool === 'polyline' || activeTool === 'polygon' || activeTool === 'measure_line' || activeTool === 'measure_area')) {
+      // Finish polyline/polygon/measurements
       let finalShape = { ...tempShape }
       
-      if (activeTool === 'polygon' && finalShape.points && finalShape.points.length >= 6) {
+      if ((activeTool === 'polygon' || activeTool === 'measure_area') && finalShape.points && finalShape.points.length >= 6) {
         // Close the polygon
         finalShape.points = [...finalShape.points, finalShape.points[0], finalShape.points[1]]
+        
+        // Calculate area for measure_area
+        if (activeTool === 'measure_area') {
+          const pixelArea = calculatePolygonArea(finalShape.points)
+          const realMeasurement = convertToRealUnits(pixelArea, true)
+          finalShape.meta.area = realMeasurement.value
+          finalShape.meta.units = realMeasurement.units
+          
+          // Also calculate perimeter
+          const pixelPerimeter = calculatePixelDistance(finalShape.points)
+          const realPerimeter = convertToRealUnits(pixelPerimeter)
+          finalShape.meta.perimeter = realPerimeter.value
+        }
+      }
+      
+      // Final calculation for measure_line
+      if (activeTool === 'measure_line' && finalShape.points) {
+        const pixelDistance = calculatePixelDistance(finalShape.points)
+        const realMeasurement = convertToRealUnits(pixelDistance)
+        finalShape.meta.length = realMeasurement.value
+        finalShape.meta.units = realMeasurement.units
       }
       
       setShapes([...(shapes || []), finalShape])
@@ -338,6 +479,7 @@ export default function OverlayStage({
         )
       
       case 'polyline':
+      case 'measure_line':
         return (
           <Line
             {...commonProps}
@@ -350,6 +492,7 @@ export default function OverlayStage({
         )
       
       case 'polygon':
+      case 'measure_area':
         return (
           <Line
             {...commonProps}
@@ -419,6 +562,23 @@ export default function OverlayStage({
           {/* Render temporary shape while drawing */}
           {tempShape && renderShape(tempShape)}
           
+          {/* Render calibration line if in progress */}
+          {activeTool === 'calibrate' && calibrationPoints.length >= 2 && (
+            <Line
+              points={[
+                normalizedToPixel(calibrationPoints[0], 'width'),
+                normalizedToPixel(calibrationPoints[1], 'height'),
+                ...(calibrationPoints.length >= 4 ? [
+                  normalizedToPixel(calibrationPoints[2], 'width'),
+                  normalizedToPixel(calibrationPoints[3], 'height')
+                ] : [mousePos.x, mousePos.y])
+              ]}
+              stroke="#ff6b35"
+              strokeWidth={3}
+              dash={[5, 5]}
+            />
+          )}
+          
           {/* Transformer for selected shapes */}
           {activeTool === 'select' && (
             <Transformer
@@ -433,6 +593,108 @@ export default function OverlayStage({
           )}
         </Layer>
       </Stage>
+
+      {/* Live measurement display */}
+      {isDrawing && tempShape && (activeTool === 'measure_line' || activeTool === 'measure_area') && (
+        <div 
+          className="absolute bg-black/80 text-white px-2 py-1 rounded text-sm pointer-events-none z-10"
+          style={{ 
+            left: mousePos.x + 10, 
+            top: mousePos.y - 30,
+            transform: mousePos.x > stageWidth - 100 ? 'translateX(-100%)' : 'none'
+          }}
+        >
+          {activeTool === 'measure_line' && tempShape.meta.length && (
+            `${tempShape.meta.length.toFixed(2)} ${tempShape.meta.units}`
+          )}
+          {activeTool === 'measure_area' && tempShape.points && tempShape.points.length >= 6 && (
+            `Area: ${calculatePolygonArea(tempShape.points).toFixed(0)} px²`
+          )}
+        </div>
+      )}
+
+      {/* Calibration dialog */}
+      {showCalibrationDialog && (
+        <CalibrationDialog
+          onComplete={handleCalibrationComplete}
+          onCancel={() => {
+            setShowCalibrationDialog(false)
+            setCalibrationPoints([])
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+// Calibration dialog component
+interface CalibrationDialogProps {
+  onComplete: (distance: number, units: string) => void
+  onCancel: () => void
+}
+
+function CalibrationDialog({ onComplete, onCancel }: CalibrationDialogProps) {
+  const [distance, setDistance] = useState('')
+  const [units, setUnits] = useState('ft')
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    const dist = parseFloat(distance)
+    if (!isNaN(dist) && dist > 0) {
+      onComplete(dist, units)
+    }
+  }
+
+  return (
+    <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-20">
+      <div className="bg-white dark:bg-slate-800 rounded-lg p-6 w-80 shadow-xl">
+        <h3 className="text-lg font-semibold mb-4 text-slate-900 dark:text-white">
+          Calibrate Scale
+        </h3>
+        <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+          Enter the real-world distance between the two points you selected:
+        </p>
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="flex gap-2">
+            <input
+              type="number"
+              step="0.1"
+              value={distance}
+              onChange={(e) => setDistance(e.target.value)}
+              placeholder="Distance"
+              className="flex-1 px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+              autoFocus
+              required
+            />
+            <select
+              value={units}
+              onChange={(e) => setUnits(e.target.value)}
+              className="px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+            >
+              <option value="ft">ft</option>
+              <option value="in">in</option>
+              <option value="m">m</option>
+            </select>
+          </div>
+          
+          <div className="flex gap-2 justify-end">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="px-4 py-2 text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            >
+              Calibrate
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   )
 }

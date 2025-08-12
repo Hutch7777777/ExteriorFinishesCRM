@@ -31,7 +31,7 @@ interface ShapeStyle {
 
 interface Shape {
   id: string
-  type: 'rect' | 'ellipse' | 'polyline' | 'polygon' | 'arrow' | 'text' | 'highlighter'
+  type: 'rect' | 'ellipse' | 'polyline' | 'polygon' | 'arrow' | 'text' | 'highlighter' | 'measure_line' | 'measure_area'
   page: number
   points?: number[]
   x?: number
@@ -42,7 +42,16 @@ interface Shape {
   meta: {
     text?: string
     fontSize?: number
+    length?: number
+    area?: number
+    perimeter?: number
+    units?: string
   }
+}
+
+interface CalibrationData {
+  pixelsPerUnit: number
+  units: string
 }
 
 export default function PlansPage() {
@@ -60,6 +69,7 @@ export default function PlansPage() {
   const [pageInfo, setPageInfo] = useState<PageInfo | null>(null)
   const [shapes, setShapes] = useState<Shape[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [calibrations, setCalibrations] = useState<Record<number, CalibrationData>>({})
 
   // Sample PDF URLs for different plans
   const planUrls: Record<string, string> = {
@@ -265,12 +275,14 @@ export default function PlansPage() {
               setSelectedId={setSelectedId}
               strokeWidth={strokeWidth}
               strokeColor={strokeColor}
+              calibrations={calibrations}
+              setCalibrations={setCalibrations}
             />
           </div>
         </div>
 
-        {/* Right Rail - Tool Palette */}
-        <div className="w-80 bg-white dark:bg-slate-800 border-l border-slate-200 dark:border-slate-700">
+        {/* Right Rail - Tool Palette and Measurements */}
+        <div className="w-80 bg-white dark:bg-slate-800 border-l border-slate-200 dark:border-slate-700 flex flex-col">
           <ToolPalette 
             selectedTool={selectedTool}
             onToolSelect={setSelectedTool}
@@ -279,6 +291,69 @@ export default function PlansPage() {
             strokeColor={strokeColor}
             onStrokeColorChange={setStrokeColor}
           />
+          
+          {/* Measurement Summary */}
+          <div className="border-t border-slate-200 dark:border-slate-700 p-4">
+            <h3 className="font-semibold text-slate-900 dark:text-white mb-3">Measurements</h3>
+            
+            {/* Calibration Status */}
+            <div className="mb-3 p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
+              <div className="text-sm">
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-600 dark:text-slate-400">Scale:</span>
+                  <span className="font-medium text-slate-900 dark:text-white">
+                    {calibrations[currentPage] ? (
+                      `1 px = ${(1 / calibrations[currentPage].pixelsPerUnit).toFixed(3)} ${calibrations[currentPage].units}`
+                    ) : (
+                      'Not calibrated'
+                    )}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Active Measurements */}
+            <div className="space-y-2">
+              {shapes
+                .filter(shape => shape.page === currentPage && (shape.type === 'measure_line' || shape.type === 'measure_area'))
+                .map(shape => (
+                  <div 
+                    key={shape.id}
+                    className={`p-2 rounded border cursor-pointer transition-colors ${
+                      selectedId === shape.id 
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/20' 
+                        : 'border-slate-200 dark:border-slate-600 hover:border-slate-300'
+                    }`}
+                    onClick={() => setSelectedId(shape.id)}
+                  >
+                    <div className="text-xs text-slate-500 uppercase tracking-wide">
+                      {shape.type === 'measure_line' ? 'Length' : 'Area'}
+                    </div>
+                    <div className="text-sm font-medium text-slate-900 dark:text-white">
+                      {shape.type === 'measure_line' && shape.meta.length && (
+                        `${shape.meta.length.toFixed(2)} ${shape.meta.units}`
+                      )}
+                      {shape.type === 'measure_area' && shape.meta.area && (
+                        <>
+                          <div>{shape.meta.area.toFixed(2)} {shape.meta.units}</div>
+                          {shape.meta.perimeter && (
+                            <div className="text-xs text-slate-500">
+                              Perimeter: {shape.meta.perimeter.toFixed(2)} {shape.meta.units?.replace('²', '')}
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))
+              }
+              {shapes.filter(shape => shape.page === currentPage && (shape.type === 'measure_line' || shape.type === 'measure_area')).length === 0 && (
+                <div className="text-sm text-slate-500 text-center py-4">
+                  No measurements on this page
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>
