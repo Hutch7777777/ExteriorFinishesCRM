@@ -92,19 +92,55 @@ export default function SimpleTestPage() {
     'Text': { visible: true, locked: false, opacity: 1 }
   })
   const [showEditor, setShowEditor] = useState(false)
+  const [uploadedPdfUrl, setUploadedPdfUrl] = useState<string | null>(null)
+  const [isUploading, setIsUploading] = useState(false)
 
   const handleTestEditor = () => {
     setShowEditor(true)
     toast({
       title: "BlueBeam Editor Loaded",
-      description: "Test PDF loaded successfully. All annotation tools are available.",
+      description: "Editor ready. Upload a PDF or use the sample document.",
     })
   }
 
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file || file.type !== 'application/pdf') {
+      toast({
+        title: "Invalid File",
+        description: "Please select a PDF file",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setIsUploading(true)
+    try {
+      // Create a blob URL for the uploaded PDF
+      const pdfUrl = URL.createObjectURL(file)
+      setUploadedPdfUrl(pdfUrl)
+      
+      toast({
+        title: "PDF Uploaded Successfully",
+        description: `${file.name} is now loaded in the editor`,
+      })
+    } catch (error) {
+      toast({
+        title: "Upload Failed",
+        description: "Failed to load the PDF file",
+        variant: "destructive",
+      })
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  const currentPdfUrl = uploadedPdfUrl || 'https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf'
+  
   const testPlanFile = {
     id: 'test-plan-file-id',
-    filename: 'Test Plan.pdf',
-    url: 'https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf',
+    filename: uploadedPdfUrl ? 'Uploaded Plan.pdf' : 'Test Plan.pdf',
+    url: currentPdfUrl,
     pages: 14
   }
 
@@ -117,15 +153,60 @@ export default function SimpleTestPage() {
             BlueBeam-Style PDF Editor Test
           </h1>
           <p className="text-slate-600 dark:text-slate-400 mb-8 max-w-md">
-            Click the button below to launch the full BlueBeam-style PDF editor with all professional annotation and measurement tools.
+            Upload your own PDF plans or use the sample document to test all professional annotation and measurement tools.
           </p>
-          <Button 
-            onClick={handleTestEditor}
-            className="bg-blue-600 hover:bg-blue-700 px-8 py-3 text-lg"
-          >
-            <FileText className="w-5 h-5 mr-2" />
-            Launch BlueBeam Editor
-          </Button>
+          
+          <div className="space-y-4">
+            {/* File Upload */}
+            <div className="flex items-center justify-center">
+              <label className="cursor-pointer">
+                <input
+                  type="file"
+                  accept=".pdf"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  disabled={isUploading}
+                />
+                <div className="bg-slate-100 dark:bg-slate-700 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg p-6 hover:border-blue-400 transition-colors">
+                  <div className="text-center">
+                    {isUploading ? (
+                      <>
+                        <div className="animate-spin w-8 h-8 border-2 border-slate-400 border-t-blue-600 rounded-full mx-auto mb-2"></div>
+                        <p className="text-slate-600 dark:text-slate-400">Uploading PDF...</p>
+                      </>
+                    ) : (
+                      <>
+                        <FileText className="w-12 h-12 text-slate-400 mx-auto mb-2" />
+                        <p className="text-slate-600 dark:text-slate-400 font-medium">
+                          Click to upload your PDF plans
+                        </p>
+                        <p className="text-xs text-slate-500 mt-1">
+                          Supports PDF files up to 50MB
+                        </p>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </label>
+            </div>
+            
+            {uploadedPdfUrl && (
+              <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg p-3">
+                <p className="text-green-800 dark:text-green-200 text-sm font-medium">
+                  ✓ PDF uploaded successfully and ready for editing
+                </p>
+              </div>
+            )}
+            
+            <Button 
+              onClick={handleTestEditor}
+              className="bg-blue-600 hover:bg-blue-700 px-8 py-3 text-lg w-full"
+              disabled={isUploading}
+            >
+              <FileText className="w-5 h-5 mr-2" />
+              {uploadedPdfUrl ? 'Open Your PDF in BlueBeam Editor' : 'Launch BlueBeam Editor with Sample'}
+            </Button>
+          </div>
         </div>
       </div>
     )
@@ -137,13 +218,46 @@ export default function SimpleTestPage() {
       <div className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => setShowEditor(false)}
-            >
-              Back to Test Page
-            </Button>
+            <div className="flex items-center gap-4">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setShowEditor(false)}
+              >
+                Back to Test Page
+              </Button>
+              
+              {/* Upload button in editor header */}
+              <label className="cursor-pointer">
+                <input
+                  type="file"
+                  accept=".pdf"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  disabled={isUploading}
+                />
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  disabled={isUploading}
+                  asChild
+                >
+                  <span>
+                    {isUploading ? (
+                      <>
+                        <div className="animate-spin w-4 h-4 border border-slate-400 border-t-blue-600 rounded-full mr-2"></div>
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <FileText className="w-4 h-4 mr-2" />
+                        Upload New PDF
+                      </>
+                    )}
+                  </span>
+                </Button>
+              </label>
+            </div>
             <div>
               <h1 className="text-2xl font-bold text-slate-900 dark:text-white">BlueBeam Test Editor</h1>
               <p className="text-sm text-slate-600 dark:text-slate-400">
