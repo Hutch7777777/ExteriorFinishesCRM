@@ -83,10 +83,15 @@ The system features a React-based frontend with TypeScript, a Node.js Express ba
 - ✅ Created working annotation overlay system with canvas drawing capabilities
 - ✅ Established primary BlueBeam editor route at `/bluebeam-editor` for production use
 - ✅ Successfully bypassed all PDF.js worker conflicts and version mismatch issues
+- ✅ User decision: Moving BlueBeam editor to separate dedicated site for enhanced functionality and easier development
 
 # User Preferences
 
 Preferred communication style: Simple, everyday language.
+
+## Strategic Decisions
+- BlueBeam-style PDF editor: Moving to separate dedicated website for enhanced functionality, easier development, and professional-grade features
+- Integration approach: Link from CRM to external editor for seamless workflow
 
 # System Architecture
 
