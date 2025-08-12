@@ -20,6 +20,31 @@ interface Thumbnail {
   canvas: HTMLCanvasElement
 }
 
+interface ShapeStyle {
+  stroke: string
+  width: number
+  fill?: string
+  opacity?: number
+  arrowStart?: boolean
+  arrowEnd?: boolean
+}
+
+interface Shape {
+  id: string
+  type: 'rect' | 'ellipse' | 'polyline' | 'polygon' | 'arrow' | 'text' | 'highlighter'
+  page: number
+  points?: number[]
+  x?: number
+  y?: number
+  w?: number
+  h?: number
+  style: ShapeStyle
+  meta: {
+    text?: string
+    fontSize?: number
+  }
+}
+
 export default function PlansPage() {
   const params = useParams()
   const jobId = params?.jobId
@@ -33,6 +58,8 @@ export default function PlansPage() {
   const [zoom, setZoom] = useState(1)
   const [thumbnails, setThumbnails] = useState<Thumbnail[]>([])
   const [pageInfo, setPageInfo] = useState<PageInfo | null>(null)
+  const [shapes, setShapes] = useState<Shape[]>([])
+  const [selectedId, setSelectedId] = useState<string | null>(null)
 
   // Sample PDF URLs for different plans
   const planUrls: Record<string, string> = {
@@ -227,7 +254,15 @@ export default function PlansPage() {
               setCurrentPage={setCurrentPage}
             />
             <OverlayStage 
-              selectedTool={selectedTool}
+              pageWidth={pageInfo?.width || 0}
+              pageHeight={pageInfo?.height || 0}
+              zoom={pageInfo?.scale || 1}
+              currentPage={currentPage}
+              activeTool={selectedTool}
+              shapes={shapes}
+              setShapes={setShapes}
+              selectedId={selectedId}
+              setSelectedId={setSelectedId}
               strokeWidth={strokeWidth}
               strokeColor={strokeColor}
             />
