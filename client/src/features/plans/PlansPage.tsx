@@ -252,6 +252,70 @@ export default function PlansPage() {
     }
   });
 
+  // Export PDF mutation
+  const exportMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedPlanFile) {
+        throw new Error('No plan file selected');
+      }
+      
+      const response = await fetch(`/api/plans/${selectedPlanFile.id}/export`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to export PDF');
+      }
+      
+      return response;
+    },
+    onSuccess: async (response) => {
+      // Handle file download
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      
+      // Get filename from response headers or create one
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = 'annotated_plan.pdf';
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+        if (filenameMatch) {
+          filename = filenameMatch[1];
+        }
+      }
+      
+      a.style.display = 'none';
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      toast({
+        title: "Export Complete",
+        description: "PDF with flattened annotations has been downloaded",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Export Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Handle export PDF
+  const handleExportPDF = useCallback(() => {
+    if (selectedPlanFile) {
+      exportMutation.mutate();
+    }
+  }, [selectedPlanFile, exportMutation]);
+
   // Load and merge server data into local state keyed by page
   useEffect(() => {
     if (annotationsData?.annotations && !annotationsLoading) {
@@ -453,8 +517,13 @@ export default function PlansPage() {
             <Button variant="outline" size="sm">
               Upload Plans
             </Button>
-            <Button variant="outline" size="sm">
-              Export
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleExportPDF}
+              disabled={!selectedPlanFile || exportMutation.isPending}
+            >
+              {exportMutation.isPending ? 'Exporting...' : 'Export Flattened PDF'}
             </Button>
           </div>
         </div>

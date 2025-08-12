@@ -673,6 +673,357 @@ Format your response in clear sections with actionable insights.`;
     }
   });
 
+  // Plan export route - flatten annotations into PDF
+  app.post('/api/plans/:planId/export', authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { planId } = req.params;
+      const userId = req.user!.id;
+      
+      // Check if user has access to this plan via job division
+      const plan = await storage.getPlanFileWithDivisionAccess(planId, userId);
+      if (!plan) {
+        return res.status(404).json({ error: "Plan file not found or access denied" });
+      }
+      
+      // Get all annotations for this plan
+      const annotations = await storage.getPlanAnnotations(planId);
+      
+      // Get all scales for this plan
+      const scales = await storage.getPlanScales(planId);
+      
+      // Create a scales lookup by page
+      const scalesByPage: Record<number, { pixelPerUnit: number; unit: string }> = {};
+      scales.forEach(scale => {
+        scalesByPage[scale.page] = {
+          pixelPerUnit: scale.pixelPerUnit,
+          unit: scale.unit
+        };
+      });
+      
+      // Import pdf-lib
+      const { PDFDocument, rgb, degrees } = await import('pdf-lib');
+      
+      // Load the original PDF from URL
+      let pdfBytes: Uint8Array;
+      try {
+        const response = await fetch(plan.url);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch PDF: ${response.statusText}`);
+        }
+        const arrayBuffer = await response.arrayBuffer();
+        pdfBytes = new Uint8Array(arrayBuffer);
+      } catch (error) {
+        console.error("Error fetching PDF:", error);
+        return res.status(500).json({ error: "Failed to fetch source PDF" });
+      }
+      
+      // Load PDF document
+      const pdfDoc = await PDFDocument.load(pdfBytes);
+      const pages = pdfDoc.getPages();
+      
+      // Group annotations by page
+      const annotationsByPage: Record<number, typeof annotations> = {};
+      annotations.forEach(annotation => {
+        if (!annotationsByPage[annotation.page]) {
+          annotationsByPage[annotation.page] = [];
+        }
+        annotationsByPage[annotation.page].push(annotation);
+      });
+      
+      // Process each page
+      for (let pageNum = 1; pageNum <= pages.length; pageNum++) {
+        const page = pages[pageNum - 1];
+        const pageAnnotations = annotationsByPage[pageNum] || [];
+        
+        if (pageAnnotations.length === 0) continue;
+        
+        const { width: pageWidth, height: pageHeight } = page.getSize();
+        
+        // Helper function to convert normalized coordinates to PDF coordinates
+        const normalizedToPdf = (normalizedValue: number, dimension: 'width' | 'height') => {
+          if (dimension === 'width') {
+            return normalizedValue * pageWidth;
+          } else {
+            // PDF coordinates have origin at bottom-left, we need to flip Y
+            return pageHeight - (normalizedValue * pageHeight);
+          }
+        };
+        
+        // Process each annotation on this page
+        for (const annotation of pageAnnotations) {
+          const shape = annotation.data as any; // Shape data from client
+          
+          // Convert color from hex to RGB
+          const hexColor = shape.style?.stroke || '#ff0000';
+          const hexR = parseInt(hexColor.slice(1, 3), 16) / 255;
+          const hexG = parseInt(hexColor.slice(3, 5), 16) / 255;
+          const hexB = parseInt(hexColor.slice(5, 7), 16) / 255;
+          const strokeColor = rgb(hexR, hexG, hexB);
+          
+          const fillColor = shape.style?.fill ? 
+            (() => {
+              const fillHex = shape.style.fill;
+              const fR = parseInt(fillHex.slice(1, 3), 16) / 255;
+              const fG = parseInt(fillHex.slice(3, 5), 16) / 255;
+              const fB = parseInt(fillHex.slice(5, 7), 16) / 255;
+              return rgb(fR, fG, fB);
+            })() : undefined;
+          
+          const strokeWidth = shape.style?.width || 2;
+          const opacity = shape.style?.opacity || 1;
+          
+          switch (shape.type) {
+            case 'rect':
+              if (shape.x !== undefined && shape.y !== undefined && shape.w !== undefined && shape.h !== undefined) {
+                const x = normalizedToPdf(shape.x, 'width');
+                const y = normalizedToPdf(shape.y + shape.h, 'height'); // Bottom-left corner
+                const width = normalizedToPdf(shape.w, 'width') - normalizedToPdf(0, 'width');
+                const height = normalizedToPdf(shape.h, 'height') - normalizedToPdf(0, 'height');
+                
+                page.drawRectangle({
+                  x,
+                  y,
+                  width,
+                  height,
+                  borderColor: strokeColor,
+                  borderWidth: strokeWidth,
+                  color: fillColor,
+                  opacity: fillColor ? opacity : undefined,
+                  borderOpacity: opacity
+                });
+              }
+              break;
+              
+            case 'ellipse':
+              if (shape.x !== undefined && shape.y !== undefined && shape.w !== undefined && shape.h !== undefined) {
+                const centerX = normalizedToPdf(shape.x + shape.w / 2, 'width');
+                const centerY = normalizedToPdf(shape.y + shape.h / 2, 'height');
+                const radiusX = (normalizedToPdf(shape.w, 'width') - normalizedToPdf(0, 'width')) / 2;
+                const radiusY = (normalizedToPdf(shape.h, 'height') - normalizedToPdf(0, 'height')) / 2;
+                
+                page.drawEllipse({
+                  x: centerX,
+                  y: centerY,
+                  xScale: radiusX,
+                  yScale: radiusY,
+                  borderColor: strokeColor,
+                  borderWidth: strokeWidth,
+                  color: fillColor,
+                  opacity: fillColor ? opacity : undefined,
+                  borderOpacity: opacity
+                });
+              }
+              break;
+              
+            case 'polyline':
+            case 'polygon':
+            case 'arrow':
+              if (shape.points && shape.points.length >= 4) {
+                const points: [number, number][] = [];
+                for (let i = 0; i < shape.points.length; i += 2) {
+                  const x = normalizedToPdf(shape.points[i], 'width');
+                  const y = normalizedToPdf(shape.points[i + 1], 'height');
+                  points.push([x, y]);
+                }
+                
+                if (points.length >= 2) {
+                  // Draw line segments
+                  for (let i = 0; i < points.length - 1; i++) {
+                    page.drawLine({
+                      start: { x: points[i][0], y: points[i][1] },
+                      end: { x: points[i + 1][0], y: points[i + 1][1] },
+                      color: strokeColor,
+                      thickness: strokeWidth,
+                      opacity
+                    });
+                  }
+                  
+                  // Close polygon
+                  if (shape.type === 'polygon' && points.length >= 3) {
+                    page.drawLine({
+                      start: { x: points[points.length - 1][0], y: points[points.length - 1][1] },
+                      end: { x: points[0][0], y: points[0][1] },
+                      color: strokeColor,
+                      thickness: strokeWidth,
+                      opacity
+                    });
+                  }
+                  
+                  // Draw arrowhead for arrow type
+                  if (shape.type === 'arrow' && points.length >= 2) {
+                    const lastPoint = points[points.length - 1];
+                    const secondLastPoint = points[points.length - 2];
+                    
+                    // Calculate arrow direction
+                    const dx = lastPoint[0] - secondLastPoint[0];
+                    const dy = lastPoint[1] - secondLastPoint[1];
+                    const length = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (length > 0) {
+                      const arrowLength = 10;
+                      const arrowAngle = Math.PI / 6; // 30 degrees
+                      
+                      const unitX = dx / length;
+                      const unitY = dy / length;
+                      
+                      // Arrow tip points
+                      const tip1X = lastPoint[0] - arrowLength * (unitX * Math.cos(arrowAngle) + unitY * Math.sin(arrowAngle));
+                      const tip1Y = lastPoint[1] - arrowLength * (unitY * Math.cos(arrowAngle) - unitX * Math.sin(arrowAngle));
+                      const tip2X = lastPoint[0] - arrowLength * (unitX * Math.cos(-arrowAngle) + unitY * Math.sin(-arrowAngle));
+                      const tip2Y = lastPoint[1] - arrowLength * (unitY * Math.cos(-arrowAngle) - unitX * Math.sin(-arrowAngle));
+                      
+                      // Draw arrow lines
+                      page.drawLine({
+                        start: { x: lastPoint[0], y: lastPoint[1] },
+                        end: { x: tip1X, y: tip1Y },
+                        color: strokeColor,
+                        thickness: strokeWidth,
+                        opacity
+                      });
+                      page.drawLine({
+                        start: { x: lastPoint[0], y: lastPoint[1] },
+                        end: { x: tip2X, y: tip2Y },
+                        color: strokeColor,
+                        thickness: strokeWidth,
+                        opacity
+                      });
+                    }
+                  }
+                }
+              }
+              break;
+              
+            case 'text':
+              if (shape.x !== undefined && shape.y !== undefined && shape.meta?.text) {
+                const x = normalizedToPdf(shape.x, 'width');
+                const y = normalizedToPdf(shape.y, 'height');
+                const fontSize = shape.meta?.fontSize || 16;
+                
+                page.drawText(shape.meta.text, {
+                  x,
+                  y,
+                  size: fontSize,
+                  color: strokeColor,
+                  opacity
+                });
+              }
+              break;
+              
+            case 'highlighter':
+              // Draw highlighter as semi-transparent polygon
+              if (shape.points && shape.points.length >= 6) {
+                const points: [number, number][] = [];
+                for (let i = 0; i < shape.points.length; i += 2) {
+                  const x = normalizedToPdf(shape.points[i], 'width');
+                  const y = normalizedToPdf(shape.points[i + 1], 'height');
+                  points.push([x, y]);
+                }
+                
+                if (points.length >= 3) {
+                  // Draw filled polygon with transparency
+                  for (let i = 0; i < points.length - 1; i++) {
+                    page.drawLine({
+                      start: { x: points[i][0], y: points[i][1] },
+                      end: { x: points[i + 1][0], y: points[i + 1][1] },
+                      color: strokeColor,
+                      thickness: strokeWidth * 4, // Thicker for highlighter effect
+                      opacity: 0.3 // Semi-transparent
+                    });
+                  }
+                  // Close the shape
+                  page.drawLine({
+                    start: { x: points[points.length - 1][0], y: points[points.length - 1][1] },
+                    end: { x: points[0][0], y: points[0][1] },
+                    color: strokeColor,
+                    thickness: strokeWidth * 4,
+                    opacity: 0.3
+                  });
+                }
+              }
+              break;
+              
+            case 'measure_line':
+            case 'measure_area':
+              // Draw measurement shapes similar to polyline/polygon
+              if (shape.points && shape.points.length >= 4) {
+                const points: [number, number][] = [];
+                for (let i = 0; i < shape.points.length; i += 2) {
+                  const x = normalizedToPdf(shape.points[i], 'width');
+                  const y = normalizedToPdf(shape.points[i + 1], 'height');
+                  points.push([x, y]);
+                }
+                
+                if (points.length >= 2) {
+                  // Draw measurement lines
+                  for (let i = 0; i < points.length - 1; i++) {
+                    page.drawLine({
+                      start: { x: points[i][0], y: points[i][1] },
+                      end: { x: points[i + 1][0], y: points[i + 1][1] },
+                      color: strokeColor,
+                      thickness: strokeWidth,
+                      opacity,
+                      dashArray: [5, 3] // Dashed line for measurements
+                    });
+                  }
+                  
+                  // Close area measurement
+                  if (shape.type === 'measure_area' && points.length >= 3) {
+                    page.drawLine({
+                      start: { x: points[points.length - 1][0], y: points[points.length - 1][1] },
+                      end: { x: points[0][0], y: points[0][1] },
+                      color: strokeColor,
+                      thickness: strokeWidth,
+                      opacity,
+                      dashArray: [5, 3]
+                    });
+                  }
+                  
+                  // Add measurement text if available
+                  if (shape.meta?.length || shape.meta?.area) {
+                    const centerX = points.reduce((sum, p) => sum + p[0], 0) / points.length;
+                    const centerY = points.reduce((sum, p) => sum + p[1], 0) / points.length;
+                    
+                    const measurementText = shape.type === 'measure_line' 
+                      ? `${shape.meta.length?.toFixed(2)} ${shape.meta.units || 'px'}`
+                      : `${shape.meta.area?.toFixed(2)} ${shape.meta.units || 'px²'}`;
+                    
+                    page.drawText(measurementText, {
+                      x: centerX - 20, // Offset to avoid overlap
+                      y: centerY + 10,
+                      size: 10,
+                      color: strokeColor,
+                      opacity
+                    });
+                  }
+                }
+              }
+              break;
+          }
+        }
+      }
+      
+      // Generate the modified PDF
+      const modifiedPdfBytes = await pdfDoc.save();
+      
+      // Create filename with timestamp
+      const timestamp = new Date().toISOString().slice(0, 16).replace(/[:-]/g, '');
+      const baseFilename = plan.filename.replace('.pdf', '');
+      const exportFilename = `${baseFilename}_annotated_${timestamp}.pdf`;
+      
+      // Set response headers for download
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${exportFilename}"`);
+      res.setHeader('Content-Length', modifiedPdfBytes.length.toString());
+      
+      // Send the PDF
+      res.send(Buffer.from(modifiedPdfBytes));
+      
+    } catch (error: any) {
+      console.error("Error exporting plan:", error);
+      res.status(500).json({ error: error.message || "Failed to export plan" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
