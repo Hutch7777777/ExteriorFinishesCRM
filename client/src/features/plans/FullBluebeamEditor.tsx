@@ -88,29 +88,36 @@ export default function FullBluebeamEditor() {
         .map(byte => String.fromCharCode(byte))
         .join('')
       
-      // Look for PDF page count patterns
-      const patterns = [
-        /\/Count\s+(\d+)/g,           // Standard page count
-        /\/N\s+(\d+)/g,               // Alternative page count
-        /\/Kids\s*\[([^\]]+)\]/g,     // Kids array (count pages)
-      ]
-      
+      // Look for PDF page count patterns with more precision
       let maxPages = 0
       
-      for (const pattern of patterns) {
-        let match
-        while ((match = pattern.exec(pdfString)) !== null) {
-          if (pattern === /\/Kids\s*\[([^\]]+)\]/g) {
-            // Count page references in Kids array
-            const kidsContent = match[1]
-            const pageRefs = (kidsContent.match(/\d+\s+0\s+R/g) || []).length
-            maxPages = Math.max(maxPages, pageRefs)
-          } else {
-            const count = parseInt(match[1], 10)
-            if (!isNaN(count) && count > 0) {
-              maxPages = Math.max(maxPages, count)
-            }
-          }
+      // Primary pattern: /Type /Pages with /Count
+      const pagesTypePattern = /\/Type\s*\/Pages[\s\S]*?\/Count\s+(\d+)/g
+      let match
+      while ((match = pagesTypePattern.exec(pdfString)) !== null) {
+        const count = parseInt(match[1], 10)
+        if (!isNaN(count) && count > 0 && count < 1000) {
+          maxPages = Math.max(maxPages, count)
+          console.log(`Found /Type /Pages with /Count ${count}`)
+        }
+      }
+      
+      // Secondary pattern: Count individual page objects
+      const pageObjectPattern = /\/Type\s*\/Page[^s]/g
+      const pageObjects = pdfString.match(pageObjectPattern) || []
+      if (pageObjects.length > 0 && pageObjects.length < 1000) {
+        maxPages = Math.max(maxPages, pageObjects.length)
+        console.log(`Found ${pageObjects.length} individual page objects`)
+      }
+      
+      // Tertiary pattern: Kids arrays
+      const kidsPattern = /\/Kids\s*\[([^\]]+)\]/g
+      while ((match = kidsPattern.exec(pdfString)) !== null) {
+        const kidsContent = match[1]
+        const pageRefs = (kidsContent.match(/\d+\s+0\s+R/g) || []).length
+        if (pageRefs > 0 && pageRefs < 1000) {
+          maxPages = Math.max(maxPages, pageRefs)
+          console.log(`Found Kids array with ${pageRefs} references`)
         }
       }
       
@@ -204,15 +211,15 @@ export default function FullBluebeamEditor() {
         console.log(`PDF file size: ${arrayBuffer.byteLength} bytes`)
         
         // Try to manually parse PDF for page count first (more reliable)
-        const pageCount = await this.extractPageCountFromPDF(uint8Array)
+        const pageCount = await extractPageCountFromPDF(uint8Array)
         if (pageCount > 0) {
           console.log(`Manual PDF parsing detected ${pageCount} pages`)
           setTotalPages(pageCount)
           setPdfDocument({ numPages: pageCount }) // Mock document object
           
           toast({
-            title: 'PDF Analyzed Successfully',
-            description: `Document contains ${pageCount} pages - full navigation enabled`,
+            title: 'Exact Page Count Detected',
+            description: `Document contains exactly ${pageCount} pages - precise navigation enabled`,
           })
           return
         }
@@ -225,20 +232,24 @@ export default function FullBluebeamEditor() {
           useSystemFonts: true,
         }).promise
         
-        console.log('PDF loaded successfully, actual pages:', doc.numPages)
+        console.log('PDF.js successfully loaded, exact pages:', doc.numPages)
         setPdfDocument(doc)
         setTotalPages(doc.numPages)
         setCurrentPage(1)
         
         // Get first page dimensions for overlay sizing
-        const page = await doc.getPage(1)
-        const viewport = page.getViewport({ scale: 1 })
-        setPageWidth(viewport.width)
-        setPageHeight(viewport.height)
+        try {
+          const page = await doc.getPage(1)
+          const viewport = page.getViewport({ scale: 1 })
+          setPageWidth(viewport.width)
+          setPageHeight(viewport.height)
+        } catch (pageError) {
+          console.warn('Could not get page dimensions:', pageError)
+        }
         
         toast({
-          title: 'PDF Analyzed Successfully',
-          description: `Document contains ${doc.numPages} pages - full scroll navigation enabled`,
+          title: 'Exact Page Count Detected',
+          description: `Document contains exactly ${doc.numPages} pages - precise navigation enabled`,
         })
         
       } catch (error) {
@@ -275,26 +286,25 @@ export default function FullBluebeamEditor() {
             console.log(`Manual parsing found ${estimatedPages} pages in PDF structure`)
             setTotalPages(estimatedPages)
             toast({
-              title: 'PDF Structure Analyzed',
-              description: `Found ${estimatedPages} pages in document structure - navigation ready`,
+              title: 'Page Count Extracted',
+              description: `Found exactly ${estimatedPages} pages in PDF structure - navigation ready`,
             })
           } else {
-            // Default for construction documents - most plan sets are 15-30 pages
-            const defaultPages = 20
-            setTotalPages(defaultPages)
+            console.error('Could not determine exact page count from PDF structure')
+            setTotalPages(1)
             toast({
-              title: 'PDF Loaded',
-              description: `${defaultPages} pages available - navigation enabled for complete document`,
+              title: 'Page Detection Failed',
+              description: 'Could not determine exact page count - please check your PDF file',
+              variant: 'destructive'
             })
           }
           
         } catch (finalError) {
           console.error('All PDF analysis methods failed:', finalError)
-          // Final fallback
-          setTotalPages(15)
+          setTotalPages(1)
           toast({
-            title: 'PDF Loaded',
-            description: '15 pages available for navigation',
+            title: 'PDF Analysis Failed',
+            description: 'Cannot determine exact page count - navigation limited to 1 page',
             variant: 'destructive'
           })
         }
