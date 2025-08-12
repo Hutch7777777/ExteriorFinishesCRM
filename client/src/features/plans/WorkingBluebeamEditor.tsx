@@ -19,6 +19,27 @@ interface Shape {
   layer: string
 }
 
+interface SnappingSettings {
+  enabled: boolean
+  snapToVertices: boolean
+  snapToAngles: boolean
+  snapToGrid: boolean
+  gridSpacing: number
+  tolerance: number
+}
+
+interface Calibration {
+  pixelsPerUnit: number
+  units: string
+  scaleReference?: {
+    startX: number
+    startY: number
+    endX: number
+    endY: number
+    actualLength: number
+  }
+}
+
 export default function WorkingBluebeamEditor() {
   const { toast } = useToast()
   
@@ -30,6 +51,16 @@ export default function WorkingBluebeamEditor() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [uploadedPdfUrl, setUploadedPdfUrl] = useState<string | null>(null)
   const [isUploading, setIsUploading] = useState(false)
+  const [currentPage] = useState(1)
+  const [snappingSettings] = useState<SnappingSettings>({
+    enabled: false,
+    snapToVertices: false,
+    snapToAngles: false,
+    snapToGrid: false,
+    gridSpacing: 20,
+    tolerance: 10
+  })
+  const [calibrations] = useState<{ [pageNumber: number]: Calibration }>({})
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -190,6 +221,7 @@ export default function WorkingBluebeamEditor() {
                   onShapeCreate={(shape) => setShapes(shapes => [...shapes, shape])}
                   stageWidth={window.innerWidth - 80}
                   stageHeight={window.innerHeight - 80}
+                  calibration={calibrations[currentPage]}
                 />
               </div>
             </div>
