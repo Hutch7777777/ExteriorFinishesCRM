@@ -157,6 +157,18 @@ const debugPdfRoute = createRoute({
   component: lazy(() => import('./features/plans/NativePdfViewer').then(m => ({ default: m.NativePdfViewer })))
 })
 
+const testNavigationRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/test-navigation',
+  component: lazy(() => import('./features/plans/TestNavigation'))
+})
+
+const simpleNavRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/simple-nav-pdf',
+  component: lazy(() => import('./features/plans/SimpleNavPdf'))
+})
+
 // 404 route
 const notFoundRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -180,6 +192,8 @@ const routeTree = rootRoute.addChildren([
   testBluebeamRoute,
   primaryBluebeamRoute,
   debugPdfRoute,
+  testNavigationRoute,
+  simpleNavRoute,
   notFoundRoute
 ])
 
