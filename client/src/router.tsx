@@ -1,4 +1,5 @@
 import { createRouter, createRoute, createRootRoute, redirect, Outlet } from '@tanstack/react-router'
+import { lazy } from 'react'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import Landing from '@/pages/Landing'
 import SignIn from '@/pages/SignIn'
@@ -138,6 +139,12 @@ const plansRoute = createRoute({
   component: PlansPage
 })
 
+const testBluebeamRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/test-bluebeam',
+  component: lazy(() => import('./features/plans/SimpleTestPage'))
+})
+
 // 404 route
 const notFoundRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -158,6 +165,7 @@ const routeTree = rootRoute.addChildren([
   proposalViewRoute,
   editEstimateRoute,
   plansRoute,
+  testBluebeamRoute,
   notFoundRoute
 ])
 
