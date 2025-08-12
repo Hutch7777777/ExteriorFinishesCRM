@@ -1,5 +1,6 @@
 import { sql, relations } from 'drizzle-orm';
 import {
+  boolean,
   index,
   jsonb,
   pgTable,
@@ -9,6 +10,7 @@ import {
   integer,
   pgEnum,
   uuid,
+  numeric,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 
@@ -225,6 +227,48 @@ export const punchListItems = pgTable("punch_list_items", {
   index("idx_punch_list_items_due_date").on(table.dueDate),
 ]);
 
+// Plan files table
+export const planFiles = pgTable("plan_files", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  jobId: uuid("job_id").notNull().references(() => jobs.id),
+  url: text("url").notNull(),
+  filename: text("filename").notNull(),
+  pages: integer("pages").notNull().default(1),
+  uploadedBy: uuid("uploaded_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_plan_files_job_id").on(table.jobId),
+  index("idx_plan_files_uploaded_by").on(table.uploadedBy),
+]);
+
+// Plan annotations table
+export const planAnnotations = pgTable("plan_annotations", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  planFileId: uuid("plan_file_id").notNull().references(() => planFiles.id),
+  page: integer("page").notNull(),
+  dataJson: jsonb("data_json").notNull(),
+  createdBy: uuid("created_by").notNull().references(() => users.id),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  isDeleted: boolean("is_deleted").notNull().default(false),
+}, (table) => [
+  index("idx_plan_annotations_plan_file_page").on(table.planFileId, table.page),
+  index("idx_plan_annotations_created_by").on(table.createdBy),
+]);
+
+// Plan scales table  
+export const planScales = pgTable("plan_scales", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  planFileId: uuid("plan_file_id").notNull().references(() => planFiles.id),
+  page: integer("page").notNull(),
+  pixelPerUnit: numeric("pixel_per_unit", { precision: 10, scale: 4 }).notNull(),
+  unit: text("unit").notNull(),
+  createdBy: uuid("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_plan_scales_plan_file_page").on(table.planFileId, table.page),
+  index("idx_plan_scales_created_by").on(table.createdBy),
+]);
+
 export const estimateRelations = relations(estimates, ({ one }) => ({
   job: one(jobs, {
     fields: [estimates.jobId],
@@ -277,6 +321,41 @@ export const punchListItemRelations = relations(punchListItems, ({ one }) => ({
   }),
 }));
 
+export const planFileRelations = relations(planFiles, ({ one, many }) => ({
+  job: one(jobs, {
+    fields: [planFiles.jobId],
+    references: [jobs.id],
+  }),
+  uploadedByUser: one(users, {
+    fields: [planFiles.uploadedBy],
+    references: [users.id],
+  }),
+  annotations: many(planAnnotations),
+  scales: many(planScales),
+}));
+
+export const planAnnotationRelations = relations(planAnnotations, ({ one }) => ({
+  planFile: one(planFiles, {
+    fields: [planAnnotations.planFileId],
+    references: [planFiles.id],
+  }),
+  createdByUser: one(users, {
+    fields: [planAnnotations.createdBy],
+    references: [users.id],
+  }),
+}));
+
+export const planScaleRelations = relations(planScales, ({ one }) => ({
+  planFile: one(planFiles, {
+    fields: [planScales.planFileId],
+    references: [planFiles.id],
+  }),
+  createdByUser: one(users, {
+    fields: [planScales.createdBy],
+    references: [users.id],
+  }),
+}));
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ 
   id: true, 
@@ -320,6 +399,21 @@ export const insertPunchListItemSchema = createInsertSchema(punchListItems).omit
   updatedAt: true
 });
 
+export const insertPlanFileSchema = createInsertSchema(planFiles).omit({
+  id: true,
+  createdAt: true
+});
+
+export const insertPlanAnnotationSchema = createInsertSchema(planAnnotations).omit({
+  id: true,
+  updatedAt: true
+});
+
+export const insertPlanScaleSchema = createInsertSchema(planScales).omit({
+  id: true,
+  createdAt: true
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof insertUserSchema._type;
@@ -344,6 +438,15 @@ export type InsertFieldLog = typeof insertFieldLogSchema._type;
 
 export type PunchListItem = typeof punchListItems.$inferSelect;
 export type InsertPunchListItem = typeof insertPunchListItemSchema._type;
+
+export type PlanFile = typeof planFiles.$inferSelect;
+export type InsertPlanFile = typeof insertPlanFileSchema._type;
+
+export type PlanAnnotation = typeof planAnnotations.$inferSelect;
+export type InsertPlanAnnotation = typeof insertPlanAnnotationSchema._type;
+
+export type PlanScale = typeof planScales.$inferSelect;
+export type InsertPlanScale = typeof insertPlanScaleSchema._type;
 
 // Extended types with relations
 export type UserWithRelations = User & {

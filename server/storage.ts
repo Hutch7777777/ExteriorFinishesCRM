@@ -7,6 +7,9 @@ import {
   divisions,
   fieldLogs,
   punchListItems,
+  planFiles,
+  planAnnotations,
+  planScales,
   type User,
   type InsertUser,
   type UpsertUser,
@@ -28,6 +31,9 @@ import {
   type InsertFieldLog,
   type PunchListItem,
   type InsertPunchListItem,
+  type PlanFile,
+  type PlanAnnotation,
+  type PlanScale,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql, count } from "drizzle-orm";
@@ -106,6 +112,13 @@ export interface IStorage {
     entityType: string;
     entityId: string;
   }): Promise<void>;
+
+  // Plan operations
+  getPlanFileWithDivisionAccess(planFileId: string, userId: string): Promise<PlanFile | undefined>;
+  getPlanAnnotations(planFileId: string): Promise<PlanAnnotation[]>;
+  upsertPlanAnnotations(planFileId: string, annotations: any[], userId: string): Promise<PlanAnnotation[]>;
+  getPlanScales(planFileId: string): Promise<PlanScale[]>;
+  upsertPlanScale(planFileId: string, page: number, pixelPerUnit: number, unit: string, userId: string): Promise<PlanScale>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -548,6 +561,127 @@ export class DatabaseStorage implements IStorage {
   }): Promise<void> {
     // TODO: Implement activity logging
     console.log('Activity logged:', activity);
+  }
+
+  // Plan operations
+  async getPlanFileWithDivisionAccess(planFileId: string, userId: string): Promise<PlanFile | undefined> {
+    // Get the plan file and check division access via job
+    const [plan] = await db
+      .select()
+      .from(planFiles)
+      .leftJoin(jobs, eq(planFiles.jobId, jobs.id))
+      .leftJoin(users, eq(users.id, userId))
+      .where(
+        and(
+          eq(planFiles.id, planFileId),
+          // Admin can access all divisions, staff only their division
+          sql`(${users.role} = 'admin' OR ${jobs.divisionId} = ${users.divisionId})`
+        )
+      );
+    
+    return plan?.plan_files;
+  }
+
+  async getPlanAnnotations(planFileId: string): Promise<PlanAnnotation[]> {
+    return await db
+      .select()
+      .from(planAnnotations)
+      .where(
+        and(
+          eq(planAnnotations.planFileId, planFileId),
+          eq(planAnnotations.isDeleted, false)
+        )
+      )
+      .orderBy(planAnnotations.updatedAt);
+  }
+
+  async upsertPlanAnnotations(planFileId: string, annotations: any[], userId: string): Promise<PlanAnnotation[]> {
+    const results: PlanAnnotation[] = [];
+    
+    for (const annotation of annotations) {
+      const { id, page, dataJson } = annotation;
+      
+      if (id) {
+        // Update existing annotation
+        const [updated] = await db
+          .update(planAnnotations)
+          .set({
+            dataJson,
+            createdBy: userId,
+            updatedAt: new Date(),
+          })
+          .where(eq(planAnnotations.id, id))
+          .returning();
+        
+        if (updated) results.push(updated);
+      } else {
+        // Create new annotation
+        const [created] = await db
+          .insert(planAnnotations)
+          .values({
+            planFileId,
+            page,
+            dataJson,
+            createdBy: userId,
+          })
+          .returning();
+        
+        results.push(created);
+      }
+    }
+    
+    return results;
+  }
+
+  async getPlanScales(planFileId: string): Promise<PlanScale[]> {
+    return await db
+      .select()
+      .from(planScales)
+      .where(eq(planScales.planFileId, planFileId))
+      .orderBy(planScales.page, planScales.createdAt);
+  }
+
+  async upsertPlanScale(planFileId: string, page: number, pixelPerUnit: number, unit: string, userId: string): Promise<PlanScale> {
+    // Check if scale exists for this plan file and page
+    const [existing] = await db
+      .select()
+      .from(planScales)
+      .where(
+        and(
+          eq(planScales.planFileId, planFileId),
+          eq(planScales.page, page)
+        )
+      );
+
+    if (existing) {
+      // Update existing scale
+      const [updated] = await db
+        .update(planScales)
+        .set({
+          pixelPerUnit: pixelPerUnit.toString(),
+          unit,
+          createdBy: userId,
+          createdAt: new Date(),
+        })
+        .where(eq(planScales.id, existing.id))
+        .returning();
+      
+      return updated;
+    } else {
+      // Create new scale
+      const [created] = await db
+        .insert(planScales)
+        .values({
+          planFileId,
+          page,
+          pixelPerUnit: pixelPerUnit.toString(),
+          unit,
+          createdBy: userId,
+        })
+        .returning();
+      
+      return created;
+    }
   }
 }
 

@@ -516,6 +516,96 @@ Format your response in clear sections with actionable insights.`;
     }
   });
 
+  // Plan annotation routes
+  app.get('/api/plans/:planId/annotations', authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { planId } = req.params;
+      const userId = req.user!.id;
+      
+      // Check if user has access to this plan via job division
+      const plan = await storage.getPlanFileWithDivisionAccess(planId, userId);
+      if (!plan) {
+        return res.status(404).json({ error: "Plan file not found or access denied" });
+      }
+      
+      const annotations = await storage.getPlanAnnotations(planId);
+      res.json({ annotations });
+    } catch (error) {
+      console.error("Error fetching plan annotations:", error);
+      res.status(500).json({ error: "Failed to fetch plan annotations" });
+    }
+  });
+
+  app.post('/api/plans/:planId/annotations', authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { planId } = req.params;
+      const { annotations } = req.body;
+      const userId = req.user!.id;
+      
+      // Check if user has access to this plan via job division
+      const plan = await storage.getPlanFileWithDivisionAccess(planId, userId);
+      if (!plan) {
+        return res.status(404).json({ error: "Plan file not found or access denied" });
+      }
+      
+      // Validate annotations array
+      if (!Array.isArray(annotations)) {
+        return res.status(400).json({ error: "Annotations must be an array" });
+      }
+      
+      const savedAnnotations = await storage.upsertPlanAnnotations(planId, annotations, userId);
+      res.json({ annotations: savedAnnotations });
+    } catch (error) {
+      console.error("Error saving plan annotations:", error);
+      res.status(500).json({ error: "Failed to save plan annotations" });
+    }
+  });
+
+  // Plan scale routes
+  app.get('/api/plans/:planId/scales', authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { planId } = req.params;
+      const userId = req.user!.id;
+      
+      // Check if user has access to this plan via job division
+      const plan = await storage.getPlanFileWithDivisionAccess(planId, userId);
+      if (!plan) {
+        return res.status(404).json({ error: "Plan file not found or access denied" });
+      }
+      
+      const scales = await storage.getPlanScales(planId);
+      res.json({ scales });
+    } catch (error) {
+      console.error("Error fetching plan scales:", error);
+      res.status(500).json({ error: "Failed to fetch plan scales" });
+    }
+  });
+
+  app.post('/api/plans/:planId/scales', authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { planId } = req.params;
+      const { page, pixelPerUnit, unit } = req.body;
+      const userId = req.user!.id;
+      
+      // Check if user has access to this plan via job division
+      const plan = await storage.getPlanFileWithDivisionAccess(planId, userId);
+      if (!plan) {
+        return res.status(404).json({ error: "Plan file not found or access denied" });
+      }
+      
+      // Validate required fields
+      if (typeof page !== 'number' || typeof pixelPerUnit !== 'number' || typeof unit !== 'string') {
+        return res.status(400).json({ error: "Invalid scale data: page (number), pixelPerUnit (number), and unit (string) are required" });
+      }
+      
+      const savedScale = await storage.upsertPlanScale(planId, page, pixelPerUnit, unit, userId);
+      res.json({ scale: savedScale });
+    } catch (error) {
+      console.error("Error saving plan scale:", error);
+      res.status(500).json({ error: "Failed to save plan scale" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

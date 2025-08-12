@@ -49,7 +49,7 @@ interface OverlayStageProps {
   strokeWidth: number
   strokeColor: string
   calibrations: Record<number, CalibrationData>
-  setCalibrations: (calibrations: Record<number, CalibrationData>) => void
+  onCalibration: (page: number, pixelsPerUnit: number, units: string) => void
 }
 
 export default function OverlayStage({
@@ -65,7 +65,7 @@ export default function OverlayStage({
   strokeWidth,
   strokeColor,
   calibrations,
-  setCalibrations
+  onCalibration
 }: OverlayStageProps) {
   const stageRef = useRef<Konva.Stage>(null)
   const transformerRef = useRef<Konva.Transformer>(null)
@@ -224,10 +224,7 @@ export default function OverlayStage({
       
       const pixelsPerUnit = pixelDistance / distance
       
-      setCalibrations({
-        ...calibrations,
-        [currentPage]: { pixelsPerUnit, units }
-      })
+      onCalibration(currentPage, pixelsPerUnit, units)
     }
     
     setCalibrationPoints([])

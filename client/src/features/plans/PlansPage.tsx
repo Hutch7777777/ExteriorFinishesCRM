@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams } from 'wouter'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
@@ -70,6 +71,103 @@ export default function PlansPage() {
   const [shapes, setShapes] = useState<Shape[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [calibrations, setCalibrations] = useState<Record<number, CalibrationData>>({})
+  
+  const queryClient = useQueryClient()
+  
+  // Mock plan file ID - in real app this would come from the job data
+  const planFileId = '550e8400-e29b-41d4-a716-446655440000'
+
+  // Load annotations from API
+  const { data: annotationsData } = useQuery({
+    queryKey: ['/api/plans', planFileId, 'annotations'],
+    queryFn: async () => {
+      const response = await fetch(`/api/plans/${planFileId}/annotations`);
+      if (!response.ok) throw new Error('Failed to load annotations');
+      return response.json();
+    },
+    retry: false,
+  });
+
+  // Load scales from API  
+  const { data: scalesData } = useQuery({
+    queryKey: ['/api/plans', planFileId, 'scales'],
+    queryFn: async () => {
+      const response = await fetch(`/api/plans/${planFileId}/scales`);
+      if (!response.ok) throw new Error('Failed to load scales');
+      return response.json();
+    },
+    retry: false,
+  });
+
+  // Save annotations mutation
+  const saveAnnotationsMutation = useMutation({
+    mutationFn: async (annotations: Shape[]) => {
+      const response = await fetch(`/api/plans/${planFileId}/annotations`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          annotations: annotations.map(shape => ({
+            id: shape.id,
+            page: shape.page,
+            dataJson: shape
+          }))
+        })
+      });
+      if (!response.ok) throw new Error('Failed to save annotations');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/plans', planFileId, 'annotations'] });
+    }
+  });
+
+  // Save scale mutation
+  const saveScaleMutation = useMutation({
+    mutationFn: async ({ page, pixelPerUnit, unit }: { page: number, pixelPerUnit: number, unit: string }) => {
+      const response = await fetch(`/api/plans/${planFileId}/scales`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ page, pixelPerUnit, unit })
+      });
+      if (!response.ok) throw new Error('Failed to save scale');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/plans', planFileId, 'scales'] });
+    }
+  });
+
+  // Load data when API responses arrive
+  useEffect(() => {
+    if (annotationsData?.annotations) {
+      const loadedShapes = annotationsData.annotations.map((annotation: any) => annotation.dataJson);
+      setShapes(loadedShapes);
+    }
+  }, [annotationsData]);
+
+  useEffect(() => {
+    if (scalesData?.scales) {
+      const loadedCalibrations: Record<number, CalibrationData> = {};
+      scalesData.scales.forEach((scale: any) => {
+        loadedCalibrations[scale.page] = {
+          pixelsPerUnit: parseFloat(scale.pixelPerUnit),
+          units: scale.unit
+        };
+      });
+      setCalibrations(loadedCalibrations);
+    }
+  }, [scalesData]);
+
+  // Auto-save shapes when they change
+  useEffect(() => {
+    if (shapes.length > 0 && annotationsData) {
+      const timeoutId = setTimeout(() => {
+        saveAnnotationsMutation.mutate(shapes);
+      }, 1000); // Debounce saves by 1 second
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [shapes, annotationsData]);
 
   // Sample PDF URLs for different plans
   const planUrls: Record<string, string> = {
@@ -94,6 +192,20 @@ export default function PlansPage() {
 
   const handleThumbnailClick = (pageNumber: number) => {
     setCurrentPage(pageNumber)
+  }
+  
+  const handleCalibration = (page: number, pixelsPerUnit: number, units: string) => {
+    setCalibrations(prev => ({
+      ...prev,
+      [page]: { pixelsPerUnit, units }
+    }))
+    
+    // Save to backend
+    saveScaleMutation.mutate({
+      page,
+      pixelPerUnit: pixelsPerUnit,
+      unit: units
+    })
   }
 
   return (
@@ -276,7 +388,7 @@ export default function PlansPage() {
               strokeWidth={strokeWidth}
               strokeColor={strokeColor}
               calibrations={calibrations}
-              setCalibrations={setCalibrations}
+              onCalibration={handleCalibration}
             />
           </div>
         </div>
