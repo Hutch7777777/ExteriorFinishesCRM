@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams } from 'wouter'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
+import { useToast } from '@/hooks/use-toast'
 import PdfViewer from './PdfViewer'
 import OverlayStage from './OverlayStage'
 import ToolPalette from './ToolPalette'
@@ -71,37 +72,49 @@ export default function PlansPage() {
   const [shapes, setShapes] = useState<Shape[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [calibrations, setCalibrations] = useState<Record<number, CalibrationData>>({})
+  const [pageAnnotations, setPageAnnotations] = useState<Record<number, Shape[]>>({})
+  const [saveError, setSaveError] = useState<string | null>(null)
   
   const queryClient = useQueryClient()
+  const { toast } = useToast()
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   
-  // Mock plan file ID - in real app this would come from the job data
+  // Hardcoded plan file ID
   const planFileId = '550e8400-e29b-41d4-a716-446655440000'
 
   // Load annotations from API
-  const { data: annotationsData } = useQuery({
+  const { data: annotationsData, isLoading: annotationsLoading } = useQuery({
     queryKey: ['/api/plans', planFileId, 'annotations'],
     queryFn: async () => {
       const response = await fetch(`/api/plans/${planFileId}/annotations`);
-      if (!response.ok) throw new Error('Failed to load annotations');
+      if (!response.ok) {
+        if (response.status === 404) return { annotations: [] };
+        throw new Error('Failed to load annotations');
+      }
       return response.json();
     },
-    retry: false,
+    retry: 1,
+    staleTime: 0, // Always refetch for latest data
   });
 
   // Load scales from API  
-  const { data: scalesData } = useQuery({
+  const { data: scalesData, isLoading: scalesLoading } = useQuery({
     queryKey: ['/api/plans', planFileId, 'scales'],
     queryFn: async () => {
       const response = await fetch(`/api/plans/${planFileId}/scales`);
-      if (!response.ok) throw new Error('Failed to load scales');
+      if (!response.ok) {
+        if (response.status === 404) return { scales: [] };
+        throw new Error('Failed to load scales');
+      }
       return response.json();
     },
-    retry: false,
+    retry: 1,
+    staleTime: 0, // Always refetch for latest data
   });
 
   // Save annotations mutation
   const saveAnnotationsMutation = useMutation({
-    mutationFn: async (annotations: Shape[]) => {
+    mutationFn: async ({ page, annotations }: { page: number, annotations: Shape[] }) => {
       const response = await fetch(`/api/plans/${planFileId}/annotations`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -113,11 +126,27 @@ export default function PlansPage() {
           }))
         })
       });
-      if (!response.ok) throw new Error('Failed to save annotations');
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to save annotations: ${errorText}`);
+      }
       return response.json();
     },
     onSuccess: () => {
+      setSaveError(null);
+      toast({
+        title: "Saved",
+        description: "Annotations saved successfully",
+      });
       queryClient.invalidateQueries({ queryKey: ['/api/plans', planFileId, 'annotations'] });
+    },
+    onError: (error: Error) => {
+      setSaveError(error.message);
+      toast({
+        title: "Save Error",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   });
 
@@ -129,24 +158,51 @@ export default function PlansPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ page, pixelPerUnit, unit })
       });
-      if (!response.ok) throw new Error('Failed to save scale');
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to save scale: ${errorText}`);
+      }
       return response.json();
     },
     onSuccess: () => {
+      toast({
+        title: "Scale Saved",
+        description: "Calibration scale saved successfully",
+      });
       queryClient.invalidateQueries({ queryKey: ['/api/plans', planFileId, 'scales'] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Save Error", 
+        description: error.message,
+        variant: "destructive",
+      });
     }
   });
 
-  // Load data when API responses arrive
+  // Load and merge server data into local state keyed by page
   useEffect(() => {
-    if (annotationsData?.annotations) {
-      const loadedShapes = annotationsData.annotations.map((annotation: any) => annotation.dataJson);
-      setShapes(loadedShapes);
+    if (annotationsData?.annotations && !annotationsLoading) {
+      const pageGroupedAnnotations: Record<number, Shape[]> = {};
+      const allShapes: Shape[] = [];
+      
+      annotationsData.annotations.forEach((annotation: any) => {
+        const shape = annotation.dataJson;
+        allShapes.push(shape);
+        
+        if (!pageGroupedAnnotations[shape.page]) {
+          pageGroupedAnnotations[shape.page] = [];
+        }
+        pageGroupedAnnotations[shape.page].push(shape);
+      });
+      
+      setPageAnnotations(pageGroupedAnnotations);
+      setShapes(allShapes);
     }
-  }, [annotationsData]);
+  }, [annotationsData, annotationsLoading]);
 
   useEffect(() => {
-    if (scalesData?.scales) {
+    if (scalesData?.scales && !scalesLoading) {
       const loadedCalibrations: Record<number, CalibrationData> = {};
       scalesData.scales.forEach((scale: any) => {
         loadedCalibrations[scale.page] = {
@@ -156,18 +212,39 @@ export default function PlansPage() {
       });
       setCalibrations(loadedCalibrations);
     }
-  }, [scalesData]);
+  }, [scalesData, scalesLoading]);
 
-  // Auto-save shapes when they change
-  useEffect(() => {
-    if (shapes.length > 0 && annotationsData) {
-      const timeoutId = setTimeout(() => {
-        saveAnnotationsMutation.mutate(shapes);
-      }, 1000); // Debounce saves by 1 second
-      
-      return () => clearTimeout(timeoutId);
+  // Debounced autosave function
+  const debouncedSave = useCallback((page: number, annotations: Shape[]) => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
     }
-  }, [shapes, annotationsData]);
+    
+    saveTimeoutRef.current = setTimeout(() => {
+      saveAnnotationsMutation.mutate({ page, annotations });
+    }, 2500); // 2.5 second debounce
+  }, [saveAnnotationsMutation]);
+
+  // Auto-save when shapes change 
+  useEffect(() => {
+    if (shapes.length > 0 && !annotationsLoading && annotationsData) {
+      // Group shapes by page and save current page
+      const currentPageShapes = shapes.filter(shape => shape.page === currentPage);
+      debouncedSave(currentPage, currentPageShapes);
+      
+      // Update page annotations state
+      setPageAnnotations(prev => ({
+        ...prev,
+        [currentPage]: currentPageShapes
+      }));
+    }
+    
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [shapes, currentPage, debouncedSave, annotationsLoading, annotationsData]);
 
   // Sample PDF URLs for different plans
   const planUrls: Record<string, string> = {
@@ -230,6 +307,16 @@ export default function PlansPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {saveError && (
+              <div className="text-sm text-red-600 bg-red-50 px-3 py-1 rounded-md">
+                {saveError}
+              </div>
+            )}
+            {saveAnnotationsMutation.isPending && (
+              <div className="text-sm text-blue-600 bg-blue-50 px-3 py-1 rounded-md">
+                Saving...
+              </div>
+            )}
             <Button variant="outline" size="sm">
               Upload Plans
             </Button>
