@@ -1,9 +1,10 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
-import { FileText, Square, Circle, Type, Ruler, MousePointer, PenTool } from 'lucide-react'
+import { FileText } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { PdfUploadButton } from './PdfUploadButton'
-import { DrawingCanvas } from './DrawingCanvas'
+import OverlayStage from './OverlayStage'
+import ToolPalette, { type SnappingSettings } from './ToolPalette'
 
 interface Shape {
   id: string
@@ -60,16 +61,67 @@ export default function WorkingBluebeamEditor() {
     gridSpacing: 20,
     tolerance: 10
   })
-  const [calibrations] = useState<{ [pageNumber: number]: Calibration }>({})
+  const [calibrations, setCalibrations] = useState<{ [pageNumber: number]: Calibration }>({})
+  const [zoom, setZoom] = useState(1.0)
+  const [layerSettings, setLayerSettings] = useState({
+    Markup: true,
+    Measurements: true,
+    Symbols: true,
+    Text: true
+  })
+  const [undoStack, setUndoStack] = useState<Shape[][]>([])
+  const [redoStack, setRedoStack] = useState<Shape[][]>([])
 
-  const tools = [
-    { id: 'select', name: 'Select', icon: MousePointer },
-    { id: 'rectangle', name: 'Rectangle', icon: Square },
-    { id: 'circle', name: 'Circle', icon: Circle },
-    { id: 'line', name: 'Line', icon: PenTool },
-    { id: 'text', name: 'Text', icon: Type },
-    { id: 'measurement', name: 'Measure', icon: Ruler },
-  ]
+  // PDF page dimensions (will be set when PDF loads)
+  const [pageWidth, setPageWidth] = useState(800)
+  const [pageHeight, setPageHeight] = useState(1100)
+
+  const handleCalibration = useCallback((pageNumber: number, calibration: Calibration) => {
+    setCalibrations(prev => ({
+      ...prev,
+      [pageNumber]: calibration
+    }))
+  }, [])
+
+  const handleSnappingSettingsChange = useCallback((settings: SnappingSettings) => {
+    // This will be handled by the ToolPalette component internally for now
+  }, [])
+
+  const handleLayerToggle = useCallback((layer: keyof typeof layerSettings) => {
+    setLayerSettings(prev => ({
+      ...prev,
+      [layer]: !prev[layer]
+    }))
+  }, [])
+
+  // Handle undo/redo
+  const handleUndo = useCallback(() => {
+    if (undoStack.length === 0) return
+    
+    const currentShapes = [...shapes]
+    const previousShapes = undoStack[undoStack.length - 1]
+    
+    setRedoStack(prev => [...prev, currentShapes])
+    setShapes(previousShapes)
+    setUndoStack(prev => prev.slice(0, -1))
+  }, [shapes, undoStack])
+
+  const handleRedo = useCallback(() => {
+    if (redoStack.length === 0) return
+    
+    const currentShapes = [...shapes]
+    const nextShapes = redoStack[redoStack.length - 1]
+    
+    setUndoStack(prev => [...prev, currentShapes])
+    setShapes(nextShapes)
+    setRedoStack(prev => prev.slice(0, -1))
+  }, [shapes, redoStack])
+
+  // Save state for undo functionality
+  const saveShapeState = useCallback(() => {
+    setUndoStack(prev => [...prev.slice(-9), [...shapes]]) // Keep last 10 states
+    setRedoStack([]) // Clear redo stack when new action is performed
+  }, [shapes])
 
   return (
     <div className="flex flex-col h-screen bg-slate-50 dark:bg-slate-900">
@@ -99,49 +151,25 @@ export default function WorkingBluebeamEditor() {
       </div>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Tool Palette */}
-        <div className="w-20 bg-slate-100 dark:bg-slate-800 border-r border-slate-300 dark:border-slate-700 p-2">
-          <div className="space-y-2">
-            {tools.map((tool) => (
-              <Button
-                key={tool.id}
-                variant={selectedTool === tool.id ? "default" : "ghost"}
-                size="sm"
-                className="w-full h-12 flex flex-col items-center gap-1 text-xs"
-                onClick={() => setSelectedTool(tool.id)}
-                title={tool.name}
-              >
-                <tool.icon className="w-4 h-4" />
-                <span className="text-xs">{tool.name}</span>
-              </Button>
-            ))}
-          </div>
-
-          {/* Color & Stroke Controls */}
-          <div className="mt-6 space-y-3">
-            <div>
-              <label className="text-xs text-slate-600 dark:text-slate-400 block mb-1">Color</label>
-              <input
-                type="color"
-                value={strokeColor}
-                onChange={(e) => setStrokeColor(e.target.value)}
-                className="w-full h-8 rounded border"
-              />
-            </div>
-            
-            <div>
-              <label className="text-xs text-slate-600 dark:text-slate-400 block mb-1">Width</label>
-              <input
-                type="range"
-                min="1"
-                max="10"
-                value={strokeWidth}
-                onChange={(e) => setStrokeWidth(Number(e.target.value))}
-                className="w-full"
-              />
-              <span className="text-xs text-slate-500">{strokeWidth}px</span>
-            </div>
-          </div>
+        {/* Professional Tool Palette */}
+        <div className="w-80 bg-slate-50 border-r border-slate-300 overflow-y-auto">
+          <ToolPalette
+            selectedTool={selectedTool}
+            onToolSelect={setSelectedTool}
+            strokeWidth={strokeWidth}
+            onStrokeWidthChange={setStrokeWidth}
+            strokeColor={strokeColor}
+            onStrokeColorChange={setStrokeColor}
+            snappingSettings={snappingSettings}
+            onSnappingSettingsChange={handleSnappingSettingsChange}
+            layerSettings={layerSettings}
+            onLayerToggle={handleLayerToggle}
+            hasUnsavedChanges={shapes.length > 0}
+            canUndo={undoStack.length > 0}
+            canRedo={redoStack.length > 0}
+            onUndo={handleUndo}
+            onRedo={handleRedo}
+          />
         </div>
 
         {/* Main Content */}
@@ -162,32 +190,48 @@ export default function WorkingBluebeamEditor() {
                   className="w-full h-full bg-transparent relative"
                   style={{ minHeight: '100%' }}
                 >
-                  {/* Functional drawing canvas */}
-                  <DrawingCanvas
+                  {/* Professional Konva-based annotation overlay */}
+                  <OverlayStage
+                    pageWidth={pageWidth}
+                    pageHeight={pageHeight}
+                    zoom={zoom}
+                    currentPage={currentPage}
                     activeTool={selectedTool}
-                    strokeColor={strokeColor}
-                    strokeWidth={strokeWidth}
-                    onShapeComplete={(shape) => {
-                      console.log('Shape completed:', shape)
-                      setShapes(prev => [...prev, shape])
+                    shapes={shapes}
+                    setShapes={(newShapes) => {
+                      saveShapeState()
+                      setShapes(newShapes)
                     }}
+                    selectedId={selectedId}
+                    setSelectedId={setSelectedId}
+                    strokeWidth={strokeWidth}
+                    strokeColor={strokeColor}
+                    calibrations={calibrations}
+                    onCalibration={handleCalibration}
+                    snappingSettings={snappingSettings}
                   />
                   
-                  {/* Tool indicator */}
-                  <div className="absolute top-4 left-4 bg-black bg-opacity-70 text-white px-3 py-1 rounded text-sm z-20 pointer-events-none">
-                    Active: {selectedTool}
-                  </div>
-                  
-                  {/* Shape count */}
-                  <div className="absolute top-4 right-4 bg-black bg-opacity-70 text-white px-3 py-1 rounded text-sm z-20 pointer-events-none">
-                    Shapes: {shapes.length}
-                  </div>
-                  
-                  {/* Instructions */}
-                  <div className="absolute bottom-4 left-4 bg-black bg-opacity-70 text-white px-3 py-1 rounded text-sm z-20 pointer-events-none">
-                    {selectedTool === 'select' ? 'Click shapes to select them' :
-                     selectedTool === 'text' ? 'Click to add text' :
-                     'Click and drag to draw ' + selectedTool}
+                  {/* Zoom controls */}
+                  <div className="absolute top-4 right-4 flex gap-2 z-30">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="bg-white/90"
+                      onClick={() => setZoom(Math.max(0.25, zoom - 0.25))}
+                    >
+                      -
+                    </Button>
+                    <div className="bg-white/90 px-3 py-1 rounded text-sm font-medium">
+                      {Math.round(zoom * 100)}%
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline" 
+                      className="bg-white/90"
+                      onClick={() => setZoom(Math.min(4, zoom + 0.25))}
+                    >
+                      +
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -216,18 +260,34 @@ export default function WorkingBluebeamEditor() {
         </div>
       </div>
 
-      {/* Status Bar */}
+      {/* Professional Status Bar */}
       <div className="bg-slate-100 dark:bg-slate-800 border-t border-slate-300 dark:border-slate-700 px-4 py-2">
         <div className="flex items-center justify-between text-sm text-slate-600 dark:text-slate-400">
-          <div>
-            Tool: <span className="font-semibold text-slate-800 dark:text-slate-200">{selectedTool}</span>
+          <div className="flex items-center gap-6">
+            <div>
+              Tool: <span className="font-semibold text-slate-800 dark:text-slate-200">{selectedTool}</span>
+            </div>
+            <div>
+              Page: <span className="font-semibold text-slate-800 dark:text-slate-200">{currentPage}</span>
+            </div>
+            <div>
+              Zoom: <span className="font-semibold text-slate-800 dark:text-slate-200">{Math.round(zoom * 100)}%</span>
+            </div>
           </div>
-          <div>
-            Shapes: <span className="font-semibold text-slate-800 dark:text-slate-200">{shapes.length}</span>
+          
+          <div className="flex items-center gap-6">
+            <div>
+              Shapes: <span className="font-semibold text-slate-800 dark:text-slate-200">{shapes.length}</span>
+            </div>
+            <div>
+              Snapping: <span className="font-semibold text-slate-800 dark:text-slate-200">
+                {snappingSettings.enabled ? 'On' : 'Off'}
+              </span>
+            </div>
+            {uploadedPdfUrl && (
+              <div className="text-green-600 dark:text-green-400">✓ PDF Ready</div>
+            )}
           </div>
-          {uploadedPdfUrl && (
-            <div className="text-green-600 dark:text-green-400">✓ PDF Loaded</div>
-          )}
         </div>
       </div>
     </div>
