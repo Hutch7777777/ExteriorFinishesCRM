@@ -3,8 +3,8 @@ import { Button } from '@/components/ui/button'
 import { ZoomIn, ZoomOut, RotateCw, Maximize2, ChevronLeft, ChevronRight } from 'lucide-react'
 import * as pdfjsLib from 'pdfjs-dist'
 
-// Configure PDF.js worker to match the installed version (5.4.54)
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.4.54/pdf.worker.min.js`
+// Configure PDF.js worker - try CDN version that matches our package
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.2.67/pdf.worker.min.js`
 
 interface PageInfo {
   pageNumber: number
@@ -56,7 +56,38 @@ export default function PdfViewer({
 
     console.log('Loading PDF from URL:', pdfUrl) // Debug log
     
-    pdfjsLib.getDocument({ url: pdfUrl, cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.54/cmaps/', cMapPacked: true }).promise
+    // Try multiple loading methods
+    const tryLoadPdf = async () => {
+      try {
+        console.log('Attempting to load PDF with blob URL...')
+        // First, try with the blob URL directly
+        const doc = await pdfjsLib.getDocument({
+          url: pdfUrl,
+          cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.2.67/cmaps/',
+          cMapPacked: true
+        }).promise
+        return doc
+      } catch (blobError) {
+        console.warn('Blob URL failed, trying ArrayBuffer approach...', blobError)
+        
+        try {
+          // If blob URL fails, try fetching and converting to ArrayBuffer
+          const response = await fetch(pdfUrl)
+          const arrayBuffer = await response.arrayBuffer()
+          const doc = await pdfjsLib.getDocument({ 
+            data: new Uint8Array(arrayBuffer),
+            cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.2.67/cmaps/',
+            cMapPacked: true
+          }).promise
+          return doc
+        } catch (arrayError) {
+          console.error('ArrayBuffer approach also failed:', arrayError)
+          throw arrayError
+        }
+      }
+    }
+    
+    tryLoadPdf()
       .then((pdf) => {
         console.log('PDF loaded successfully:', pdf) // Debug log
         setPdfDocument(pdf)
@@ -69,10 +100,15 @@ export default function PdfViewer({
         setLoading(false)
       })
       .catch((err) => {
-        console.error('Error loading PDF:', err)
+        console.error('Error loading PDF:', err) // Debug log
         console.error('PDF URL:', pdfUrl) // Debug log
-        setError(`Failed to load PDF: ${err.message}`)
+        console.error('Error details:', {
+          name: err.name,
+          message: err.message,
+          stack: err.stack
+        })
         setLoading(false)
+        setError(`Failed to load PDF: ${err.message}`)
       })
   }, [pdfUrl, setCurrentPage])
 

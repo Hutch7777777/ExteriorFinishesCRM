@@ -121,12 +121,17 @@ export default function SimpleTestPage() {
     console.log('Starting file upload:', file.name, file.size) // Debug log
     
     try {
-      // Read the file as ArrayBuffer for better compatibility
-      const arrayBuffer = await file.arrayBuffer()
-      const blob = new Blob([arrayBuffer], { type: 'application/pdf' })
-      const pdfUrl = URL.createObjectURL(blob)
-      
+      // Create blob URL and verify it's working
+      const pdfUrl = URL.createObjectURL(file)
       console.log('Created blob URL:', pdfUrl) // Debug log
+      
+      // Test that the blob URL is accessible
+      try {
+        const testResponse = await fetch(pdfUrl, { method: 'HEAD' })
+        console.log('Blob URL test response:', testResponse.status, testResponse.statusText)
+      } catch (testErr) {
+        console.warn('Blob URL test failed:', testErr)
+      }
       
       // Reset page state for new document
       setCurrentPage(1)
