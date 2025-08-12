@@ -82,8 +82,11 @@ export default function SimpleTestPage() {
   const [calibrations, setCalibrations] = useState<{ [pageNumber: number]: Calibration }>({})
   const [snappingSettings, setSnappingSettings] = useState<SnappingSettings>({
     enabled: false,
+    snapToVertices: false,
+    snapToAngles: false,
     snapToGrid: false,
-    snapDistance: 10
+    gridSpacing: 20,
+    tolerance: 10
   })
   const [layerSettings, setLayerSettings] = useState<{ [layer: string]: LayerSettings }>({
     'Markup': { visible: true, locked: false, opacity: 1 },
@@ -115,10 +118,15 @@ export default function SimpleTestPage() {
     }
 
     setIsUploading(true)
+    console.log('Starting file upload:', file.name, file.size) // Debug log
+    
     try {
-      // Create a blob URL for the uploaded PDF
-      const pdfUrl = URL.createObjectURL(file)
-      setUploadedPdfUrl(pdfUrl)
+      // Read the file as ArrayBuffer for better compatibility
+      const arrayBuffer = await file.arrayBuffer()
+      const blob = new Blob([arrayBuffer], { type: 'application/pdf' })
+      const pdfUrl = URL.createObjectURL(blob)
+      
+      console.log('Created blob URL:', pdfUrl) // Debug log
       
       // Reset page state for new document
       setCurrentPage(1)
@@ -127,11 +135,14 @@ export default function SimpleTestPage() {
       setPageInfo(null)
       setThumbnails([])
       
+      setUploadedPdfUrl(pdfUrl)
+      
       toast({
         title: "PDF Uploaded Successfully",
         description: `${file.name} is now loaded in the editor`,
       })
     } catch (error) {
+      console.error('Upload error:', error) // Debug log
       toast({
         title: "Upload Failed",
         description: "Failed to load the PDF file",

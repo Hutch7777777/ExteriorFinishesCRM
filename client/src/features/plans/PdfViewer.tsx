@@ -54,8 +54,11 @@ export default function PdfViewer({
     setLoading(true)
     setError(null)
 
-    pdfjsLib.getDocument(pdfUrl).promise
+    console.log('Loading PDF from URL:', pdfUrl) // Debug log
+    
+    pdfjsLib.getDocument({ url: pdfUrl, cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/', cMapPacked: true }).promise
       .then((pdf) => {
+        console.log('PDF loaded successfully:', pdf) // Debug log
         setPdfDocument(pdf)
         setTotalPages(pdf.numPages)
         setCurrentPage(1)
@@ -67,7 +70,8 @@ export default function PdfViewer({
       })
       .catch((err) => {
         console.error('Error loading PDF:', err)
-        setError('Failed to load PDF')
+        console.error('PDF URL:', pdfUrl) // Debug log
+        setError(`Failed to load PDF: ${err.message}`)
         setLoading(false)
       })
   }, [pdfUrl, setCurrentPage])
@@ -235,10 +239,13 @@ export default function PdfViewer({
 
   if (loading) {
     return (
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="text-center text-slate-500">
+      <div className="absolute inset-0 flex items-center justify-center bg-slate-50 dark:bg-slate-900">
+        <div className="text-center p-6">
           <div className="animate-spin w-8 h-8 border-2 border-slate-300 border-t-slate-600 rounded-full mx-auto mb-4"></div>
-          <p>Loading PDF...</p>
+          <p className="text-slate-600 dark:text-slate-400 mb-2">Loading PDF...</p>
+          <div className="text-xs text-slate-500 bg-slate-100 dark:bg-slate-800 p-2 rounded border max-w-md">
+            <p className="font-mono break-all">{pdfUrl}</p>
+          </div>
         </div>
       </div>
     )
@@ -246,9 +253,19 @@ export default function PdfViewer({
 
   if (error) {
     return (
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="text-center text-red-500">
-          <p>{error}</p>
+      <div className="absolute inset-0 flex items-center justify-center bg-slate-50 dark:bg-slate-900">
+        <div className="text-center p-6 max-w-md">
+          <div className="w-16 h-16 mx-auto mb-4 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
+            <span className="text-2xl">📄</span>
+          </div>
+          <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">PDF Load Error</h3>
+          <p className="text-red-600 dark:text-red-400 mb-3">{error}</p>
+          <div className="text-xs text-slate-500 bg-slate-100 dark:bg-slate-800 p-2 rounded border">
+            <p className="font-mono break-all">{pdfUrl}</p>
+          </div>
+          <p className="text-xs text-slate-500 mt-2">
+            Check browser console for detailed error information
+          </p>
         </div>
       </div>
     )
