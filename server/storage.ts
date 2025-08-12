@@ -116,6 +116,7 @@ export interface IStorage {
   // Plan operations
   getPlanFilesByJobId(jobId: string): Promise<PlanFile[]>;
   createPlanFile(planFileData: any): Promise<PlanFile>;
+  getPlanFile(planFileId: string): Promise<PlanFile | undefined>;
   getJobWithDivisionAccess(jobId: string, userId: string): Promise<Job | undefined>;
   getPlanFileWithDivisionAccess(planFileId: string, userId: string): Promise<PlanFile | undefined>;
   getPlanAnnotations(planFileId: string): Promise<PlanAnnotation[]>;
@@ -580,6 +581,14 @@ export class DatabaseStorage implements IStorage {
       .insert(planFiles)
       .values(planFileData)
       .returning();
+    return planFile;
+  }
+
+  async getPlanFile(planFileId: string): Promise<PlanFile | undefined> {
+    const [planFile] = await db
+      .select()
+      .from(planFiles)
+      .where(eq(planFiles.id, planFileId));
     return planFile;
   }
 

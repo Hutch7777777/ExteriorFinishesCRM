@@ -536,12 +536,11 @@ Format your response in clear sections with actionable insights.`;
     }
   });
 
-  app.post('/api/upload-url', authenticateToken, async (req: AuthenticatedRequest, res) => {
+  app.post('/api/plans/upload-url', authenticateToken, async (req: AuthenticatedRequest, res) => {
     try {
-      // Generate a signed upload URL for S3/R2
-      // For demo purposes, we'll return a mock URL - in production this would be a real presigned URL
-      const uploadId = Math.random().toString(36).substring(7);
-      const uploadUrl = `https://demo-bucket.s3.amazonaws.com/plans/${uploadId}.pdf`;
+      const { ObjectStorageService } = await import('./objectStorage.js');
+      const objectStorageService = new ObjectStorageService();
+      const uploadUrl = await objectStorageService.getPDFUploadURL();
       
       res.json({ uploadUrl });
     } catch (error) {
@@ -550,10 +549,9 @@ Format your response in clear sections with actionable insights.`;
     }
   });
 
-  app.post('/api/jobs/:jobId/plan-files', authenticateToken, async (req: AuthenticatedRequest, res) => {
+  app.post('/api/plans/files', authenticateToken, async (req: AuthenticatedRequest, res) => {
     try {
-      const { jobId } = req.params;
-      const { url, filename, pages } = req.body;
+      const { jobId, url, filename, pages } = req.body;
       const userId = req.user!.id;
       
       // Check if user has access to this job via division
@@ -563,13 +561,18 @@ Format your response in clear sections with actionable insights.`;
       }
       
       // Validate required fields
-      if (!url || !filename) {
-        return res.status(400).json({ error: "URL and filename are required" });
+      if (!url || !filename || !jobId) {
+        return res.status(400).json({ error: "JobId, URL and filename are required" });
       }
+
+      // Normalize the object storage URL
+      const { ObjectStorageService } = await import('./objectStorage.js');
+      const objectStorageService = new ObjectStorageService();
+      const normalizedUrl = objectStorageService.normalizeObjectPath(url);
       
       const planFileData = {
         jobId,
-        url,
+        url: normalizedUrl,
         filename,
         pages: pages || 1,
         uploadedBy: userId
@@ -1021,6 +1024,51 @@ Format your response in clear sections with actionable insights.`;
     } catch (error: any) {
       console.error("Error exporting plan:", error);
       res.status(500).json({ error: error.message || "Failed to export plan" });
+    }
+  });
+
+  // Serve PDF files from object storage
+  app.get('/api/plans/:planFileId/pdf', authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { planFileId } = req.params;
+      const userId = req.user!.id;
+      
+      // Get the plan file
+      const planFile = await storage.getPlanFile(planFileId);
+      if (!planFile) {
+        return res.status(404).json({ error: "Plan file not found" });
+      }
+      
+      // Check if user has access to this job via division
+      const job = await storage.getJobWithDivisionAccess(planFile.jobId, userId);
+      if (!job) {
+        return res.status(404).json({ error: "Access denied" });
+      }
+      
+      try {
+        const { ObjectStorageService } = await import('./objectStorage.js');
+        const objectStorageService = new ObjectStorageService();
+        const objectFile = await objectStorageService.getObjectFile(planFile.url);
+        await objectStorageService.downloadObject(objectFile, res);
+      } catch (error) {
+        console.error("Error serving PDF from object storage:", error);
+        // If object storage fails, try direct URL fetch as fallback
+        if (planFile.url.startsWith('http')) {
+          const response = await fetch(planFile.url);
+          if (response.ok) {
+            const buffer = await response.arrayBuffer();
+            res.setHeader('Content-Type', 'application/pdf');
+            res.send(Buffer.from(buffer));
+          } else {
+            res.status(404).json({ error: "PDF file not accessible" });
+          }
+        } else {
+          res.status(404).json({ error: "PDF file not found" });
+        }
+      }
+    } catch (error) {
+      console.error("Error serving PDF:", error);
+      res.status(500).json({ error: "Failed to serve PDF file" });
     }
   });
 
