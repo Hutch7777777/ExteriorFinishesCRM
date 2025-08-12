@@ -3,8 +3,8 @@ import { Button } from '@/components/ui/button'
 import { ZoomIn, ZoomOut, RotateCw, Maximize2, ChevronLeft, ChevronRight } from 'lucide-react'
 import * as pdfjsLib from 'pdfjs-dist'
 
-// Configure PDF.js worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`
+// Configure PDF.js worker to match the installed version (5.4.54)
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.4.54/pdf.worker.min.js`
 
 interface PageInfo {
   pageNumber: number
@@ -56,7 +56,7 @@ export default function PdfViewer({
 
     console.log('Loading PDF from URL:', pdfUrl) // Debug log
     
-    pdfjsLib.getDocument({ url: pdfUrl, cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/', cMapPacked: true }).promise
+    pdfjsLib.getDocument({ url: pdfUrl, cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.54/cmaps/', cMapPacked: true }).promise
       .then((pdf) => {
         console.log('PDF loaded successfully:', pdf) // Debug log
         setPdfDocument(pdf)
