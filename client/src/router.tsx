@@ -8,6 +8,7 @@ import Jobs from '@/pages/Jobs'
 import Estimates from '@/pages/Estimates'
 import NotFound from '@/pages/not-found'
 import AppShell from '@/components/layout/AppShell'
+import PlansPage from '@/features/plans/PlansPage'
 import { useAuth } from '@/hooks/useAuth'
 
 // Root route without automatic redirects - let components handle authentication
@@ -130,6 +131,13 @@ const editEstimateRoute = createRoute({
   }
 })
 
+// Plans route
+const plansRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/$division/jobs/$jobId/plans',
+  component: PlansPage
+})
+
 // 404 route
 const notFoundRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -148,8 +156,8 @@ const routeTree = rootRoute.addChildren([
   leadDetailRoute,
   fieldManagementJobRoute,
   proposalViewRoute,
-
   editEstimateRoute,
+  plansRoute,
   notFoundRoute
 ])
 
