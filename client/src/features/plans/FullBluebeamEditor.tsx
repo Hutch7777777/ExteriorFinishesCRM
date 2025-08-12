@@ -171,17 +171,17 @@ export default function FullBluebeamEditor() {
         setPageHeight(viewport.height)
         
         toast({
-          title: 'PDF Analyzed',
-          description: `Document has ${doc.numPages} pages - full navigation enabled`,
+          title: 'PDF Analyzed Successfully',
+          description: `Document contains ${doc.numPages} pages - full scroll navigation enabled`,
         })
         
       } catch (error) {
         console.error('Error loading PDF for page detection:', error)
-        // If PDF.js fails, fall back to user-controlled page count
-        setTotalPages(10)
+        // If PDF.js fails, we can't determine page count - keep it at 1
+        setTotalPages(1)
         toast({
-          title: 'PDF Loaded',
-          description: 'PDF loaded - you can manually set the page count in the header',
+          title: 'PDF Analysis Failed',
+          description: 'Could not detect page count - navigation may be limited',
           variant: 'destructive'
         })
       } finally {
@@ -293,26 +293,15 @@ export default function FullBluebeamEditor() {
               </div>
             )}
 
-            {/* PDF Info and Manual Page Count */}
+            {/* PDF Analysis Status */}
             {uploadedPdfUrl && (
               <div className="flex items-center gap-2 px-3 py-1 bg-slate-700 rounded">
                 {isLoadingPdf ? (
-                  <span className="text-sm text-yellow-200">Analyzing PDF...</span>
+                  <span className="text-sm text-yellow-200">🔍 Analyzing PDF...</span>
                 ) : pdfDocument ? (
-                  <span className="text-sm text-green-200">✓ {totalPages} pages detected</span>
+                  <span className="text-sm text-green-200">✅ {totalPages} pages detected</span>
                 ) : (
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-white">Pages:</span>
-                    <input
-                      type="number"
-                      min="1"
-                      max="999"
-                      value={totalPages}
-                      onChange={(e) => setTotalPages(parseInt(e.target.value) || 1)}
-                      className="w-16 px-2 py-1 text-sm bg-slate-600 text-white border border-slate-500 rounded"
-                      placeholder="Set manually"
-                    />
-                  </div>
+                  <span className="text-sm text-red-200">⚠️ Analysis failed - limited navigation</span>
                 )}
               </div>
             )}
@@ -513,7 +502,7 @@ export default function FullBluebeamEditor() {
             </div>
             {uploadedPdfUrl && (
               <div className="text-green-600 dark:text-green-400">
-                {pdfDocument ? `✓ ${totalPages} pages analyzed` : '✓ Professional Tools Active'}
+                {pdfDocument ? `✓ Full ${totalPages}-page navigation active` : '⚠️ Limited navigation - analysis incomplete'}
               </div>
             )}
           </div>
