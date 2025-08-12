@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { FileText, Square, Circle, Type, Ruler, MousePointer, PenTool } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
-import OverlayStage from './OverlayStage'
+import { PdfUploadButton } from './PdfUploadButton'
 
 interface Shape {
   id: string
@@ -50,7 +50,6 @@ export default function WorkingBluebeamEditor() {
   const [shapes, setShapes] = useState<Shape[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [uploadedPdfUrl, setUploadedPdfUrl] = useState<string | null>(null)
-  const [isUploading, setIsUploading] = useState(false)
   const [currentPage] = useState(1)
   const [snappingSettings] = useState<SnappingSettings>({
     enabled: false,
@@ -61,40 +60,6 @@ export default function WorkingBluebeamEditor() {
     tolerance: 10
   })
   const [calibrations] = useState<{ [pageNumber: number]: Calibration }>({})
-  const fileInputRef = useRef<HTMLInputElement>(null)
-
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file || file.type !== 'application/pdf') {
-      toast({
-        title: "Invalid File",
-        description: "Please select a PDF file",
-        variant: "destructive",
-      })
-      return
-    }
-
-    setIsUploading(true)
-    
-    try {
-      // Create blob URL for native PDF viewing
-      const pdfUrl = URL.createObjectURL(file)
-      setUploadedPdfUrl(pdfUrl)
-      
-      toast({
-        title: "PDF Loaded Successfully",
-        description: "Ready for annotation using native browser PDF viewer",
-      })
-    } catch (error: any) {
-      toast({
-        title: "Upload Error",
-        description: error.message || "Failed to load PDF",
-        variant: "destructive",
-      })
-    } finally {
-      setIsUploading(false)
-    }
-  }
 
   const tools = [
     { id: 'select', name: 'Select', icon: MousePointer },
@@ -116,26 +81,18 @@ export default function WorkingBluebeamEditor() {
           </div>
           
           <div className="flex items-center gap-3">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".pdf"
-              onChange={handleFileUpload}
-              disabled={isUploading}
-              className="hidden"
-              id="pdf-upload"
+            <PdfUploadButton
+              onUploadSuccess={(pdfUrl, filename) => {
+                setUploadedPdfUrl(pdfUrl)
+                toast({
+                  title: 'PDF uploaded successfully',
+                  description: `${filename} is ready for annotation.`,
+                })
+              }}
+              variant="outline"
+              size="sm"
+              className="text-slate-800"
             />
-            <label htmlFor="pdf-upload">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                disabled={isUploading}
-                className="cursor-pointer text-slate-800"
-              >
-                <FileText className="w-4 h-4 mr-2" />
-                {isUploading ? 'Loading...' : 'Upload PDF'}
-              </Button>
-            </label>
           </div>
         </div>
       </div>
@@ -233,12 +190,18 @@ export default function WorkingBluebeamEditor() {
                 <FileText className="w-16 h-16 mx-auto mb-4 text-slate-300" />
                 <h3 className="text-lg font-semibold mb-2">No PDF Loaded</h3>
                 <p className="text-sm">Upload a PDF file to begin annotation</p>
-                <Button 
-                  onClick={() => fileInputRef.current?.click()}
-                  className="mt-4"
-                >
-                  Select PDF File
-                </Button>
+                <div className="mt-4">
+                  <PdfUploadButton
+                    onUploadSuccess={(pdfUrl, filename) => {
+                      setUploadedPdfUrl(pdfUrl)
+                      toast({
+                        title: 'PDF uploaded successfully',
+                        description: `${filename} is ready for annotation.`,
+                      })
+                    }}
+                    size="default"
+                  />
+                </div>
               </div>
             </div>
           )}
