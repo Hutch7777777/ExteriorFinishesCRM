@@ -3,8 +3,8 @@ import { Button } from '@/components/ui/button'
 import { ZoomIn, ZoomOut, RotateCw, Maximize2, ChevronLeft, ChevronRight } from 'lucide-react'
 import * as pdfjsLib from 'pdfjs-dist'
 
-// Configure PDF.js worker - try CDN version that matches our package
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.2.67/pdf.worker.min.js`
+// Disable PDF.js worker to avoid version conflicts
+pdfjsLib.GlobalWorkerOptions.workerSrc = ''
 
 interface PageInfo {
   pageNumber: number
@@ -60,9 +60,10 @@ export default function PdfViewer({
     const tryLoadPdf = async () => {
       try {
         console.log('Attempting to load PDF with blob URL...')
-        // First, try with the blob URL directly
+        // First, try with the blob URL directly (no worker mode)
         const doc = await pdfjsLib.getDocument({
           url: pdfUrl,
+          disableWorker: true,
           cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.2.67/cmaps/',
           cMapPacked: true
         }).promise
@@ -76,6 +77,7 @@ export default function PdfViewer({
           const arrayBuffer = await response.arrayBuffer()
           const doc = await pdfjsLib.getDocument({ 
             data: new Uint8Array(arrayBuffer),
+            disableWorker: true,
             cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.2.67/cmaps/',
             cMapPacked: true
           }).promise

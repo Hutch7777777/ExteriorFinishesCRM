@@ -30,10 +30,25 @@ export function BasicPdfTest() {
         
         // Try different worker configurations
         setStatus('Configuring worker...')
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
-
-        setStatus('Loading PDF document...')
-        const loadingTask = pdfjsLib.getDocument(blobUrl)
+        
+        // Try without worker first (fallback mode)
+        pdfjsLib.GlobalWorkerOptions.workerSrc = ''
+        
+        setStatus('Loading PDF document (no worker)...')
+        let loadingTask
+        
+        try {
+          // First try without worker
+          loadingTask = pdfjsLib.getDocument({
+            url: blobUrl,
+            disableWorker: true
+          })
+        } catch (noWorkerError) {
+          setStatus('No-worker failed, trying with worker...')
+          // If that fails, try with worker
+          pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
+          loadingTask = pdfjsLib.getDocument(blobUrl)
+        }
         
         loadingTask.onProgress = (progress: any) => {
           setStatus(`Loading: ${Math.round((progress.loaded / progress.total) * 100)}%`)
