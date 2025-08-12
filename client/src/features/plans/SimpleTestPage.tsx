@@ -120,6 +120,13 @@ export default function SimpleTestPage() {
       const pdfUrl = URL.createObjectURL(file)
       setUploadedPdfUrl(pdfUrl)
       
+      // Reset page state for new document
+      setCurrentPage(1)
+      setShapes([])
+      setSelectedId(null)
+      setPageInfo(null)
+      setThumbnails([])
+      
       toast({
         title: "PDF Uploaded Successfully",
         description: `${file.name} is now loaded in the editor`,
@@ -287,6 +294,7 @@ export default function SimpleTestPage() {
           {/* PDF Viewer with Overlay */}
           <div className="flex-1 bg-slate-100 dark:bg-slate-800 relative overflow-hidden">
             <PdfViewer
+              key={testPlanFile.url} // Force re-render when URL changes
               pdfUrl={testPlanFile.url}
               currentPage={currentPage}
               zoom={zoom}
