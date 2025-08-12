@@ -142,6 +142,7 @@ export default function SimpleTestPage() {
       setThumbnails([])
       
       setUploadedPdfUrl(pdfUrl)
+      setShowEditor(true) // Automatically show editor with native PDF
       
       toast({
         title: "PDF Uploaded Successfully",

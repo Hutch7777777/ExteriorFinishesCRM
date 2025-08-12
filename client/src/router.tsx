@@ -142,13 +142,13 @@ const plansRoute = createRoute({
 const testBluebeamRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/test-bluebeam',
-  component: lazy(() => import('./features/plans/SimpleTestPage'))
+  component: lazy(() => import('./features/plans/WorkingBluebeamEditor'))
 })
 
 const debugPdfRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/debug-pdf',
-  component: lazy(() => import('./features/plans/RobustPdfLoader').then(m => ({ default: m.RobustPdfLoader })))
+  component: lazy(() => import('./features/plans/NativePdfViewer').then(m => ({ default: m.NativePdfViewer })))
 })
 
 // 404 route
