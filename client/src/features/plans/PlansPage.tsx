@@ -801,7 +801,10 @@ export default function PlansPage() {
             <Button 
               variant="outline" 
               size="sm"
-              onClick={() => setShowUploadDialog(true)}
+              onClick={() => {
+                console.log("Upload button clicked");
+                setShowUploadDialog(true);
+              }}
             >
               <Upload className="w-4 h-4 mr-2" />
               Upload Plans
@@ -829,7 +832,10 @@ export default function PlansPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setShowUploadDialog(true)}
+                onClick={() => {
+                  console.log("Small upload button clicked");
+                  setShowUploadDialog(true);
+                }}
                 className="text-xs px-2 py-1"
               >
                 <Upload className="w-3 h-3 mr-1" />
