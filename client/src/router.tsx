@@ -148,7 +148,7 @@ const testBluebeamRoute = createRoute({
 const debugPdfRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/debug-pdf',
-  component: lazy(() => import('./features/plans/BasicPdfTest').then(m => ({ default: m.BasicPdfTest })))
+  component: lazy(() => import('./features/plans/RobustPdfLoader').then(m => ({ default: m.RobustPdfLoader })))
 })
 
 // 404 route
