@@ -23,7 +23,8 @@ import {
   Printer,
   Save,
   Copy,
-  RefreshCw
+  RefreshCw,
+  UploadCloud
 } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -528,9 +529,10 @@ export default function Estimates() {
 
         {/* Takeoff Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="materials">Materials</TabsTrigger>
             <TabsTrigger value="labor">Labor</TabsTrigger>
+            <TabsTrigger value="plans">Plans</TabsTrigger>
             <TabsTrigger value="summary">Summary</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
@@ -806,6 +808,51 @@ export default function Estimates() {
                   <div className="flex justify-between items-center text-lg font-semibold">
                     <span>Total Labor:</span>
                     <span className="text-[#4A6FA5]">{formatCurrency(totals.labor)}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Plans Tab */}
+          <TabsContent value="plans" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <div className="flex justify-between items-center">
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="w-5 h-5" />
+                    Project Plans & Drawings
+                  </CardTitle>
+                  <Button size="sm" className="bg-gradient-to-r from-[#4A6FA5] to-[#2C3E50] hover:from-[#3A5A95] hover:to-[#1C2E40]">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Upload Plans
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="min-h-[600px] border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg flex items-center justify-center bg-slate-50 dark:bg-slate-800">
+                  <div className="text-center space-y-4">
+                    <div className="w-16 h-16 mx-auto bg-slate-200 dark:bg-slate-700 rounded-lg flex items-center justify-center">
+                      <FileText className="w-8 h-8 text-slate-500 dark:text-slate-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">
+                        BlueBeam-Style Plan Viewer
+                      </h3>
+                      <p className="text-slate-600 dark:text-slate-400 max-w-md">
+                        This section will be developed to provide plan viewing, markup, measurement, 
+                        and annotation capabilities similar to BlueBeam Revu.
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-center gap-3">
+                      <Button variant="outline">
+                        <UploadCloud className="w-4 h-4 mr-2" />
+                        Upload PDF Plans
+                      </Button>
+                      <p className="text-sm text-slate-500 dark:text-slate-500">
+                        Ready for BlueBeam functionality implementation
+                      </p>
+                    </div>
                   </div>
                 </div>
               </CardContent>
