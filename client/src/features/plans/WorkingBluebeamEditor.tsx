@@ -1,13 +1,42 @@
-import React, { useState, useRef, useCallback } from 'react'
+import React, { useState, useRef, useCallback, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { FileText } from 'lucide-react'
+import { FileText, ChevronLeft, ChevronRight, RotateCw, ZoomIn, ZoomOut } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { PdfUploadButton } from './PdfUploadButton'
 import OverlayStage from './OverlayStage'
-import ToolPalette, { type SnappingSettings } from './ToolPalette'
+import ToolPalette from './ToolPalette'
+import * as pdfjsLib from 'pdfjs-dist'
+
+// Define types locally to avoid conflicts
+interface SnappingSettings {
+  enabled: boolean
+  snapToVertices: boolean
+  snapToAngles: boolean
+  snapToGrid: boolean
+  gridSpacing: number
+  tolerance: number
+}
+
+interface Calibration {
+  pixelsPerUnit: number
+  units: string
+}
 
 interface Shape {
   id: string
+  type: string
+  page: number
+  x: number
+  y: number
+  width?: number
+  height?: number
+  points?: number[]
+  stroke?: string
+  strokeWidth?: number
+  fill?: string
+  text?: string
+  style?: any
+  meta?: any
   type: 'rectangle' | 'circle' | 'line' | 'text' | 'measurement'
   x: number
   y: number
@@ -52,7 +81,9 @@ export default function WorkingBluebeamEditor() {
   const [shapes, setShapes] = useState<Shape[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [uploadedPdfUrl, setUploadedPdfUrl] = useState<string | null>(null)
-  const [currentPage] = useState(1)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [pdfDocument, setPdfDocument] = useState<any>(null)
   const [snappingSettings] = useState<SnappingSettings>({
     enabled: false,
     snapToVertices: false,
@@ -76,10 +107,11 @@ export default function WorkingBluebeamEditor() {
   const [pageWidth, setPageWidth] = useState(800)
   const [pageHeight, setPageHeight] = useState(1100)
 
-  const handleCalibration = useCallback((pageNumber: number, calibration: Calibration) => {
+  const handleCalibration = useCallback((page: number, pixelsPerUnit: number, units: string) => {
+    const calibration = { pixelsPerUnit, units }
     setCalibrations(prev => ({
       ...prev,
-      [pageNumber]: calibration
+      [page]: calibration
     }))
   }, [])
 
@@ -123,6 +155,90 @@ export default function WorkingBluebeamEditor() {
     setRedoStack([]) // Clear redo stack when new action is performed
   }, [shapes])
 
+  // PDF navigation functions
+  const goToNextPage = useCallback(() => {
+    if (currentPage < totalPages) {
+      setCurrentPage(prev => prev + 1)
+    }
+  }, [currentPage, totalPages])
+
+  const goToPrevPage = useCallback(() => {
+    if (currentPage > 1) {
+      setCurrentPage(prev => prev - 1)
+    }
+  }, [currentPage])
+
+  // Load PDF and get page count
+  useEffect(() => {
+    if (!uploadedPdfUrl) return
+
+    const loadPdfDocument = async () => {
+      try {
+        // Disable worker for better compatibility
+        pdfjsLib.GlobalWorkerOptions.workerSrc = ''
+        
+        const doc = await pdfjsLib.getDocument({
+          url: uploadedPdfUrl,
+          disableWorker: true,
+        }).promise
+        
+        setPdfDocument(doc)
+        setTotalPages(doc.numPages)
+        setCurrentPage(1)
+        
+        // Get first page dimensions
+        const page = await doc.getPage(1)
+        const viewport = page.getViewport({ scale: 1 })
+        setPageWidth(viewport.width)
+        setPageHeight(viewport.height)
+        
+      } catch (error) {
+        console.error('Error loading PDF:', error)
+        toast({
+          title: 'PDF Error',
+          description: 'Failed to load PDF document for navigation',
+          variant: 'destructive'
+        })
+      }
+    }
+
+    loadPdfDocument()
+  }, [uploadedPdfUrl, toast])
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!uploadedPdfUrl || totalPages <= 1) return
+      
+      // Only handle when not typing in inputs
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+      
+      switch (e.key) {
+        case 'ArrowLeft':
+        case 'PageUp':
+          e.preventDefault()
+          goToPrevPage()
+          break
+        case 'ArrowRight': 
+        case 'PageDown':
+          e.preventDefault()
+          goToNextPage()
+          break
+        case 'Home':
+          e.preventDefault()
+          setCurrentPage(1)
+          break
+        case 'End':
+          e.preventDefault()
+          setCurrentPage(totalPages)
+          break
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [uploadedPdfUrl, totalPages, goToPrevPage, goToNextPage])
+
   return (
     <div className="flex flex-col h-screen bg-slate-50 dark:bg-slate-900">
       {/* Header */}
@@ -134,18 +250,76 @@ export default function WorkingBluebeamEditor() {
           </div>
           
           <div className="flex items-center gap-3">
-            <PdfUploadButton
-              onUploadSuccess={(pdfUrl, filename) => {
-                setUploadedPdfUrl(pdfUrl)
-                toast({
-                  title: 'PDF uploaded successfully',
-                  description: `${filename} is ready for annotation.`,
-                })
-              }}
-              variant="outline"
-              size="sm"
-              className="text-slate-800"
-            />
+            <div className="flex items-center gap-3">
+              {/* Page Navigation */}
+              {uploadedPdfUrl && totalPages > 1 && (
+                <div className="flex items-center gap-2 px-3 py-1 bg-slate-700 rounded">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={goToPrevPage}
+                    disabled={currentPage <= 1}
+                    className="p-1 h-7 w-7 text-white hover:bg-slate-600"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  
+                  <span className="text-sm text-white mx-2">
+                    {currentPage} / {totalPages}
+                  </span>
+                  
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={goToNextPage}
+                    disabled={currentPage >= totalPages}
+                    className="p-1 h-7 w-7 text-white hover:bg-slate-600"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              )}
+
+              {/* Zoom Controls */}
+              {uploadedPdfUrl && (
+                <div className="flex items-center gap-2 px-3 py-1 bg-slate-700 rounded">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setZoom(Math.max(0.25, zoom - 0.25))}
+                    className="p-1 h-7 w-7 text-white hover:bg-slate-600"
+                  >
+                    <ZoomOut className="w-4 h-4" />
+                  </Button>
+                  
+                  <span className="text-sm text-white mx-2">
+                    {Math.round(zoom * 100)}%
+                  </span>
+                  
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setZoom(Math.min(4, zoom + 0.25))}
+                    className="p-1 h-7 w-7 text-white hover:bg-slate-600"
+                  >
+                    <ZoomIn className="w-4 h-4" />
+                  </Button>
+                </div>
+              )}
+
+              <PdfUploadButton
+                onUploadSuccess={(pdfUrl, filename) => {
+                  setUploadedPdfUrl(pdfUrl)
+                  toast({
+                    title: 'PDF uploaded successfully',
+                    description: `${filename} is ready for annotation.`,
+                  })
+                }}
+                variant="outline"
+                size="sm"
+                className="text-slate-800"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -176,12 +350,13 @@ export default function WorkingBluebeamEditor() {
         <div className="flex-1 relative bg-white dark:bg-slate-900">
           {uploadedPdfUrl ? (
             <div className="relative w-full h-full">
-              {/* Native PDF viewer using iframe */}
+              {/* Native PDF viewer with page navigation */}
               <iframe
-                src={uploadedPdfUrl}
+                src={`${uploadedPdfUrl}#page=${currentPage}&zoom=${Math.round(zoom * 100)}`}
                 className="w-full h-full border-0"
                 title="PDF Document"
                 style={{ minHeight: '100%' }}
+                key={`pdf-${currentPage}-${zoom}`}
               />
               
               {/* Annotation overlay - simplified version */}
@@ -211,27 +386,33 @@ export default function WorkingBluebeamEditor() {
                     snappingSettings={snappingSettings}
                   />
                   
-                  {/* Zoom controls */}
+                  {/* Page navigation overlay controls */}
                   <div className="absolute top-4 right-4 flex gap-2 z-30">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="bg-white/90"
-                      onClick={() => setZoom(Math.max(0.25, zoom - 0.25))}
-                    >
-                      -
-                    </Button>
-                    <div className="bg-white/90 px-3 py-1 rounded text-sm font-medium">
-                      {Math.round(zoom * 100)}%
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="outline" 
-                      className="bg-white/90"
-                      onClick={() => setZoom(Math.min(4, zoom + 0.25))}
-                    >
-                      +
-                    </Button>
+                    {totalPages > 1 && (
+                      <div className="flex items-center gap-1 bg-white/90 rounded px-2 py-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={goToPrevPage}
+                          disabled={currentPage <= 1}
+                          className="p-1 h-6 w-6"
+                        >
+                          <ChevronLeft className="w-3 h-3" />
+                        </Button>
+                        <span className="text-xs font-medium px-2">
+                          {currentPage}/{totalPages}
+                        </span>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={goToNextPage}
+                          disabled={currentPage >= totalPages}
+                          className="p-1 h-6 w-6"
+                        >
+                          <ChevronRight className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -268,10 +449,13 @@ export default function WorkingBluebeamEditor() {
               Tool: <span className="font-semibold text-slate-800 dark:text-slate-200">{selectedTool}</span>
             </div>
             <div>
-              Page: <span className="font-semibold text-slate-800 dark:text-slate-200">{currentPage}</span>
+              Page: <span className="font-semibold text-slate-800 dark:text-slate-200">{currentPage} of {totalPages}</span>
             </div>
             <div>
               Zoom: <span className="font-semibold text-slate-800 dark:text-slate-200">{Math.round(zoom * 100)}%</span>
+            </div>
+            <div className="text-xs text-slate-500">
+              Navigation: ← → or PageUp/PageDown • Home/End for first/last page
             </div>
           </div>
           
