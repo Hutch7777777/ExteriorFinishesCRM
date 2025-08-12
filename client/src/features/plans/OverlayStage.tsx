@@ -16,6 +16,7 @@ interface Shape {
   id: string
   type: 'rect' | 'ellipse' | 'polyline' | 'polygon' | 'arrow' | 'text' | 'highlighter' | 'measure_line' | 'measure_area'
   page: number
+  layer: 'Markup' | 'Measurements' | 'Symbols' | 'Text'
   points?: number[] // for polyline, polygon, arrow (normalized 0-1)
   x?: number // for rect, ellipse, text (normalized 0-1)
   y?: number // for rect, ellipse, text (normalized 0-1)
@@ -383,10 +384,26 @@ export default function OverlayStage({
     const normalizedX = pixelToNormalized(snappedPos.x, 'width')
     const normalizedY = pixelToNormalized(snappedPos.y, 'height')
 
+    // Determine layer based on tool type
+    const getLayer = (toolType: string): Shape['layer'] => {
+      switch (toolType) {
+        case 'measure_line':
+        case 'measure_area':
+          return 'Measurements'
+        case 'text':
+          return 'Text'
+        case 'arrow':
+          return 'Symbols'
+        default:
+          return 'Markup'
+      }
+    }
+
     const newShape: Shape = {
       id: generateId(),
       type: activeTool as Shape['type'],
       page: currentPage,
+      layer: getLayer(activeTool),
       style: {
         stroke: strokeColor,
         width: strokeWidth,

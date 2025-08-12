@@ -15,7 +15,14 @@ import {
   Highlighter,
   Ruler,
   Move3D,
-  Calculator
+  Calculator,
+  Undo,
+  Redo,
+  Eye,
+  EyeOff,
+  Layers,
+  Save,
+  BarChart3
 } from 'lucide-react'
 
 export interface SnappingSettings {
@@ -27,6 +34,13 @@ export interface SnappingSettings {
   tolerance: number
 }
 
+interface LayerSettings {
+  Markup: boolean
+  Measurements: boolean
+  Symbols: boolean
+  Text: boolean
+}
+
 interface ToolPaletteProps {
   selectedTool: string
   onToolSelect: (tool: string) => void
@@ -36,21 +50,30 @@ interface ToolPaletteProps {
   onStrokeColorChange: (color: string) => void
   snappingSettings: SnappingSettings
   onSnappingSettingsChange: (settings: SnappingSettings) => void
+  layerSettings?: LayerSettings
+  onLayerToggle?: (layer: keyof LayerSettings) => void
+  hasUnsavedChanges?: boolean
+  canUndo?: boolean
+  canRedo?: boolean
+  onUndo?: () => void
+  onRedo?: () => void
+  showScaleCheck?: boolean
+  onToggleScaleCheck?: () => void
 }
 
 const tools = [
-  { id: 'select', label: 'Select', icon: MousePointer },
-  { id: 'text', label: 'Text', icon: Type },
-  { id: 'arrow', label: 'Arrow', icon: ArrowUp },
-  { id: 'rect', label: 'Rectangle', icon: Square },
-  { id: 'ellipse', label: 'Ellipse', icon: Circle },
-  { id: 'polyline', label: 'Polyline', icon: Minus },
-  { id: 'polygon', label: 'Polygon', icon: Pentagon },
-  { id: 'highlighter', label: 'Highlighter', icon: Highlighter },
+  { id: 'select', label: 'Select', icon: MousePointer, shortcut: 'V' },
+  { id: 'text', label: 'Text', icon: Type, shortcut: 'T' },
+  { id: 'arrow', label: 'Arrow', icon: ArrowUp, shortcut: 'A' },
+  { id: 'rect', label: 'Rectangle', icon: Square, shortcut: 'R' },
+  { id: 'ellipse', label: 'Ellipse', icon: Circle, shortcut: 'O' },
+  { id: 'polyline', label: 'Polyline', icon: Minus, shortcut: 'L' },
+  { id: 'polygon', label: 'Polygon', icon: Pentagon, shortcut: 'P' },
+  { id: 'highlighter', label: 'Highlighter', icon: Highlighter, shortcut: 'H' },
 ]
 
 const measureTools = [
-  { id: 'calibrate', label: 'Calibrate', icon: Move3D },
+  { id: 'calibrate', label: 'Calibrate', icon: Move3D, shortcut: 'C' },
   { id: 'measure_line', label: 'Measure Line', icon: Ruler },
   { id: 'measure_area', label: 'Measure Area', icon: Calculator },
 ]
@@ -74,10 +97,79 @@ export default function ToolPalette({
   strokeColor,
   onStrokeColorChange,
   snappingSettings,
-  onSnappingSettingsChange
+  onSnappingSettingsChange,
+  layerSettings,
+  onLayerToggle,
+  hasUnsavedChanges,
+  canUndo,
+  canRedo,
+  onUndo,
+  onRedo,
+  showScaleCheck,
+  onToggleScaleCheck
 }: ToolPaletteProps) {
   return (
     <div className="h-full flex flex-col">
+      {/* Undo/Redo and Save Status */}
+      <Card className="m-4 mb-2">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            Actions
+            {hasUnsavedChanges && <Save className="w-3 h-3 text-orange-500" />}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onUndo}
+              disabled={!canUndo}
+              className="flex-1"
+            >
+              <Undo className="w-3 h-3 mr-1" />
+              Undo
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onRedo}
+              disabled={!canRedo}
+              className="flex-1"
+            >
+              <Redo className="w-3 h-3 mr-1" />
+              Redo
+            </Button>
+          </div>
+          <div className="mt-2">
+            <Button
+              variant={showScaleCheck ? "default" : "outline"}
+              size="sm"
+              onClick={onToggleScaleCheck}
+              className="w-full"
+            >
+              <BarChart3 className="w-3 h-3 mr-1" />
+              Scale Check
+            </Button>
+          </div>
+          {hasUnsavedChanges && (
+            <div className="text-xs text-orange-600 mt-2 flex items-center gap-1">
+              <Save className="w-3 h-3" />
+              Auto-saving changes...
+            </div>
+          )}
+          
+          {/* Keyboard Shortcuts Help */}
+          <div className="mt-3 pt-2 border-t border-slate-200 dark:border-slate-700">
+            <div className="text-xs text-slate-500 space-y-1">
+              <div className="font-medium">Shortcuts:</div>
+              <div>Ctrl/⌘+Z: Undo • Ctrl/⌘+Y: Redo</div>
+              <div>Del: Delete Selected</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Tools */}
       <Card className="m-4 mb-2">
         <CardHeader className="pb-3">
@@ -98,9 +190,15 @@ export default function ToolPalette({
                       ? 'bg-gradient-to-r from-[#4A6FA5] to-[#2C3E50] hover:from-[#3A5A95] hover:to-[#1C2E40]' 
                       : ''
                   }`}
+                  title={`${tool.label}${tool.shortcut ? ` (${tool.shortcut})` : ''}`}
                 >
                   <Icon className="w-4 h-4" />
                   <span className="text-xs">{tool.label}</span>
+                  {tool.shortcut && (
+                    <span className="text-[10px] opacity-60 absolute top-1 right-1 bg-slate-500 text-white rounded px-1">
+                      {tool.shortcut}
+                    </span>
+                  )}
                 </Button>
               )
             })}
@@ -128,9 +226,15 @@ export default function ToolPalette({
                       ? 'bg-gradient-to-r from-[#4A6FA5] to-[#2C3E50] hover:from-[#3A5A95] hover:to-[#1C2E40]' 
                       : ''
                   }`}
+                  title={`${tool.label}${tool.shortcut ? ` (${tool.shortcut})` : ''}`}
                 >
                   <Icon className="h-4 w-4" />
                   <span className="text-xs font-medium">{tool.label}</span>
+                  {tool.shortcut && (
+                    <span className="text-[10px] opacity-60 ml-auto bg-slate-500 text-white rounded px-1">
+                      {tool.shortcut}
+                    </span>
+                  )}
                 </Button>
               )
             })}
@@ -211,6 +315,43 @@ export default function ToolPalette({
           </div>
         </CardContent>
       </Card>
+
+      {/* Layer Management */}
+      {layerSettings && onLayerToggle && (
+        <Card className="mx-4 mb-2">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm flex items-center gap-1">
+              <Layers className="w-4 h-4" />
+              Layers
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0 space-y-2">
+            {(Object.keys(layerSettings) as Array<keyof LayerSettings>).map((layer) => (
+              <div key={layer} className="flex items-center space-x-2">
+                <button
+                  onClick={() => onLayerToggle(layer)}
+                  className="flex items-center justify-center w-5 h-5 rounded border"
+                >
+                  {layerSettings[layer] ? (
+                    <Eye className="w-3 h-3 text-blue-600" />
+                  ) : (
+                    <EyeOff className="w-3 h-3 text-slate-400" />
+                  )}
+                </button>
+                <Label
+                  htmlFor={`layer-${layer}`}
+                  className={`text-xs cursor-pointer ${
+                    layerSettings[layer] ? 'text-slate-900 dark:text-slate-100' : 'text-slate-400'
+                  }`}
+                  onClick={() => onLayerToggle(layer)}
+                >
+                  {layer}
+                </Label>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Snapping */}
       <Card className="mx-4 mb-2">

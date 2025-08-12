@@ -38,6 +38,7 @@ interface Shape {
   id: string
   type: 'rect' | 'ellipse' | 'polyline' | 'polygon' | 'arrow' | 'text' | 'highlighter' | 'measure_line' | 'measure_area'
   page: number
+  layer: 'Markup' | 'Measurements' | 'Symbols' | 'Text'
   points?: number[]
   x?: number
   y?: number
@@ -54,9 +55,66 @@ interface Shape {
   }
 }
 
+interface UndoRedoState {
+  shapes: Shape[]
+  timestamp: number
+}
+
+interface LayerSettings {
+  Markup: boolean
+  Measurements: boolean
+  Symbols: boolean
+  Text: boolean
+}
+
 interface CalibrationData {
   pixelsPerUnit: number
   units: string
+}
+
+// Scale Check Bar component
+interface ScaleCheckBarProps {
+  calibration: CalibrationData
+}
+
+function ScaleCheckBar({ calibration }: ScaleCheckBarProps) {
+  const { pixelsPerUnit, units } = calibration;
+  const tenFeetInPixels = 10 * pixelsPerUnit; // 10 feet/units in pixels
+  const oneFootInPixels = pixelsPerUnit; // 1 foot/unit in pixels
+
+  return (
+    <div className="flex flex-col items-start">
+      <div 
+        className="relative border-b-2 border-slate-800"
+        style={{ width: `${tenFeetInPixels}px`, height: '20px' }}
+      >
+        {/* Major tick marks */}
+        {Array.from({ length: 11 }, (_, i) => (
+          <div
+            key={i}
+            className="absolute bottom-0 border-l border-slate-800"
+            style={{
+              left: `${i * oneFootInPixels}px`,
+              height: i % 5 === 0 ? '20px' : i % 1 === 0 ? '12px' : '8px',
+              borderWidth: i % 5 === 0 ? '2px' : '1px'
+            }}
+          />
+        ))}
+        
+        {/* Labels */}
+        <div className="absolute -bottom-6 left-0 text-xs text-slate-600">0</div>
+        <div className="absolute -bottom-6 text-xs text-slate-600" style={{ left: `${5 * oneFootInPixels - 8}px` }}>
+          5{units}
+        </div>
+        <div className="absolute -bottom-6 text-xs text-slate-600" style={{ left: `${tenFeetInPixels - 16}px` }}>
+          10{units}
+        </div>
+      </div>
+      <div className="text-xs text-slate-500 mt-2">
+        10 {units} scale bar
+      </div>
+    </div>
+  );
 }
 
 export default function PlansPage() {
@@ -87,6 +145,16 @@ export default function PlansPage() {
     gridSpacing: 20,
     tolerance: 10
   })
+  const [undoStack, setUndoStack] = useState<Record<number, UndoRedoState[]>>({})
+  const [redoStack, setRedoStack] = useState<Record<number, UndoRedoState[]>>({})
+  const [layerSettings, setLayerSettings] = useState<LayerSettings>({
+    Markup: true,
+    Measurements: true,
+    Symbols: true,
+    Text: true
+  })
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const [showScaleCheck, setShowScaleCheck] = useState(false)
   
   const queryClient = useQueryClient()
   const { toast } = useToast()
@@ -316,6 +384,189 @@ export default function PlansPage() {
     }
   }, [selectedPlanFile, exportMutation]);
 
+  // Undo/Redo functionality
+  const saveToUndoStack = useCallback((pageNum: number, currentShapes: Shape[]) => {
+    const MAX_UNDO_STATES = 50;
+    setUndoStack(prev => {
+      const pageStack = prev[pageNum] || [];
+      const newState: UndoRedoState = {
+        shapes: [...currentShapes],
+        timestamp: Date.now()
+      };
+      
+      // Add to stack and limit to MAX_UNDO_STATES
+      const updatedStack = [...pageStack, newState].slice(-MAX_UNDO_STATES);
+      
+      return {
+        ...prev,
+        [pageNum]: updatedStack
+      };
+    });
+    
+    // Clear redo stack when new action is performed
+    setRedoStack(prev => ({
+      ...prev,
+      [pageNum]: []
+    }));
+  }, []);
+
+  const handleUndo = useCallback(() => {
+    const pageStack = undoStack[currentPage] || [];
+    if (pageStack.length > 0) {
+      // Move current state to redo stack
+      const currentPageShapes = shapes.filter(shape => shape.page === currentPage);
+      setRedoStack(prev => ({
+        ...prev,
+        [currentPage]: [
+          ...(prev[currentPage] || []),
+          { shapes: [...currentPageShapes], timestamp: Date.now() }
+        ]
+      }));
+      
+      // Restore previous state
+      const previousState = pageStack[pageStack.length - 1];
+      const otherPageShapes = shapes.filter(shape => shape.page !== currentPage);
+      setShapes([...otherPageShapes, ...previousState.shapes]);
+      
+      // Remove from undo stack
+      setUndoStack(prev => ({
+        ...prev,
+        [currentPage]: pageStack.slice(0, -1)
+      }));
+      
+      setHasUnsavedChanges(true);
+    }
+  }, [undoStack, currentPage, shapes]);
+
+  const handleRedo = useCallback(() => {
+    const pageStack = redoStack[currentPage] || [];
+    if (pageStack.length > 0) {
+      // Move current state to undo stack
+      const currentPageShapes = shapes.filter(shape => shape.page === currentPage);
+      saveToUndoStack(currentPage, currentPageShapes);
+      
+      // Restore next state
+      const nextState = pageStack[pageStack.length - 1];
+      const otherPageShapes = shapes.filter(shape => shape.page !== currentPage);
+      setShapes([...otherPageShapes, ...nextState.shapes]);
+      
+      // Remove from redo stack
+      setRedoStack(prev => ({
+        ...prev,
+        [currentPage]: pageStack.slice(0, -1)
+      }));
+      
+      setHasUnsavedChanges(true);
+    }
+  }, [redoStack, currentPage, shapes, saveToUndoStack]);
+
+  const handleDeleteSelected = useCallback(() => {
+    if (selectedId) {
+      const currentPageShapes = shapes.filter(shape => shape.page === currentPage);
+      saveToUndoStack(currentPage, currentPageShapes);
+      
+      setShapes(prev => prev.filter(shape => shape.id !== selectedId));
+      setSelectedId(null);
+      setHasUnsavedChanges(true);
+    }
+  }, [selectedId, shapes, currentPage, saveToUndoStack]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Ignore if user is typing in an input field
+      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      const isCtrlCmd = event.ctrlKey || event.metaKey;
+      
+      // Undo/Redo
+      if (isCtrlCmd && event.key === 'z' && !event.shiftKey) {
+        event.preventDefault();
+        handleUndo();
+        return;
+      }
+      
+      if (isCtrlCmd && (event.key === 'y' || (event.key === 'z' && event.shiftKey))) {
+        event.preventDefault();
+        handleRedo();
+        return;
+      }
+      
+      // Delete
+      if (event.key === 'Delete' || event.key === 'Backspace') {
+        event.preventDefault();
+        handleDeleteSelected();
+        return;
+      }
+      
+      // Tool shortcuts
+      switch (event.key.toLowerCase()) {
+        case 'v':
+          setSelectedTool('select');
+          break;
+        case 'r':
+          setSelectedTool('rect');
+          break;
+        case 'o':
+          setSelectedTool('ellipse');
+          break;
+        case 'p':
+          setSelectedTool('polygon');
+          break;
+        case 'l':
+          setSelectedTool('polyline');
+          break;
+        case 'a':
+          setSelectedTool('arrow');
+          break;
+        case 't':
+          setSelectedTool('text');
+          break;
+        case 'h':
+          setSelectedTool('highlighter');
+          break;
+        case 'c':
+          setSelectedTool('calibrate');
+          break;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [handleUndo, handleRedo, handleDeleteSelected]);
+
+  // Layer management
+  const getShapeLayer = (shapeType: Shape['type']): Shape['layer'] => {
+    switch (shapeType) {
+      case 'measure_line':
+      case 'measure_area':
+        return 'Measurements';
+      case 'text':
+        return 'Text';
+      case 'arrow':
+        return 'Symbols';
+      default:
+        return 'Markup';
+    }
+  };
+
+  const toggleLayer = useCallback((layer: keyof LayerSettings) => {
+    setLayerSettings(prev => ({
+      ...prev,
+      [layer]: !prev[layer]
+    }));
+  }, []);
+
+  // Filter shapes by visible layers
+  const visibleShapes = useMemo(() => {
+    return shapes.filter(shape => {
+      const layer = shape.layer || getShapeLayer(shape.type);
+      return layerSettings[layer];
+    });
+  }, [shapes, layerSettings, getShapeLayer]);
+
   // Load and merge server data into local state keyed by page
   useEffect(() => {
     if (annotationsData?.annotations && !annotationsLoading) {
@@ -373,6 +624,9 @@ export default function PlansPage() {
         ...prev,
         [currentPage]: currentPageShapes
       }));
+      
+      // Track unsaved changes during autosave delay
+      setHasUnsavedChanges(true);
     }
     
     return () => {
@@ -381,6 +635,26 @@ export default function PlansPage() {
       }
     };
   }, [shapes, currentPage, debouncedSave, annotationsLoading, annotationsData]);
+
+  // Clear unsaved changes flag when autosave completes
+  useEffect(() => {
+    if (!saveAnnotationsMutation.isPending && !saveError) {
+      setHasUnsavedChanges(false);
+    }
+  }, [saveAnnotationsMutation.isPending, saveError]);
+
+  // Warn before leaving page with unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges || saveAnnotationsMutation.isPending) {
+        event.preventDefault();
+        event.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges, saveAnnotationsMutation.isPending]);
 
   // Set default plan file when plan files load
   useEffect(() => {
@@ -660,8 +934,21 @@ export default function PlansPage() {
                 zoom={pageInfo?.scale || 1}
                 currentPage={currentPage}
                 activeTool={selectedTool}
-                shapes={shapes}
-                setShapes={setShapes}
+                shapes={visibleShapes}
+                setShapes={(newShapes) => {
+                  // Save to undo stack before making changes
+                  const currentPageShapes = shapes.filter(shape => shape.page === currentPage);
+                  saveToUndoStack(currentPage, currentPageShapes);
+                  
+                  // Ensure shapes have proper layer assignment
+                  const shapesWithLayers = newShapes.map(shape => ({
+                    ...shape,
+                    layer: shape.layer || getShapeLayer(shape.type)
+                  }));
+                  
+                  setShapes(shapesWithLayers);
+                  setHasUnsavedChanges(true);
+                }}
                 selectedId={selectedId}
                 setSelectedId={setSelectedId}
                 strokeWidth={strokeWidth}
@@ -670,6 +957,14 @@ export default function PlansPage() {
                 onCalibration={handleCalibration}
                 snappingSettings={snappingSettings}
               />
+
+              {/* Scale Check Overlay */}
+              {showScaleCheck && calibrations[currentPage] && (
+                <div className="absolute top-4 left-4 bg-white/90 border border-slate-300 rounded-lg p-3 shadow-lg">
+                  <div className="text-xs font-medium text-slate-700 mb-2">Scale Check</div>
+                  <ScaleCheckBar calibration={calibrations[currentPage]} />
+                </div>
+              )}
             </div>
           ) : (
             <div className="flex items-center justify-center h-full">
@@ -701,6 +996,15 @@ export default function PlansPage() {
             onStrokeColorChange={setStrokeColor}
             snappingSettings={snappingSettings}
             onSnappingSettingsChange={setSnappingSettings}
+            layerSettings={layerSettings}
+            onLayerToggle={toggleLayer}
+            hasUnsavedChanges={hasUnsavedChanges}
+            canUndo={(undoStack[currentPage] || []).length > 0}
+            canRedo={(redoStack[currentPage] || []).length > 0}
+            onUndo={handleUndo}
+            onRedo={handleRedo}
+            showScaleCheck={showScaleCheck}
+            onToggleScaleCheck={() => setShowScaleCheck(!showScaleCheck)}
           />
           
           {/* Measurement Summary */}
