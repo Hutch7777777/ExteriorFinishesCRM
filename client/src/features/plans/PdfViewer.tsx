@@ -232,7 +232,7 @@ export default function PdfViewer({
     }
   }
 
-  const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.2, 3))
+  const handleZoomIn = () => setZoom(Math.min(zoom + 0.2, 3))
   const handleZoomOut = () => {
     const newZoom = Math.max(zoom - 0.2, 0.5)
     setZoom(newZoom)

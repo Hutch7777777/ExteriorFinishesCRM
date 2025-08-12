@@ -5,6 +5,7 @@ import { FileText } from 'lucide-react'
 import PdfViewer from './PdfViewer'
 import OverlayStage from './OverlayStage'
 import ToolPalette, { type SnappingSettings } from './ToolPalette'
+import { TestPdfLoader } from './TestPdfLoader'
 
 interface PageInfo {
   pageNumber: number
