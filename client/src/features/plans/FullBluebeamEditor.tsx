@@ -5,6 +5,7 @@ import { useToast } from '@/hooks/use-toast'
 import { PdfUploadButton } from './PdfUploadButton'
 import OverlayStage from './OverlayStage'
 import ToolPalette from './ToolPalette'
+import * as pdfjsLib from 'pdfjs-dist'
 
 // Define types locally to avoid conflicts
 interface SnappingSettings {
@@ -53,6 +54,8 @@ export default function FullBluebeamEditor() {
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [zoom, setZoom] = useState(1.0)
+  const [pdfDocument, setPdfDocument] = useState<any>(null)
+  const [isLoadingPdf, setIsLoadingPdf] = useState(false)
   
   // Advanced features
   const [snappingSettings] = useState<SnappingSettings>({
@@ -138,6 +141,56 @@ export default function FullBluebeamEditor() {
     setUndoStack(prev => [...prev.slice(-9), [...shapes]]) // Keep last 10 states
     setRedoStack([]) // Clear redo stack when new action is performed
   }, [shapes])
+
+  // Load PDF and detect actual page count
+  useEffect(() => {
+    if (!uploadedPdfUrl) return
+
+    const loadPdfDocument = async () => {
+      setIsLoadingPdf(true)
+      try {
+        console.log('Loading PDF document for page detection:', uploadedPdfUrl)
+        
+        // Disable worker for better compatibility
+        pdfjsLib.GlobalWorkerOptions.workerSrc = ''
+        
+        const doc = await pdfjsLib.getDocument({
+          url: uploadedPdfUrl,
+          disableWorker: true,
+        }).promise
+        
+        console.log('PDF loaded successfully, actual pages:', doc.numPages)
+        setPdfDocument(doc)
+        setTotalPages(doc.numPages)
+        setCurrentPage(1)
+        
+        // Get first page dimensions for overlay sizing
+        const page = await doc.getPage(1)
+        const viewport = page.getViewport({ scale: 1 })
+        setPageWidth(viewport.width)
+        setPageHeight(viewport.height)
+        
+        toast({
+          title: 'PDF Analyzed',
+          description: `Document has ${doc.numPages} pages - full navigation enabled`,
+        })
+        
+      } catch (error) {
+        console.error('Error loading PDF for page detection:', error)
+        // If PDF.js fails, fall back to user-controlled page count
+        setTotalPages(10)
+        toast({
+          title: 'PDF Loaded',
+          description: 'PDF loaded - you can manually set the page count in the header',
+          variant: 'destructive'
+        })
+      } finally {
+        setIsLoadingPdf(false)
+      }
+    }
+
+    loadPdfDocument()
+  }, [uploadedPdfUrl, toast])
 
   // Keyboard navigation
   useEffect(() => {
@@ -240,29 +293,39 @@ export default function FullBluebeamEditor() {
               </div>
             )}
 
-            {/* Page Count Input */}
+            {/* PDF Info and Manual Page Count */}
             {uploadedPdfUrl && (
               <div className="flex items-center gap-2 px-3 py-1 bg-slate-700 rounded">
-                <span className="text-sm text-white">Pages:</span>
-                <input
-                  type="number"
-                  min="1"
-                  max="999"
-                  value={totalPages}
-                  onChange={(e) => setTotalPages(parseInt(e.target.value) || 1)}
-                  className="w-16 px-2 py-1 text-sm bg-slate-600 text-white border border-slate-500 rounded"
-                />
+                {isLoadingPdf ? (
+                  <span className="text-sm text-yellow-200">Analyzing PDF...</span>
+                ) : pdfDocument ? (
+                  <span className="text-sm text-green-200">✓ {totalPages} pages detected</span>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-white">Pages:</span>
+                    <input
+                      type="number"
+                      min="1"
+                      max="999"
+                      value={totalPages}
+                      onChange={(e) => setTotalPages(parseInt(e.target.value) || 1)}
+                      className="w-16 px-2 py-1 text-sm bg-slate-600 text-white border border-slate-500 rounded"
+                      placeholder="Set manually"
+                    />
+                  </div>
+                )}
               </div>
             )}
 
             <PdfUploadButton
               onUploadSuccess={(pdfUrl, filename) => {
                 setUploadedPdfUrl(pdfUrl)
-                setTotalPages(10) // Default - user can adjust
+                // Don't set totalPages here - let the PDF analysis handle it
                 setCurrentPage(1)
+                setPdfDocument(null) // Reset for new document
                 toast({
                   title: 'PDF uploaded successfully',
-                  description: `${filename} is ready for professional annotation.`,
+                  description: `${filename} - analyzing page count...`,
                 })
               }}
               variant="outline"
@@ -401,11 +464,11 @@ export default function FullBluebeamEditor() {
                 <PdfUploadButton
                   onUploadSuccess={(pdfUrl, filename) => {
                     setUploadedPdfUrl(pdfUrl)
-                    setTotalPages(10)
                     setCurrentPage(1)
+                    setPdfDocument(null)
                     toast({
                       title: 'PDF uploaded successfully',
-                      description: `${filename} is ready for professional annotation.`,
+                      description: `${filename} - analyzing page count...`,
                     })
                   }}
                   variant="default"
@@ -449,7 +512,9 @@ export default function FullBluebeamEditor() {
               </span>
             </div>
             {uploadedPdfUrl && (
-              <div className="text-green-600 dark:text-green-400">✓ Professional Tools Active</div>
+              <div className="text-green-600 dark:text-green-400">
+                {pdfDocument ? `✓ ${totalPages} pages analyzed` : '✓ Professional Tools Active'}
+              </div>
             )}
           </div>
         </div>
