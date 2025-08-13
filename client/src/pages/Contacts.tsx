@@ -1,9 +1,11 @@
 import { useState } from 'react'
+import { useQuery, useMutation } from '@tanstack/react-query'
+import { apiRequest, queryClient } from '@/lib/queryClient'
+import { useParams } from 'wouter'
 import { ColumnDef } from '@tanstack/react-table'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { DataTable } from '@/components/ui/data-table'
-import { EmptyState } from '@/components/ui/empty-state'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -40,65 +42,71 @@ interface Contact {
 export default function Contacts() {
   const [activeTab, setActiveTab] = useState('all')
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [newContact, setNewContact] = useState({
+    name: '',
+    company: '',
+    type: 'vendor' as Contact['type'],
+    email: '',
+    phone: '',
+    address: '',
+    specialty: '',
+    rating: 0,
+    notes: ''
+  })
   const { toast } = useToast()
+  const params = useParams()
+  
+  // Get contacts from API
+  const { data: contacts = [], isLoading } = useQuery({
+    queryKey: ['/api/contacts.list', params.division],
+    queryFn: () => apiRequest(`/api/contacts.list?divisionKey=${params.division || 'all'}`)
+  })
 
-  // Mock data for demonstration
-  const mockContacts: Contact[] = [
-    {
-      id: '1',
-      name: 'Mike Johnson',
-      company: 'ABC Roofing Supply',
-      type: 'supplier',
-      email: 'mike@abcroofing.com',
-      phone: '(555) 234-5678',
-      address: '123 Industrial Blvd, Chicago, IL',
-      specialty: 'Roofing Materials',
-      rating: 5,
-      notes: 'Excellent supplier, fast delivery, competitive pricing',
-      createdAt: '2025-01-08'
+  // Create contact mutation
+  const createContactMutation = useMutation({
+    mutationFn: (contactData: any) => 
+      apiRequest('/api/contacts.create', {
+        method: 'POST',
+        body: JSON.stringify({ input: { ...contactData, divisionKey: params.division || 'mfnc' } })
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/contacts.list'] })
+      setIsCreateDialogOpen(false)
+      setNewContact({
+        name: '',
+        company: '',
+        type: 'vendor',
+        email: '',
+        phone: '',
+        address: '',
+        specialty: '',
+        rating: 0,
+        notes: ''
+      })
+      toast({
+        title: "Success",
+        description: "Contact created successfully."
+      })
     },
-    {
-      id: '2',
-      name: 'Sarah Williams',
-      company: 'Elite Painters',
-      type: 'subcontractor',
-      email: 'sarah@elitepainters.com',
-      phone: '(555) 345-6789',
-      address: '456 Main St, Chicago, IL',
-      specialty: 'Exterior Painting',
-      rating: 4,
-      notes: 'Reliable subcontractor for painting services',
-      createdAt: '2025-01-07'
-    },
-    {
-      id: '3',
-      name: 'David Chen',
-      company: 'Exterior Finishes',
-      type: 'internal',
-      email: 'david@exteriorfinishes.com',
-      phone: '(555) 456-7890',
-      address: '789 Company Ave, Chicago, IL',
-      specialty: 'Project Manager',
-      rating: 5,
-      notes: 'Internal project manager for commercial division',
-      createdAt: '2025-01-06'
-    },
-    {
-      id: '4',
-      name: 'Lisa Rodriguez',
-      company: 'Metro Scaffolding',
-      type: 'vendor',
-      email: 'lisa@metroscaffolding.com',
-      phone: '(555) 567-8901',
-      address: '321 Equipment Way, Chicago, IL',
-      specialty: 'Scaffolding & Equipment',
-      rating: 4,
-      notes: 'Equipment rental and scaffolding services',
-      createdAt: '2025-01-05'
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create contact.",
+        variant: "destructive"
+      })
     }
-  ]
+  })
 
-  const contacts = mockContacts
+  // Filter contacts by type
+  const filteredContacts = activeTab === 'all' 
+    ? contacts 
+    : contacts.filter((contact: Contact) => contact.type === activeTab)
+
+  // Handle form submission
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    createContactMutation.mutate(newContact)
+  }
 
   const getTypeColor = (type: Contact['type']) => {
     switch (type) {
@@ -138,15 +146,15 @@ export default function Contacts() {
       accessorKey: "name",
       header: "Contact",
       cell: ({ row }) => (
-        <div>
-          <div className="font-medium text-slate-900 dark:text-slate-50">
+        <div className="space-y-1">
+          <div className="font-medium text-slate-900 dark:text-slate-100">
             {row.original.name}
           </div>
           <div className="text-sm text-slate-600 dark:text-slate-400">
             {row.original.company}
           </div>
           {row.original.specialty && (
-            <div className="text-xs text-slate-500 mt-1">
+            <div className="text-xs text-slate-500 dark:text-slate-500">
               {row.original.specialty}
             </div>
           )}
@@ -157,10 +165,7 @@ export default function Contacts() {
       accessorKey: "type",
       header: "Type",
       cell: ({ row }) => (
-        <Badge 
-          variant="secondary" 
-          className={`${getTypeColor(row.original.type)} flex items-center gap-1 w-fit`}
-        >
+        <Badge className={getTypeColor(row.original.type)}>
           {getTypeIcon(row.original.type)}
           {row.original.type.charAt(0).toUpperCase() + row.original.type.slice(1)}
         </Badge>
@@ -212,17 +217,13 @@ export default function Contacts() {
     },
   ]
 
-  const filteredContacts = activeTab === 'all' 
-    ? contacts 
-    : contacts.filter(contact => contact.type === activeTab)
-
   const contactCounts = {
     all: contacts.length,
-    vendor: contacts.filter(c => c.type === 'vendor').length,
-    subcontractor: contacts.filter(c => c.type === 'subcontractor').length,
-    supplier: contacts.filter(c => c.type === 'supplier').length,
-    internal: contacts.filter(c => c.type === 'internal').length,
-    partner: contacts.filter(c => c.type === 'partner').length,
+    vendor: contacts.filter((c: Contact) => c.type === 'vendor').length,
+    subcontractor: contacts.filter((c: Contact) => c.type === 'subcontractor').length,
+    supplier: contacts.filter((c: Contact) => c.type === 'supplier').length,
+    internal: contacts.filter((c: Contact) => c.type === 'internal').length,
+    partner: contacts.filter((c: Contact) => c.type === 'partner').length,
   }
 
   return (
@@ -270,7 +271,7 @@ export default function Contacts() {
             columns={columns}
             data={filteredContacts}
             searchPlaceholder="Search contacts..."
-            isLoading={false}
+            isLoading={isLoading}
             createAction={{
               label: "Add Contact",
               onClick: () => setIsCreateDialogOpen(true)
@@ -296,22 +297,37 @@ export default function Contacts() {
               Add a new contact to your business directory. Choose the appropriate type for better organization.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Contact Name *</Label>
-                <Input id="name" placeholder="John Smith" />
+                <Input 
+                  id="name" 
+                  placeholder="John Smith"
+                  value={newContact.name}
+                  onChange={(e) => setNewContact({...newContact, name: e.target.value})}
+                  required
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="company">Company *</Label>
-                <Input id="company" placeholder="ABC Corp" />
+                <Input 
+                  id="company" 
+                  placeholder="ABC Corp"
+                  value={newContact.company}
+                  onChange={(e) => setNewContact({...newContact, company: e.target.value})}
+                  required
+                />
               </div>
             </div>
             
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="type">Contact Type *</Label>
-                <Select>
+                <Select 
+                  value={newContact.type}
+                  onValueChange={(value) => setNewContact({...newContact, type: value as Contact['type']})}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
@@ -319,56 +335,81 @@ export default function Contacts() {
                     <SelectItem value="vendor">Vendor</SelectItem>
                     <SelectItem value="subcontractor">Subcontractor</SelectItem>
                     <SelectItem value="supplier">Supplier</SelectItem>
-                    <SelectItem value="internal">Internal Team</SelectItem>
-                    <SelectItem value="partner">Business Partner</SelectItem>
+                    <SelectItem value="internal">Internal</SelectItem>
+                    <SelectItem value="partner">Partner</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="specialty">Specialty/Role</Label>
-                <Input id="specialty" placeholder="e.g., Roofing Materials, Project Manager" />
+                <Label htmlFor="specialty">Specialty</Label>
+                <Input 
+                  id="specialty" 
+                  placeholder="e.g., Roofing, Electrical"
+                  value={newContact.specialty}
+                  onChange={(e) => setNewContact({...newContact, specialty: e.target.value})}
+                />
               </div>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" placeholder="john@example.com" />
+                <Input 
+                  id="email" 
+                  type="email" 
+                  placeholder="john@company.com"
+                  value={newContact.email}
+                  onChange={(e) => setNewContact({...newContact, email: e.target.value})}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="phone">Phone</Label>
-                <Input id="phone" placeholder="(555) 123-4567" />
+                <Input 
+                  id="phone" 
+                  placeholder="(555) 123-4567"
+                  value={newContact.phone}
+                  onChange={(e) => setNewContact({...newContact, phone: e.target.value})}
+                />
               </div>
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="address">Address</Label>
-              <Input id="address" placeholder="123 Main St, Chicago, IL 60601" />
+              <Input 
+                id="address" 
+                placeholder="123 Business St, Chicago, IL"
+                value={newContact.address}
+                onChange={(e) => setNewContact({...newContact, address: e.target.value})}
+              />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="notes">Notes</Label>
               <Textarea 
                 id="notes" 
-                placeholder="Any additional information about this contact..."
-                className="min-h-20"
+                placeholder="Additional notes about this contact..."
+                value={newContact.notes}
+                onChange={(e) => setNewContact({...newContact, notes: e.target.value})}
+                rows={3}
               />
             </div>
-          </div>
-          
-          <DialogFooter className="flex gap-3">
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={() => setIsCreateDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button className="bg-blue-600 hover:bg-blue-700">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Contact
-            </Button>
-          </DialogFooter>
+
+            <DialogFooter>
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => setIsCreateDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button 
+                type="submit" 
+                disabled={createContactMutation.isPending}
+              >
+                {createContactMutation.isPending ? 'Creating...' : 'Create Contact'}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

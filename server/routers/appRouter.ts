@@ -9,7 +9,8 @@ import {
   insertEstimateSchema,
   insertProposalSchema,
   insertUserSchema,
-  insertLeadSchema 
+  insertLeadSchema,
+  insertContactSchema
 } from '@shared/schema';
 
 // Custom tRPC-like router implementation
@@ -515,6 +516,185 @@ export const createAppRouter = () => {
       }
       
       await storage.deleteLead(input.id);
+      res.json({ result: superjson.serialize({ success: true }) });
+    } catch (error) {
+      if (error instanceof TRPCError) {
+        res.status(error.statusCode).json({ error: { message: error.message, code: error.code } });
+      } else {
+        res.status(500).json({ error: { message: 'Internal server error' } });
+      }
+    }
+  });
+
+  // Contacts endpoints
+  router.get('/contacts.list', async (req, res) => {
+    try {
+      const ctx = await createContext(req, res);
+      const user = requireRole('staff')(ctx);
+      
+      const inputSchema = z.object({
+        divisionKey: z.enum(['mfnc', 'sfnc', 'rr', 'all']).optional(),
+        type: z.enum(['vendor', 'subcontractor', 'supplier', 'internal', 'partner']).optional(),
+        page: z.coerce.number().min(1).default(1),
+      });
+      
+      const input = inputSchema.parse(req.query);
+      const scopedDivisionId = await getDivisionScope(user, input.divisionKey);
+      
+      const result = await storage.getContacts(scopedDivisionId);
+      
+      // Filter by type if provided
+      const filteredResult = input.type 
+        ? result.filter(contact => contact.type === input.type)
+        : result;
+      
+      // Simple pagination
+      const pageSize = 20;
+      const startIndex = (input.page - 1) * pageSize;
+      const paginatedResult = filteredResult.slice(startIndex, startIndex + pageSize);
+      
+      res.json({ result: superjson.serialize(paginatedResult) });
+    } catch (error) {
+      if (error instanceof TRPCError) {
+        res.status(error.statusCode).json({ error: { message: error.message, code: error.code } });
+      } else {
+        res.status(500).json({ error: { message: 'Internal server error' } });
+      }
+    }
+  });
+
+  router.get('/contacts.get', async (req, res) => {
+    try {
+      const ctx = await createContext(req, res);
+      requireRole('staff')(ctx);
+      
+      const input = z.object({ id: z.string().uuid() }).parse(req.query);
+      const result = await storage.getContact(input.id);
+      
+      res.json({ result: superjson.serialize(result) });
+    } catch (error) {
+      if (error instanceof TRPCError) {
+        res.status(error.statusCode).json({ error: { message: error.message, code: error.code } });
+      } else {
+        res.status(500).json({ error: { message: 'Internal server error' } });
+      }
+    }
+  });
+
+  router.post('/contacts.create', async (req, res) => {
+    try {
+      const ctx = await createContext(req, res);
+      const user = requireRole('staff')(ctx);
+      
+      const inputSchema = insertContactSchema.extend({
+        divisionKey: z.enum(['mfnc', 'sfnc', 'rr']),
+      }).omit({ divisionId: true, createdBy: true });
+      
+      const input = inputSchema.parse(req.body?.input || {});
+      
+      // Get division scope
+      const scopedDivisionId = await getDivisionScope(user, input.divisionKey);
+      if (!scopedDivisionId) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Invalid division' });
+      }
+      
+      // Create contact with proper division and user association
+      const contactData = {
+        ...input,
+        divisionId: scopedDivisionId,
+        createdBy: user.id,
+      };
+      
+      const result = await storage.createContact(contactData);
+      res.json({ result: superjson.serialize(result) });
+    } catch (error) {
+      if (error instanceof TRPCError) {
+        res.status(error.statusCode).json({ error: { message: error.message, code: error.code } });
+      } else {
+        console.error('Contact creation error:', error);
+        res.status(500).json({ error: { message: 'Internal server error' } });
+      }
+    }
+  });
+
+  router.post('/contacts.update', async (req, res) => {
+    try {
+      const ctx = await createContext(req, res);
+      const user = requireRole('staff')(ctx);
+      
+      const inputSchema = z.object({
+        id: z.string().uuid(),
+        name: z.string().min(1).optional(),
+        company: z.string().min(1).optional(),
+        type: z.enum(['vendor', 'subcontractor', 'supplier', 'internal', 'partner']).optional(),
+        email: z.string().email().optional().or(z.literal('').transform(() => undefined)),
+        phone: z.string().optional().or(z.literal('').transform(() => undefined)),
+        address: z.string().optional().or(z.literal('').transform(() => undefined)),
+        specialty: z.string().optional().or(z.literal('').transform(() => undefined)),
+        rating: z.number().min(0).max(5).optional(),
+        notes: z.string().optional().or(z.literal('').transform(() => undefined)),
+      });
+      
+      const input = inputSchema.parse(req.body?.input || {});
+      
+      // Verify contact exists and user has access
+      const existing = await storage.getContact(input.id);
+      if (!existing) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Contact not found' });
+      }
+      
+      // Check division access
+      if (existing.divisionId) {
+        const division = await storage.getDivision(existing.divisionId);
+        if (division) {
+          const scopedDivisionId = await getDivisionScope(user, division.key);
+          if (scopedDivisionId !== division.id) {
+            throw new TRPCError({ code: 'FORBIDDEN', message: 'Access denied to this division' });
+          }
+        }
+      }
+      
+      const { id, ...updateData } = input;
+      const result = await storage.updateContact(id, updateData);
+      res.json({ result: superjson.serialize(result) });
+    } catch (error) {
+      if (error instanceof TRPCError) {
+        res.status(error.statusCode).json({ error: { message: error.message, code: error.code } });
+      } else {
+        res.status(500).json({ error: { message: 'Internal server error' } });
+      }
+    }
+  });
+
+  router.post('/contacts.delete', async (req, res) => {
+    try {
+      const ctx = await createContext(req, res);
+      const user = requireRole('staff')(ctx);
+      
+      const inputSchema = z.object({
+        id: z.string().uuid(),
+      });
+      
+      const input = inputSchema.parse(req.body?.input || {});
+      
+      // Verify contact exists and user has access
+      const existing = await storage.getContact(input.id);
+      if (!existing) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Contact not found' });
+      }
+      
+      // Check division access
+      if (existing.divisionId) {
+        const division = await storage.getDivision(existing.divisionId);
+        if (division) {
+          const scopedDivisionId = await getDivisionScope(user, division.key);
+          if (scopedDivisionId !== division.id) {
+            throw new TRPCError({ code: 'FORBIDDEN', message: 'Access denied to this division' });
+          }
+        }
+      }
+      
+      await storage.deleteContact(input.id);
       res.json({ result: superjson.serialize({ success: true }) });
     } catch (error) {
       if (error instanceof TRPCError) {

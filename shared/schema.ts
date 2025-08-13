@@ -130,7 +130,27 @@ export const leads = pgTable("leads", {
   index("idx_leads_created_at").on(table.createdAt),
 ]);
 
-
+// Contacts table
+export const contacts = pgTable("contacts", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  divisionId: uuid("division_id").notNull().references(() => divisions.id),
+  name: varchar("name", { length: 200 }).notNull(),
+  company: varchar("company", { length: 200 }).notNull(),
+  type: varchar("type", { length: 20 }).notNull(), // vendor, subcontractor, supplier, internal, partner
+  email: varchar("email", { length: 255 }),
+  phone: varchar("phone", { length: 20 }),
+  address: text("address"),
+  specialty: varchar("specialty", { length: 200 }),
+  rating: integer("rating").default(0),
+  notes: text("notes"),
+  createdBy: uuid("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_contacts_division_id").on(table.divisionId),
+  index("idx_contacts_type").on(table.type),
+  index("idx_contacts_email").on(table.email),
+]);
 
 // Relations
 export const userRelations = relations(users, ({ one, many }) => ({
@@ -322,6 +342,17 @@ export const leadRelations = relations(leads, ({ one }) => ({
   }),
 }));
 
+export const contactRelations = relations(contacts, ({ one }) => ({
+  division: one(divisions, {
+    fields: [contacts.divisionId],
+    references: [divisions.id],
+  }),
+  createdByUser: one(users, {
+    fields: [contacts.createdBy],
+    references: [users.id],
+  }),
+}));
+
 export const estimateRelations = relations(estimates, ({ one }) => ({
   job: one(jobs, {
     fields: [estimates.jobId],
@@ -441,6 +472,12 @@ export const insertLeadSchema = createInsertSchema(leads).omit({
   updatedAt: true
 });
 
+export const insertContactSchema = createInsertSchema(contacts).omit({ 
+  id: true, 
+  createdAt: true,
+  updatedAt: true
+});
+
 export const insertProposalSchema = createInsertSchema(proposals).omit({ 
   id: true, 
   createdAt: true,
@@ -537,6 +574,11 @@ export type LeadWithRelations = Lead & {
   division?: Division;
   createdByUser?: User;
   assignedToUser?: User;
+};
+
+export type ContactWithRelations = Contact & {
+  division?: Division;
+  createdByUser?: User;
 };
 
 export type ProposalWithRelations = Proposal & {

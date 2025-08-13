@@ -6,6 +6,7 @@ import {
   proposals,
   divisions,
   leads,
+  contacts,
   fieldLogs,
   punchListItems,
   planFiles,
@@ -31,6 +32,9 @@ import {
   type Lead,
   type InsertLead,
   type LeadWithRelations,
+  type Contact,
+  type InsertContact,
+  type ContactWithRelations,
   type FieldLog,
   type InsertFieldLog,
   type PunchListItem,
@@ -71,6 +75,13 @@ export interface IStorage {
   createLead(lead: InsertLead): Promise<Lead>;
   updateLead(id: string, lead: Partial<InsertLead>): Promise<Lead>;
   deleteLead(id: string): Promise<void>;
+
+  // Contact operations
+  getContacts(divisionId?: string): Promise<ContactWithRelations[]>;
+  getContact(id: string): Promise<ContactWithRelations | undefined>;
+  createContact(contact: InsertContact): Promise<Contact>;
+  updateContact(id: string, contact: Partial<InsertContact>): Promise<Contact>;
+  deleteContact(id: string): Promise<void>;
 
   // Job operations
   getJobs(divisionId?: string): Promise<JobWithRelations[]>;
@@ -313,6 +324,68 @@ export class DatabaseStorage implements IStorage {
 
   async deleteLead(id: string): Promise<void> {
     await db.delete(leads).where(eq(leads.id, id));
+  }
+
+  // Contact operations
+  async getContacts(divisionId?: string): Promise<ContactWithRelations[]> {
+    const query = db
+      .select()
+      .from(contacts)
+      .leftJoin(divisions, eq(contacts.divisionId, divisions.id))
+      .leftJoin(users, eq(contacts.createdBy, users.id))
+      .orderBy(desc(contacts.createdAt));
+
+    if (divisionId) {
+      query.where(eq(contacts.divisionId, divisionId));
+    }
+
+    const results = await query;
+    return results.map(row => ({
+      ...row.contacts,
+      division: row.divisions || undefined,
+      createdByUser: row.users || undefined,
+    }));
+  }
+
+  async getContact(id: string): Promise<ContactWithRelations | undefined> {
+    const [result] = await db
+      .select()
+      .from(contacts)
+      .leftJoin(divisions, eq(contacts.divisionId, divisions.id))
+      .leftJoin(users, eq(contacts.createdBy, users.id))
+      .where(eq(contacts.id, id));
+
+    if (!result) return undefined;
+
+    return {
+      ...result.contacts,
+      division: result.divisions || undefined,
+      createdByUser: result.users || undefined,
+    };
+  }
+
+  async createContact(contact: InsertContact): Promise<Contact> {
+    const [newContact] = await db.insert(contacts).values({
+      ...contact,
+      updatedAt: new Date()
+    }).returning();
+    return newContact;
+  }
+
+  async updateContact(id: string, contact: Partial<InsertContact>): Promise<Contact> {
+    const [updatedContact] = await db
+      .update(contacts)
+      .set({
+        ...contact,
+        updatedAt: new Date()
+      })
+      .where(eq(contacts.id, id))
+      .returning();
+    return updatedContact;
+  }
+
+  async deleteContact(id: string): Promise<void> {
+    await db.delete(contacts).where(eq(contacts.id, id));
   }
 
   // Job operations
