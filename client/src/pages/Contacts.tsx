@@ -58,19 +58,19 @@ export default function Contacts() {
   
   // Get contacts from API
   const { data: contacts = [], isLoading } = useQuery({
-    queryKey: ['/api/contacts.list', params.division],
-    queryFn: () => apiRequest(`/api/contacts.list?divisionKey=${params.division || 'all'}`)
+    queryKey: ['/api/trpc/contacts.list', params.division],
+    queryFn: () => apiRequest(`/api/trpc/contacts.list?divisionKey=${params.division || 'all'}`)
   })
 
   // Create contact mutation
   const createContactMutation = useMutation({
     mutationFn: (contactData: any) => 
-      apiRequest('/api/contacts.create', {
+      apiRequest('/api/trpc/contacts.create', {
         method: 'POST',
         body: JSON.stringify({ input: { ...contactData, divisionKey: params.division || 'mfnc' } })
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/contacts.list'] })
+      queryClient.invalidateQueries({ queryKey: ['/api/trpc/contacts.list'] })
       setIsCreateDialogOpen(false)
       setNewContact({
         name: '',
