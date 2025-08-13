@@ -45,6 +45,7 @@ const leadSchema = z.object({
   projectType: z.string().min(1, 'Project type is required'),
   timeline: z.string().min(1, 'Timeline is required'),
   budget: z.string().min(1, 'Budget range is required'),
+  division: z.string().min(1, 'Division is required'),
   notes: z.string().optional(),
 })
 
@@ -75,6 +76,7 @@ export function AddLeadDialog({ children, onLeadAdded }: AddLeadDialogProps) {
       projectType: '',
       timeline: '',
       budget: '',
+      division: '',
       notes: '',
     },
   })
@@ -84,13 +86,20 @@ export function AddLeadDialog({ children, onLeadAdded }: AddLeadDialogProps) {
   const createLeadMutation = useMutation({
     mutationFn: async (data: LeadFormData) => {
       // For now, we'll create a customer in the database and return mock lead data
+      // Map division display names to keys
+      const divisionKeyMap: { [key: string]: string } = {
+        'Single-Family New Construction': 'sfnc',
+        'Multi-Family New Construction': 'mfnc', 
+        'R&R': 'rr'
+      }
+      
       const customerData = {
         name: data.name,
         email: data.email,
         phone: data.phone,
         addressJson: { address: data.address },
         notes: data.notes || '',
-        divisionKey: division,
+        divisionKey: divisionKeyMap[data.division] || 'mfnc',
       }
       
       // Create customer in database
@@ -110,6 +119,7 @@ export function AddLeadDialog({ children, onLeadAdded }: AddLeadDialogProps) {
         projectType: data.projectType,
         timeline: data.timeline,
         budget: data.budget,
+        division: data.division,
         createdAt: new Date().toISOString().split('T')[0],
         assignedTo: 'Unassigned', // Required by KanbanBoard
         avatar: data.contact.split(' ').map(n => n[0]).join('').toUpperCase(), // Generate initials
@@ -204,6 +214,12 @@ export function AddLeadDialog({ children, onLeadAdded }: AddLeadDialogProps) {
     'TBD'
   ]
 
+  const divisionOptions = [
+    'Single-Family New Construction',
+    'Multi-Family New Construction',
+    'R&R'
+  ]
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -288,6 +304,32 @@ export function AddLeadDialog({ children, onLeadAdded }: AddLeadDialogProps) {
                   <FormControl>
                     <Input placeholder="123 Business Ave, City, ST 12345" {...field} />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Division Selection */}
+            <FormField
+              control={form.control}
+              name="division"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Division *</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select division" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {divisionOptions.map((division) => (
+                        <SelectItem key={division} value={division}>
+                          {division}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
