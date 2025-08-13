@@ -67,7 +67,12 @@ export default function Contacts() {
         throw new Error(`${response.status}: ${await response.text()}`);
       }
       const data = await response.json();
-      return data.result?.data || data.result || [];
+      console.log('Contacts API response:', data);
+      // Handle superjson serialized data
+      if (data.result && data.result.json) {
+        return Array.isArray(data.result.json) ? data.result.json : [];
+      }
+      return Array.isArray(data.result) ? data.result : [];
     }
   })
 
@@ -107,10 +112,13 @@ export default function Contacts() {
     }
   })
 
+  // Ensure contacts is always an array
+  const contactsArray = Array.isArray(contacts) ? contacts : [];
+
   // Filter contacts by type
   const filteredContacts = activeTab === 'all' 
-    ? contacts 
-    : contacts.filter((contact: Contact) => contact.type === activeTab)
+    ? contactsArray 
+    : contactsArray.filter((contact: Contact) => contact.type === activeTab)
 
   // Handle form submission
   const handleSubmit = (e: React.FormEvent) => {
@@ -228,12 +236,12 @@ export default function Contacts() {
   ]
 
   const contactCounts = {
-    all: contacts.length,
-    vendor: contacts.filter((c: Contact) => c.type === 'vendor').length,
-    subcontractor: contacts.filter((c: Contact) => c.type === 'subcontractor').length,
-    supplier: contacts.filter((c: Contact) => c.type === 'supplier').length,
-    internal: contacts.filter((c: Contact) => c.type === 'internal').length,
-    partner: contacts.filter((c: Contact) => c.type === 'partner').length,
+    all: contactsArray.length,
+    vendor: contactsArray.filter((c: Contact) => c.type === 'vendor').length,
+    subcontractor: contactsArray.filter((c: Contact) => c.type === 'subcontractor').length,
+    supplier: contactsArray.filter((c: Contact) => c.type === 'supplier').length,
+    internal: contactsArray.filter((c: Contact) => c.type === 'internal').length,
+    partner: contactsArray.filter((c: Contact) => c.type === 'partner').length,
   }
 
   return (
