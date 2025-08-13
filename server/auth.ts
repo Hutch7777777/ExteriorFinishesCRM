@@ -108,7 +108,7 @@ export function setAuthCookie(res: Response, token: string): void {
     httpOnly: true,
     secure: false, // Set to true in production with HTTPS
     sameSite: 'lax',
-    maxAge: 15 * 60 * 1000, // 15 minutes in milliseconds
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours in milliseconds to match JWT
     path: '/',
   });
 }
