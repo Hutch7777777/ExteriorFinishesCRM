@@ -57,7 +57,7 @@ export function Sidebar() {
   const { isCollapsed } = useSidebar()
 
   return (
-    <aside className={`${isCollapsed ? 'w-16' : 'w-64'} bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 sidebar-shadow transition-all duration-300`}>
+    <aside className={`${isCollapsed ? 'w-16' : 'w-64'} h-screen bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 sidebar-shadow transition-all duration-300`}>
       <div className={`${isCollapsed ? 'p-3' : 'p-6'}`}>
         {/* Core Business section */}
         <div className="mb-6">
