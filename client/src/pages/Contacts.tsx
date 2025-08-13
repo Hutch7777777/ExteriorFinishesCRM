@@ -288,16 +288,26 @@ export default function Contacts() {
       cell: ({ row }) => (
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-sm">
-            <Mail className="w-4 h-4 text-slate-400" />
-            <span className="text-slate-600 dark:text-slate-400">
-              {row.original.email}
-            </span>
+            <a 
+              href={`mailto:${row.original.email}`}
+              className="flex items-center gap-2 hover:text-blue-600 transition-colors"
+            >
+              <Mail className="w-4 h-4 text-slate-400 hover:text-blue-600" />
+              <span className="text-slate-600 dark:text-slate-400 hover:text-blue-600">
+                {row.original.email}
+              </span>
+            </a>
           </div>
           <div className="flex items-center gap-2 text-sm">
-            <Phone className="w-4 h-4 text-slate-400" />
-            <span className="text-slate-600 dark:text-slate-400">
-              {row.original.phone}
-            </span>
+            <a 
+              href={`tel:${row.original.phone}`}
+              className="flex items-center gap-2 hover:text-green-600 transition-colors"
+            >
+              <Phone className="w-4 h-4 text-slate-400 hover:text-green-600" />
+              <span className="text-slate-600 dark:text-slate-400 hover:text-green-600">
+                {row.original.phone}
+              </span>
+            </a>
           </div>
         </div>
       ),
@@ -336,6 +346,7 @@ export default function Contacts() {
             size="sm"
             onClick={() => handleEdit(row.original)}
             className="h-8 w-8 p-0 hover:bg-slate-100 dark:hover:bg-slate-800"
+            title="Edit contact"
           >
             <Edit2 className="h-4 w-4" />
           </Button>
@@ -344,9 +355,24 @@ export default function Contacts() {
             size="sm"
             onClick={() => handleDelete(row.original.id, row.original.name)}
             className="h-8 w-8 p-0 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900 dark:hover:text-red-400"
+            title="Delete contact"
           >
             <Trash2 className="h-4 w-4" />
           </Button>
+          <a
+            href={`mailto:${row.original.email}`}
+            className="inline-flex items-center justify-center h-8 w-8 rounded-md hover:bg-blue-100 hover:text-blue-600 transition-colors"
+            title="Send email"
+          >
+            <Mail className="h-4 w-4" />
+          </a>
+          <a
+            href={`tel:${row.original.phone}`}
+            className="inline-flex items-center justify-center h-8 w-8 rounded-md hover:bg-green-100 hover:text-green-600 transition-colors"
+            title="Call phone number"
+          >
+            <Phone className="h-4 w-4" />
+          </a>
         </div>
       ),
     },
