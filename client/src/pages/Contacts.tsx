@@ -22,7 +22,8 @@ import {
   Users,
   Truck,
   Wrench,
-  Star
+  Star,
+  Edit2
 } from 'lucide-react'
 
 interface Contact {
@@ -42,6 +43,7 @@ interface Contact {
 export default function Contacts() {
   const [activeTab, setActiveTab] = useState('all')
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [editingContact, setEditingContact] = useState<Contact | null>(null)
   const [newContact, setNewContact] = useState({
     name: '',
     company: '',
@@ -87,17 +89,7 @@ export default function Contacts() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/trpc/contacts.list'] })
       setIsCreateDialogOpen(false)
-      setNewContact({
-        name: '',
-        company: '',
-        type: 'vendor',
-        email: '',
-        phone: '',
-        address: '',
-        specialty: '',
-        rating: 0,
-        notes: ''
-      })
+      resetForm()
       toast({
         title: "Success",
         description: "Contact created successfully."
@@ -112,6 +104,62 @@ export default function Contacts() {
     }
   })
 
+  // Update contact mutation
+  const updateContactMutation = useMutation({
+    mutationFn: async (contactData: any) => {
+      const response = await apiRequest('POST', '/api/trpc/contacts.update', {
+        input: contactData
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/trpc/contacts.list'] })
+      setEditingContact(null)
+      resetForm()
+      toast({
+        title: "Success",
+        description: "Contact updated successfully."
+      })
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update contact.",
+        variant: "destructive"
+      })
+    }
+  })
+
+  const resetForm = () => {
+    setNewContact({
+      name: '',
+      company: '',
+      type: 'vendor',
+      email: '',
+      phone: '',
+      address: '',
+      specialty: '',
+      rating: 0,
+      notes: ''
+    })
+  }
+
+  const handleEdit = (contact: Contact) => {
+    setEditingContact(contact)
+    setNewContact({
+      name: contact.name,
+      company: contact.company,
+      type: contact.type,
+      email: contact.email,
+      phone: contact.phone,
+      address: contact.address,
+      specialty: contact.specialty || '',
+      rating: contact.rating,
+      notes: contact.notes
+    })
+    setIsCreateDialogOpen(true)
+  }
+
   // Ensure contacts is always an array
   const contactsArray = Array.isArray(contacts) ? contacts : [];
 
@@ -123,7 +171,21 @@ export default function Contacts() {
   // Handle form submission
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    createContactMutation.mutate(newContact)
+    if (editingContact) {
+      updateContactMutation.mutate({
+        id: editingContact.id,
+        ...newContact
+      })
+    } else {
+      createContactMutation.mutate(newContact)
+    }
+  }
+
+  // Handle dialog close
+  const handleDialogClose = () => {
+    setIsCreateDialogOpen(false)
+    setEditingContact(null)
+    resetForm()
   }
 
   const getTypeColor = (type: Contact['type']) => {
@@ -233,6 +295,22 @@ export default function Contacts() {
         </div>
       ),
     },
+    {
+      id: "actions",
+      header: "Actions",
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleEdit(row.original)}
+            className="h-8 w-8 p-0 hover:bg-slate-100 dark:hover:bg-slate-800"
+          >
+            <Edit2 className="h-4 w-4" />
+          </Button>
+        </div>
+      ),
+    },
   ]
 
   const contactCounts = {
@@ -303,16 +381,19 @@ export default function Contacts() {
         </TabsContent>
       </Tabs>
 
-      {/* Create Contact Dialog */}
-      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+      {/* Create/Edit Contact Dialog */}
+      <Dialog open={isCreateDialogOpen} onOpenChange={handleDialogClose}>
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Building2 className="w-5 h-5" />
-              Add New Contact
+              {editingContact ? 'Edit Contact' : 'Add New Contact'}
             </DialogTitle>
             <DialogDescription>
-              Add a new contact to your business directory. Choose the appropriate type for better organization.
+              {editingContact 
+                ? 'Update the contact information below.' 
+                : 'Add a new contact to your business directory. Choose the appropriate type for better organization.'
+              }
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -416,15 +497,18 @@ export default function Contacts() {
               <Button 
                 type="button" 
                 variant="outline" 
-                onClick={() => setIsCreateDialogOpen(false)}
+                onClick={handleDialogClose}
               >
                 Cancel
               </Button>
               <Button 
                 type="submit" 
-                disabled={createContactMutation.isPending}
+                disabled={createContactMutation.isPending || updateContactMutation.isPending}
               >
-                {createContactMutation.isPending ? 'Creating...' : 'Create Contact'}
+                {editingContact 
+                  ? (updateContactMutation.isPending ? 'Updating...' : 'Update Contact')
+                  : (createContactMutation.isPending ? 'Creating...' : 'Create Contact')
+                }
               </Button>
             </DialogFooter>
           </form>
