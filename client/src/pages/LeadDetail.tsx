@@ -218,6 +218,14 @@ export default function LeadDetail() {
           <Badge className={getStatusColor(mockLead.status)}>
             {mockLead.status.charAt(0).toUpperCase() + mockLead.status.slice(1)}
           </Badge>
+          <Button 
+            variant="outline"
+            className="flex items-center gap-2"
+            onClick={() => navigate({ to: `/${division}/estimates` })}
+          >
+            <DollarSign className="w-4 h-4" />
+            Build Estimate
+          </Button>
           <Button className="flex items-center gap-2">
             <Edit className="w-4 h-4" />
             Edit Lead
