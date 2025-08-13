@@ -181,7 +181,7 @@ function LeadCard({ lead, division, isDragging = false }: LeadCardProps) {
           <div className="flex items-center gap-1">
             <DollarSign className="h-3 w-3 text-green-600" />
             <span className="font-semibold text-green-600">
-              ${lead.value ? lead.value.toLocaleString() : 'TBD'}
+              ${lead.value ? (lead.value / 100).toLocaleString() : 'TBD'}
             </span>
           </div>
           <Badge variant="outline" className={`text-xs ${getStatusColor(lead.status)}`}>
@@ -475,7 +475,7 @@ export default function KanbanBoard({ onLeadAdded }: KanbanBoardProps = {}) {
             <CardContent className="p-4">
               <div className="text-center">
                 <p className="text-2xl font-bold text-green-600">
-                  ${leads.reduce((sum: number, lead: Lead) => sum + (lead.value || 0), 0).toLocaleString()}
+                  ${(leads.reduce((sum: number, lead: Lead) => sum + (lead.value || 0), 0) / 100).toLocaleString()}
                 </p>
                 <p className="text-sm text-slate-600 dark:text-slate-400">Total Pipeline Value</p>
               </div>

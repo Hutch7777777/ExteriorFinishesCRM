@@ -347,7 +347,7 @@ export const createAppRouter = () => {
         phone: input.phone || null,
         address: input.address || null,
         status: input.status,
-        value: input.value || null,
+        value: input.value ? Math.round(input.value * 100) : 0, // Convert to cents
         source: input.source || null,
         projectType: input.projectType || null,
         timeline: input.timeline || null,
@@ -361,10 +361,11 @@ export const createAppRouter = () => {
       const result = await storage.createLead(leadData);
       res.json({ result: superjson.serialize(result) });
     } catch (error) {
+      console.error('Error in leads.create endpoint:', error);
       if (error instanceof TRPCError) {
         res.status(error.statusCode).json({ error: { message: error.message, code: error.code } });
       } else {
-        res.status(500).json({ error: { message: 'Internal server error' } });
+        res.status(500).json({ error: { message: 'Internal server error', details: error.message } });
       }
     }
   });
@@ -417,7 +418,7 @@ export const createAppRouter = () => {
         ...(input.phone !== undefined && { phone: input.phone }),
         ...(input.address !== undefined && { address: input.address }),
         ...(input.status && { status: input.status }),
-        ...(input.value !== undefined && { value: input.value }),
+        ...(input.value !== undefined && { value: input.value ? Math.round(input.value * 100) : 0 }),
         ...(input.source !== undefined && { source: input.source }),
         ...(input.projectType !== undefined && { projectType: input.projectType }),
         ...(input.timeline !== undefined && { timeline: input.timeline }),
