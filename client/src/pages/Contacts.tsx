@@ -228,22 +228,13 @@ export default function Contacts() {
   return (
     <div className="space-y-6">
       {/* Page header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-50">
-            Contacts Directory
-          </h1>
-          <p className="text-slate-600 dark:text-slate-400 mt-1">
-            Manage vendors, subcontractors, suppliers, and team contacts
-          </p>
-        </div>
-        <Button 
-          onClick={() => setIsCreateDialogOpen(true)}
-          className="bg-blue-600 hover:bg-blue-700"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Add Contact
-        </Button>
+      <div>
+        <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-50">
+          Contacts Directory
+        </h1>
+        <p className="text-slate-600 dark:text-slate-400 mt-1">
+          Manage vendors, subcontractors, suppliers, and team contacts
+        </p>
       </div>
 
       {/* Contact Type Tabs */}
