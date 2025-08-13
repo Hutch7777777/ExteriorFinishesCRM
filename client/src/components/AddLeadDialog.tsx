@@ -81,55 +81,43 @@ export function AddLeadDialog({ children, onLeadAdded }: AddLeadDialogProps) {
     },
   })
 
-  // Since we're using mock data for leads, we'll simulate creating a lead
-  // In a real implementation, this would create a lead in the database
   const createLeadMutation = useMutation({
     mutationFn: async (data: LeadFormData) => {
-      // For now, we'll create a customer in the database and return mock lead data
-      // Map division display names to keys
-      const divisionKeyMap: { [key: string]: string } = {
-        'Single-Family New Construction': 'sfnc',
-        'Multi-Family New Construction': 'mfnc', 
-        'R&R': 'rr'
+      const response = await fetch('/api/trpc/leads.create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          input: {
+            name: data.name,
+            contact: data.contact,
+            email: data.email || null,
+            phone: data.phone || null,
+            address: data.address || null,
+            value: parseInt(data.value.replace(/[^0-9]/g, '')) || null,
+            source: data.source || null,
+            projectType: data.projectType || null,
+            timeline: data.timeline || null,
+            budget: data.budget || null,
+            assignedTo: null,
+            notes: data.notes || null,
+            divisionKey: division, // Use current division key from URL
+            status: 'new' as const
+          }
+        })
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error?.message || 'Failed to create lead')
       }
       
-      const customerData = {
-        name: data.name,
-        email: data.email,
-        phone: data.phone,
-        addressJson: { address: data.address },
-        notes: data.notes || '',
-        divisionKey: divisionKeyMap[data.division] || 'mfnc',
-      }
-      
-      // Create customer in database
-      await apiRequest('POST', '/api/trpc/customers.create', { input: customerData })
-
-      // Return mock lead data for the pipeline
-      const newLead = {
-        id: Date.now().toString(), // Temporary ID
-        name: data.name,
-        contact: data.contact,
-        email: data.email,
-        phone: data.phone,
-        address: data.address,
-        status: 'new', // Always starts in first stage (changed from 'lead' to 'new')
-        value: parseFloat(data.value.replace(/[$,]/g, '')) || 0,
-        source: data.source,
-        projectType: data.projectType,
-        timeline: data.timeline,
-        budget: data.budget,
-        division: data.division,
-        createdAt: new Date().toISOString().split('T')[0],
-        assignedTo: 'Unassigned', // Required by KanbanBoard
-        avatar: data.contact.split(' ').map(n => n[0]).join('').toUpperCase(), // Generate initials
-        notes: data.notes || '',
-      }
-      
-      return newLead
+      const result = await response.json()
+      return result.result?.json
     },
     onSuccess: (newLead) => {
-      queryClient.invalidateQueries({ queryKey: ['customers'] })
+      queryClient.invalidateQueries({ queryKey: ['/api/trpc/leads.list'] })
       toast({
         title: 'Success',
         description: 'Lead added successfully to the pipeline',

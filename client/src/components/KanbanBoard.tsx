@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from '@tanstack/react-router'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import '@/styles/kanban.css'
 import {
   DndContext,
@@ -48,99 +49,27 @@ const SALES_STAGES = [
   { id: 'lost', title: 'Lost', color: 'bg-red-50 border-red-200' }
 ]
 
-// Mock data for demonstration
-const mockLeads = [
-  {
-    id: '1',
-    name: 'Acme Corporation',
-    contact: 'John Smith',
-    email: 'john@acme.com',
-    phone: '(555) 123-4567',
-    status: 'qualified',
-    value: 150000,
-    source: 'Website',
-    createdAt: '2025-01-08',
-    assignedTo: 'Mike Johnson',
-    notes: 'Interested in siding renovation for 5-story building',
-    avatar: 'JS',
-    division: 'Multi-Family New Construction'
-  },
-  {
-    id: '2',
-    name: 'Downtown Apartments',
-    contact: 'Sarah Johnson',
-    email: 'sarah@downtown.com',
-    phone: '(555) 987-6543',
-    status: 'proposal',
-    value: 250000,
-    source: 'Referral',
-    createdAt: '2025-01-05',
-    assignedTo: 'Sarah Wilson',
-    notes: 'Large residential complex, decision expected this week',
-    avatar: 'SJ',
-    division: 'Multi-Family New Construction'
-  },
-  {
-    id: '3',
-    name: 'Tech Startup HQ',
-    contact: 'Mike Chen',
-    email: 'mike@techstartup.com',
-    phone: '(555) 456-7890',
-    status: 'negotiation',
-    value: 85000,
-    source: 'Cold Call',
-    createdAt: '2025-01-03',
-    assignedTo: 'Mike Johnson',
-    notes: 'Budget constraints, looking for cost-effective solutions',
-    avatar: 'MC',
-    division: 'Single-Family New Construction'
-  },
-  {
-    id: '4',
-    name: 'City Mall',
-    contact: 'Lisa Brown',
-    email: 'lisa@citymall.com',
-    phone: '(555) 234-5678',
-    status: 'new',
-    value: 320000,
-    source: 'Website',
-    createdAt: '2025-01-10',
-    assignedTo: 'Sarah Wilson',
-    notes: 'Large commercial project, needs exterior renovation',
-    avatar: 'LB',
-    division: 'R&R'
-  },
-  {
-    id: '5',
-    name: 'Riverside Condos',
-    contact: 'Tom Wilson',
-    email: 'tom@riverside.com',
-    phone: '(555) 345-6789',
-    status: 'contacted',
-    value: 180000,
-    source: 'Referral',
-    createdAt: '2025-01-09',
-    assignedTo: 'Mike Johnson',
-    notes: 'Interested in energy-efficient siding options',
-    avatar: 'TW',
-    division: 'Single-Family New Construction'
-  },
-  {
-    id: '6',
-    name: 'Green Valley Hospital',
-    contact: 'Dr. Amanda Foster',
-    email: 'amanda@greenvalley.com',
-    phone: '(555) 456-7891',
-    status: 'won',
-    value: 450000,
-    source: 'Direct Contact',
-    createdAt: '2024-12-20',
-    assignedTo: 'Sarah Wilson',
-    notes: 'Hospital exterior renovation project - signed contract',
-    avatar: 'AF',
-    division: 'R&R'
-  }
-]
+// Lead type based on database schema
+interface Lead {
+  id: string
+  name: string
+  contact: string
+  email?: string | null
+  phone?: string | null
+  address?: string | null
+  status: 'new' | 'contacted' | 'qualified' | 'proposal' | 'negotiation' | 'won' | 'lost'
+  value?: number | null
+  source?: string | null
+  projectType?: string | null
+  timeline?: string | null
+  budget?: string | null
+  assignedTo?: string | null
+  notes?: string | null
+  divisionId: string
+  createdBy: string
+  createdAt: string
+  updatedAt: string
+}
 
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -156,7 +85,7 @@ const getStatusColor = (status: string) => {
 }
 
 interface LeadCardProps {
-  lead: typeof mockLeads[0]
+  lead: Lead
   division: string
   isDragging?: boolean
 }
@@ -206,7 +135,9 @@ function LeadCard({ lead, division, isDragging = false }: LeadCardProps) {
             </CardTitle>
             <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
               <Avatar className="w-5 h-5">
-                <AvatarFallback className="text-xs">{lead.avatar}</AvatarFallback>
+                <AvatarFallback className="text-xs">
+                  {lead.contact.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                </AvatarFallback>
               </Avatar>
               <span>{lead.contact}</span>
             </div>
@@ -250,7 +181,7 @@ function LeadCard({ lead, division, isDragging = false }: LeadCardProps) {
           <div className="flex items-center gap-1">
             <DollarSign className="h-3 w-3 text-green-600" />
             <span className="font-semibold text-green-600">
-              ${lead.value.toLocaleString()}
+              ${lead.value ? lead.value.toLocaleString() : 'TBD'}
             </span>
           </div>
           <Badge variant="outline" className={`text-xs ${getStatusColor(lead.status)}`}>
@@ -267,8 +198,8 @@ function LeadCard({ lead, division, isDragging = false }: LeadCardProps) {
 
         {/* Assigned To & Date */}
         <div className="flex items-center justify-between text-xs text-slate-500">
-          <span className="truncate mr-2">Assigned: {lead.assignedTo}</span>
-          <span className="flex-shrink-0">{lead.createdAt}</span>
+          <span className="truncate mr-2">Assigned: {lead.assignedTo || 'Unassigned'}</span>
+          <span className="flex-shrink-0">{new Date(lead.createdAt).toLocaleDateString()}</span>
         </div>
       </CardContent>
     </Card>
@@ -277,14 +208,14 @@ function LeadCard({ lead, division, isDragging = false }: LeadCardProps) {
 
 interface KanbanColumnProps {
   stage: typeof SALES_STAGES[0]
-  leads: typeof mockLeads
+  leads: Lead[]
   division: string
   onLeadAdded?: (lead: any) => void
 }
 
 function KanbanColumn({ stage, leads, division, onLeadAdded }: KanbanColumnProps) {
   const stageLeads = leads.filter(lead => lead.status === stage.id)
-  const totalValue = stageLeads.reduce((sum, lead) => sum + lead.value, 0)
+  const totalValue = stageLeads.reduce((sum, lead) => sum + (lead.value || 0), 0)
 
   const { setNodeRef, isOver } = useDroppable({
     id: stage.id,
@@ -336,41 +267,47 @@ function KanbanColumn({ stage, leads, division, onLeadAdded }: KanbanColumnProps
 }
 
 interface KanbanBoardProps {
-  leads?: typeof mockLeads
   onLeadAdded?: (lead: any) => void
 }
 
-export default function KanbanBoard({ leads: propLeads, onLeadAdded }: KanbanBoardProps = {}) {
+export default function KanbanBoard({ onLeadAdded }: KanbanBoardProps = {}) {
   const params = useParams({ strict: false })
   const division = (params as any).division || 'mfnc'
+  const queryClient = useQueryClient()
   
-  const [allLeads, setAllLeads] = useState(propLeads || [])
   const [activeId, setActiveId] = useState<string | null>(null)
   
-  // Update leads when propLeads changes
-  useEffect(() => {
-    if (propLeads) {
-      setAllLeads(propLeads)
-    } else {
-      // If no leads are passed as props, use mock data
-      setAllLeads(mockLeads)
-    }
-  }, [propLeads])
+  // Fetch leads from the API
+  const { data: leads = [], isLoading, error } = useQuery({
+    queryKey: ['/api/trpc/leads.list', division],
+    queryFn: async () => {
+      const response = await fetch(`/api/trpc/leads.list?divisionKey=${division}`)
+      if (!response.ok) {
+        throw new Error('Failed to fetch leads')
+      }
+      const data = await response.json()
+      return data.result?.json || []
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  })
 
-  // Map division keys to display names for filtering
-  const divisionKeyMap: { [key: string]: string } = {
-    'sfnc': 'Single-Family New Construction',
-    'mfnc': 'Multi-Family New Construction', 
-    'rr': 'R&R'
-  }
-
-  // Get current division display name from URL or DivisionSwitcher
-  const currentDivisionName = divisionKeyMap[division] || 'Multi-Family New Construction'
-  
-  // Filter leads by current division (or show all if "all" is selected)
-  const leads = division === 'all' 
-    ? allLeads 
-    : allLeads.filter(lead => lead.division === currentDivisionName)
+  // Mutation for updating lead status (drag and drop)
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const response = await fetch('/api/trpc/leads.updateStatus', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ input: { id, status } }),
+      })
+      if (!response.ok) {
+        throw new Error('Failed to update lead status')
+      }
+      return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/trpc/leads.list'] })
+    },
+  })
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -402,28 +339,77 @@ export default function KanbanBoard({ leads: propLeads, onLeadAdded }: KanbanBoa
       targetStageId = directStage.id
     } else {
       // Find which stage the dropped-over lead belongs to
-      const targetLead = allLeads.find(lead => lead.id === overId)
+      const targetLead = leads.find((lead: Lead) => lead.id === overId)
       if (targetLead) {
         targetStageId = targetLead.status
       }
     }
 
-    if (targetStageId && targetStageId !== allLeads.find(lead => lead.id === activeId)?.status) {
-      // Update the lead's status in all leads
-      setAllLeads(prevLeads =>
-        prevLeads.map(lead =>
-          lead.id === activeId
-            ? { ...lead, status: targetStageId as string }
-            : lead
-        )
-      )
-      
-      // In a real app, you would also update the backend here
+    if (targetStageId && targetStageId !== leads.find((lead: Lead) => lead.id === activeId)?.status) {
+      // Update the lead's status in the backend
+      updateStatusMutation.mutate({ id: activeId, status: targetStageId })
       console.log(`Lead ${activeId} moved to ${targetStageId}`)
     }
   }
 
-  const activeLead = activeId ? allLeads.find(lead => lead.id === activeId) : null
+  const activeLead = activeId ? leads.find((lead: Lead) => lead.id === activeId) : null
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="space-y-6 w-full max-w-full overflow-hidden">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-50">
+              Sales Pipeline
+            </h2>
+            <p className="text-slate-600 dark:text-slate-400 mt-1">
+              Loading leads...
+            </p>
+          </div>
+        </div>
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
+          <div className="flex gap-6 min-h-[600px]">
+            {SALES_STAGES.map((stage) => (
+              <div key={stage.id} className="flex-shrink-0 w-80">
+                <div className={`rounded-lg border-2 border-dashed p-4 min-h-[600px] w-full ${stage.color}`}>
+                  <div className="mb-4">
+                    <h3 className="font-semibold text-slate-900 dark:text-slate-50">{stage.title}</h3>
+                    <div className="mt-4 space-y-3">
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="bg-white rounded-lg border p-4 animate-pulse">
+                          <div className="h-4 bg-slate-200 rounded mb-2"></div>
+                          <div className="h-3 bg-slate-200 rounded w-3/4"></div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="space-y-6 w-full max-w-full overflow-hidden">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-50">
+              Sales Pipeline
+            </h2>
+            <p className="text-red-600 mt-1">
+              Error loading leads: {(error as Error).message}
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <DndContext
@@ -489,7 +475,7 @@ export default function KanbanBoard({ leads: propLeads, onLeadAdded }: KanbanBoa
             <CardContent className="p-4">
               <div className="text-center">
                 <p className="text-2xl font-bold text-green-600">
-                  ${leads.reduce((sum, lead) => sum + lead.value, 0).toLocaleString()}
+                  ${leads.reduce((sum: number, lead: Lead) => sum + (lead.value || 0), 0).toLocaleString()}
                 </p>
                 <p className="text-sm text-slate-600 dark:text-slate-400">Total Pipeline Value</p>
               </div>
@@ -499,7 +485,7 @@ export default function KanbanBoard({ leads: propLeads, onLeadAdded }: KanbanBoa
             <CardContent className="p-4">
               <div className="text-center">
                 <p className="text-2xl font-bold text-blue-600">
-                  {leads.filter(lead => ['qualified', 'proposal', 'negotiation'].includes(lead.status)).length}
+                  {leads.filter((lead: Lead) => ['qualified', 'proposal', 'negotiation'].includes(lead.status)).length}
                 </p>
                 <p className="text-sm text-slate-600 dark:text-slate-400">Active Opportunities</p>
               </div>
@@ -509,7 +495,7 @@ export default function KanbanBoard({ leads: propLeads, onLeadAdded }: KanbanBoa
             <CardContent className="p-4">
               <div className="text-center">
                 <p className="text-2xl font-bold text-emerald-600">
-                  {Math.round((leads.filter(lead => lead.status === 'won').length / leads.length) * 100)}%
+                  {leads.length > 0 ? Math.round((leads.filter((lead: Lead) => lead.status === 'won').length / leads.length) * 100) : 0}%
                 </p>
                 <p className="text-sm text-slate-600 dark:text-slate-400">Win Rate</p>
               </div>

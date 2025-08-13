@@ -31,6 +31,7 @@ export const divisionKeyEnum = pgEnum('division_key', ['mfnc', 'sfnc', 'rr']);
 export const jobStatusEnum = pgEnum('job_status', ['draft', 'active', 'closed', 'planning', 'in_progress', 'completed']);
 export const estimateStatusEnum = pgEnum('estimate_status', ['draft', 'sent', 'approved', 'rejected']);
 export const proposalStatusEnum = pgEnum('proposal_status', ['draft', 'sent', 'accepted', 'rejected', 'expired']);
+export const leadStatusEnum = pgEnum('lead_status', ['new', 'contacted', 'qualified', 'proposal', 'negotiation', 'won', 'lost']);
 export const logTypeEnum = pgEnum('log_type', ['progress', 'issue', 'completion', 'weather', 'safety']);
 export const punchItemStatusEnum = pgEnum('punch_item_status', ['open', 'in_progress', 'completed', 'verified']);
 export const punchItemPriorityEnum = pgEnum('punch_item_priority', ['low', 'medium', 'high', 'critical']);
@@ -101,6 +102,34 @@ export const estimates = pgTable("estimates", {
   index("idx_estimates_status").on(table.status),
 ]);
 
+// Leads table - for sales pipeline management
+export const leads = pgTable("leads", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  divisionId: uuid("division_id").notNull().references(() => divisions.id),
+  name: varchar("name", { length: 200 }).notNull(), // Company/property name
+  contact: varchar("contact", { length: 200 }).notNull(), // Contact person
+  email: varchar("email", { length: 255 }),
+  phone: varchar("phone", { length: 20 }),
+  address: text("address"),
+  status: leadStatusEnum("status").notNull().default('new'),
+  value: integer("value_cents").notNull().default(0), // Estimated value in cents
+  source: varchar("source", { length: 100 }), // Lead source (website, referral, etc.)
+  projectType: varchar("project_type", { length: 200 }),
+  timeline: varchar("timeline", { length: 100 }),
+  budget: varchar("budget", { length: 100 }),
+  assignedTo: uuid("assigned_to").references(() => users.id),
+  notes: text("notes"),
+  createdBy: uuid("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_leads_division_id").on(table.divisionId),
+  index("idx_leads_status").on(table.status),
+  index("idx_leads_assigned_to").on(table.assignedTo),
+  index("idx_leads_created_by").on(table.createdBy),
+  index("idx_leads_created_at").on(table.createdAt),
+]);
+
 
 
 // Relations
@@ -110,12 +139,15 @@ export const userRelations = relations(users, ({ one, many }) => ({
     references: [divisions.id],
   }),
   createdJobs: many(jobs),
+  createdLeads: many(leads, { relationName: 'createdBy' }),
+  assignedLeads: many(leads, { relationName: 'assignedTo' }),
 }));
 
 export const divisionRelations = relations(divisions, ({ many }) => ({
   users: many(users),
   customers: many(customers),
   jobs: many(jobs),
+  leads: many(leads),
 }));
 
 export const customerRelations = relations(customers, ({ one, many }) => ({
@@ -273,6 +305,23 @@ export const planScales = pgTable("plan_scales", {
   index("idx_plan_scales_created_by").on(table.createdBy),
 ]);
 
+export const leadRelations = relations(leads, ({ one }) => ({
+  division: one(divisions, {
+    fields: [leads.divisionId],
+    references: [divisions.id],
+  }),
+  createdByUser: one(users, {
+    fields: [leads.createdBy],
+    references: [users.id],
+    relationName: 'createdBy',
+  }),
+  assignedToUser: one(users, {
+    fields: [leads.assignedTo],
+    references: [users.id],
+    relationName: 'assignedTo',
+  }),
+}));
+
 export const estimateRelations = relations(estimates, ({ one }) => ({
   job: one(jobs, {
     fields: [estimates.jobId],
@@ -386,6 +435,12 @@ export const insertEstimateSchema = createInsertSchema(estimates).omit({
   createdAt: true 
 });
 
+export const insertLeadSchema = createInsertSchema(leads).omit({ 
+  id: true, 
+  createdAt: true,
+  updatedAt: true
+});
+
 export const insertProposalSchema = createInsertSchema(proposals).omit({ 
   id: true, 
   createdAt: true,
@@ -434,6 +489,9 @@ export type InsertJob = typeof insertJobSchema._type;
 export type Estimate = typeof estimates.$inferSelect;
 export type InsertEstimate = typeof insertEstimateSchema._type;
 
+export type Lead = typeof leads.$inferSelect;
+export type InsertLead = typeof insertLeadSchema._type;
+
 export type Proposal = typeof proposals.$inferSelect;
 export type InsertProposal = typeof insertProposalSchema._type;
 
@@ -473,6 +531,12 @@ export type JobWithRelations = Job & {
 
 export type EstimateWithRelations = Estimate & {
   job?: JobWithRelations;
+};
+
+export type LeadWithRelations = Lead & {
+  division?: Division;
+  createdByUser?: User;
+  assignedToUser?: User;
 };
 
 export type ProposalWithRelations = Proposal & {

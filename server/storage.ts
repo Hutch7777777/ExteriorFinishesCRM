@@ -5,6 +5,7 @@ import {
   estimates,
   proposals,
   divisions,
+  leads,
   fieldLogs,
   punchListItems,
   planFiles,
@@ -27,6 +28,9 @@ import {
   type ProposalWithRelations,
   type Division,
   type InsertDivision,
+  type Lead,
+  type InsertLead,
+  type LeadWithRelations,
   type FieldLog,
   type InsertFieldLog,
   type PunchListItem,
@@ -60,6 +64,13 @@ export interface IStorage {
   createCustomer(customer: InsertCustomer): Promise<Customer>;
   updateCustomer(id: string, customer: Partial<InsertCustomer>): Promise<Customer>;
   deleteCustomer(id: string): Promise<void>;
+
+  // Lead operations
+  getLeads(divisionId?: string): Promise<LeadWithRelations[]>;
+  getLead(id: string): Promise<LeadWithRelations | undefined>;
+  createLead(lead: InsertLead): Promise<Lead>;
+  updateLead(id: string, lead: Partial<InsertLead>): Promise<Lead>;
+  deleteLead(id: string): Promise<void>;
 
   // Job operations
   getJobs(divisionId?: string): Promise<JobWithRelations[]>;
@@ -244,6 +255,64 @@ export class DatabaseStorage implements IStorage {
 
   async deleteCustomer(id: string): Promise<void> {
     await db.delete(customers).where(eq(customers.id, id));
+  }
+
+  // Lead operations
+  async getLeads(divisionId?: string): Promise<LeadWithRelations[]> {
+    const query = db
+      .select()
+      .from(leads)
+      .leftJoin(divisions, eq(leads.divisionId, divisions.id))
+      .leftJoin(users, eq(leads.createdBy, users.id))
+      .orderBy(desc(leads.createdAt));
+
+    // Only filter by division if divisionId is provided
+    // If divisionId is undefined, show all leads across all divisions
+    if (divisionId) {
+      query.where(eq(leads.divisionId, divisionId));
+    }
+
+    const results = await query;
+    return results.map(row => ({
+      ...row.leads,
+      division: row.divisions || undefined,
+      createdByUser: row.users || undefined,
+    }));
+  }
+
+  async getLead(id: string): Promise<LeadWithRelations | undefined> {
+    const [result] = await db
+      .select()
+      .from(leads)
+      .leftJoin(divisions, eq(leads.divisionId, divisions.id))
+      .leftJoin(users, eq(leads.createdBy, users.id))
+      .where(eq(leads.id, id));
+
+    if (!result) return undefined;
+
+    return {
+      ...result.leads,
+      division: result.divisions || undefined,
+      createdByUser: result.users || undefined,
+    };
+  }
+
+  async createLead(lead: InsertLead): Promise<Lead> {
+    const [newLead] = await db.insert(leads).values(lead).returning();
+    return newLead;
+  }
+
+  async updateLead(id: string, lead: Partial<InsertLead>): Promise<Lead> {
+    const [updatedLead] = await db
+      .update(leads)
+      .set(lead)
+      .where(eq(leads.id, id))
+      .returning();
+    return updatedLead;
+  }
+
+  async deleteLead(id: string): Promise<void> {
+    await db.delete(leads).where(eq(leads.id, id));
   }
 
   // Job operations
