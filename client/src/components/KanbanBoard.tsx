@@ -62,7 +62,8 @@ const mockLeads = [
     createdAt: '2025-01-08',
     assignedTo: 'Mike Johnson',
     notes: 'Interested in siding renovation for 5-story building',
-    avatar: 'JS'
+    avatar: 'JS',
+    division: 'Multi-Family New Construction'
   },
   {
     id: '2',
@@ -76,7 +77,8 @@ const mockLeads = [
     createdAt: '2025-01-05',
     assignedTo: 'Sarah Wilson',
     notes: 'Large residential complex, decision expected this week',
-    avatar: 'SJ'
+    avatar: 'SJ',
+    division: 'Multi-Family New Construction'
   },
   {
     id: '3',
@@ -90,7 +92,8 @@ const mockLeads = [
     createdAt: '2025-01-03',
     assignedTo: 'Mike Johnson',
     notes: 'Budget constraints, looking for cost-effective solutions',
-    avatar: 'MC'
+    avatar: 'MC',
+    division: 'Single-Family New Construction'
   },
   {
     id: '4',
@@ -104,7 +107,8 @@ const mockLeads = [
     createdAt: '2025-01-10',
     assignedTo: 'Sarah Wilson',
     notes: 'Large commercial project, needs exterior renovation',
-    avatar: 'LB'
+    avatar: 'LB',
+    division: 'R&R'
   },
   {
     id: '5',
@@ -118,7 +122,8 @@ const mockLeads = [
     createdAt: '2025-01-09',
     assignedTo: 'Mike Johnson',
     notes: 'Interested in energy-efficient siding options',
-    avatar: 'TW'
+    avatar: 'TW',
+    division: 'Single-Family New Construction'
   },
   {
     id: '6',
@@ -132,7 +137,8 @@ const mockLeads = [
     createdAt: '2024-12-20',
     assignedTo: 'Sarah Wilson',
     notes: 'Hospital exterior renovation project - signed contract',
-    avatar: 'AF'
+    avatar: 'AF',
+    division: 'R&R'
   }
 ]
 
@@ -338,15 +344,33 @@ export default function KanbanBoard({ leads: propLeads, onLeadAdded }: KanbanBoa
   const params = useParams({ strict: false })
   const division = (params as any).division || 'mfnc'
   
-  const [leads, setLeads] = useState(propLeads || [])
+  const [allLeads, setAllLeads] = useState(propLeads || [])
   const [activeId, setActiveId] = useState<string | null>(null)
   
   // Update leads when propLeads changes
   useEffect(() => {
     if (propLeads) {
-      setLeads(propLeads)
+      setAllLeads(propLeads)
+    } else {
+      // If no leads are passed as props, use mock data
+      setAllLeads(mockLeads)
     }
   }, [propLeads])
+
+  // Map division keys to display names for filtering
+  const divisionKeyMap: { [key: string]: string } = {
+    'sfnc': 'Single-Family New Construction',
+    'mfnc': 'Multi-Family New Construction', 
+    'rr': 'R&R'
+  }
+
+  // Get current division display name from URL or DivisionSwitcher
+  const currentDivisionName = divisionKeyMap[division] || 'Multi-Family New Construction'
+  
+  // Filter leads by current division (or show all if "all" is selected)
+  const leads = division === 'all' 
+    ? allLeads 
+    : allLeads.filter(lead => lead.division === currentDivisionName)
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -378,15 +402,15 @@ export default function KanbanBoard({ leads: propLeads, onLeadAdded }: KanbanBoa
       targetStageId = directStage.id
     } else {
       // Find which stage the dropped-over lead belongs to
-      const targetLead = leads.find(lead => lead.id === overId)
+      const targetLead = allLeads.find(lead => lead.id === overId)
       if (targetLead) {
         targetStageId = targetLead.status
       }
     }
 
-    if (targetStageId && targetStageId !== leads.find(lead => lead.id === activeId)?.status) {
-      // Update the lead's status
-      setLeads(prevLeads =>
+    if (targetStageId && targetStageId !== allLeads.find(lead => lead.id === activeId)?.status) {
+      // Update the lead's status in all leads
+      setAllLeads(prevLeads =>
         prevLeads.map(lead =>
           lead.id === activeId
             ? { ...lead, status: targetStageId as string }
@@ -399,7 +423,7 @@ export default function KanbanBoard({ leads: propLeads, onLeadAdded }: KanbanBoa
     }
   }
 
-  const activeLead = activeId ? leads.find(lead => lead.id === activeId) : null
+  const activeLead = activeId ? allLeads.find(lead => lead.id === activeId) : null
 
   return (
     <DndContext
