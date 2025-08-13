@@ -23,7 +23,8 @@ import {
   Truck,
   Wrench,
   Star,
-  Edit2
+  Edit2,
+  Trash2
 } from 'lucide-react'
 
 interface Contact {
@@ -130,6 +131,30 @@ export default function Contacts() {
     }
   })
 
+  // Delete contact mutation
+  const deleteContactMutation = useMutation({
+    mutationFn: async (contactId: string) => {
+      const response = await apiRequest('POST', '/api/trpc/contacts.delete', {
+        input: { id: contactId }
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/trpc/contacts.list'] })
+      toast({
+        title: "Success",
+        description: "Contact deleted successfully."
+      })
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete contact.",
+        variant: "destructive"
+      })
+    }
+  })
+
   const resetForm = () => {
     setNewContact({
       name: '',
@@ -158,6 +183,12 @@ export default function Contacts() {
       notes: contact.notes
     })
     setIsCreateDialogOpen(true)
+  }
+
+  const handleDelete = (contactId: string, contactName: string) => {
+    if (window.confirm(`Are you sure you want to delete ${contactName}? This action cannot be undone.`)) {
+      deleteContactMutation.mutate(contactId)
+    }
   }
 
   // Ensure contacts is always an array
@@ -307,6 +338,14 @@ export default function Contacts() {
             className="h-8 w-8 p-0 hover:bg-slate-100 dark:hover:bg-slate-800"
           >
             <Edit2 className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleDelete(row.original.id, row.original.name)}
+            className="h-8 w-8 p-0 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900 dark:hover:text-red-400"
+          >
+            <Trash2 className="h-4 w-4" />
           </Button>
         </div>
       ),
