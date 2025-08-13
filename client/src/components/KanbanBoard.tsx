@@ -35,6 +35,7 @@ import {
   Building
 } from 'lucide-react'
 import { AddLeadDialog } from './AddLeadDialog'
+import { DivisionSwitcher } from './DivisionSwitcher'
 
 // Define sales stages
 const SALES_STAGES = [
@@ -417,6 +418,10 @@ export default function KanbanBoard({ leads: propLeads, onLeadAdded }: KanbanBoa
             <p className="text-slate-600 dark:text-slate-400 mt-1">
               Drag and drop leads between stages to update their status
             </p>
+            {/* Division Switcher */}
+            <div className="mt-3">
+              <DivisionSwitcher />
+            </div>
           </div>
           <AddLeadDialog onLeadAdded={onLeadAdded}>
             <Button className="flex items-center gap-2">

@@ -55,9 +55,8 @@ export function Header() {
           />
         </div>
         
-        {/* Center section - Division Switcher */}
+        {/* Center section - Removed Division Switcher */}
         <div className="flex items-center">
-          <DivisionSwitcher />
         </div>
         
         {/* Right section - User menu */}
