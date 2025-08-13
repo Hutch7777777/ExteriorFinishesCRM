@@ -40,7 +40,7 @@ const leadSchema = z.object({
   email: z.string().email('Valid email is required'),
   phone: z.string().min(1, 'Phone number is required'),
   address: z.string().min(1, 'Address is required'),
-  value: z.number().min(0, 'Estimated value must be positive'),
+  value: z.string().min(1, 'Estimated value is required'),
   source: z.string().min(1, 'Lead source is required'),
   projectType: z.string().min(1, 'Project type is required'),
   timeline: z.string().min(1, 'Timeline is required'),
@@ -71,7 +71,7 @@ export function AddLeadDialog({ children, onLeadAdded }: AddLeadDialogProps) {
       email: '',
       phone: '',
       address: '',
-      value: 0,
+      value: '',
       source: '',
       projectType: '',
       timeline: '',
@@ -114,7 +114,7 @@ export function AddLeadDialog({ children, onLeadAdded }: AddLeadDialogProps) {
         phone: data.phone,
         address: data.address,
         status: 'new', // Always starts in first stage (changed from 'lead' to 'new')
-        value: data.value,
+        value: parseFloat(data.value.replace(/[$,]/g, '')) || 0,
         source: data.source,
         projectType: data.projectType,
         timeline: data.timeline,
@@ -370,10 +370,17 @@ export function AddLeadDialog({ children, onLeadAdded }: AddLeadDialogProps) {
                     <FormLabel>Estimated Value *</FormLabel>
                     <FormControl>
                       <Input 
-                        type="number" 
-                        placeholder="150000" 
+                        type="text" 
+                        placeholder="$150,000" 
                         {...field}
-                        onChange={(e) => field.onChange(Number(e.target.value))}
+                        onChange={(e) => {
+                          // Format as currency while typing
+                          let value = e.target.value.replace(/[^\d]/g, '')
+                          if (value) {
+                            value = '$' + parseInt(value).toLocaleString()
+                          }
+                          field.onChange(value)
+                        }}
                       />
                     </FormControl>
                     <FormMessage />
