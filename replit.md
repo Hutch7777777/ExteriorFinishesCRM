@@ -62,6 +62,13 @@ The system features a React-based frontend with TypeScript, a Node.js Express ba
 - ✅ Built comprehensive Reports dashboard with revenue analytics, performance metrics, and business insights
 - ✅ Enhanced all modules with professional summary cards, rich data visualization, and actionable interfaces
 
+### Critical Bug Fixes (August 2025)
+- ✅ Fixed authentication cookie duration mismatch causing session timeouts (was 15 minutes, now 24 hours to match JWT)
+- ✅ Resolved lead creation validation errors with null value handling for assignedTo and notes fields
+- ✅ Fixed division key validation to properly handle "all divisions" view vs specific division creation
+- ✅ Corrected value conversion logic ensuring proper cents storage (multiply by 100) and dollar display (divide by 100)
+- ✅ Verified complete lead management workflow from creation through Kanban pipeline display
+
 ### UI/UX and Branding Updates (August 2025)
 - ✅ Implemented collapsible sidebar with smooth animations and toggle functionality
 - ✅ Added hamburger menu button for sidebar control with professional hover states

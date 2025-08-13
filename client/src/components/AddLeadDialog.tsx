@@ -102,7 +102,7 @@ export function AddLeadDialog({ children, onLeadAdded }: AddLeadDialogProps) {
             budget: data.budget || null,
             assignedTo: null,
             notes: data.notes || null,
-            divisionKey: division, // Use current division key from URL
+            divisionKey: division === 'all' ? 'mfnc' : division, // Default to mfnc if viewing all divisions
             status: 'new' as const
           }
         })

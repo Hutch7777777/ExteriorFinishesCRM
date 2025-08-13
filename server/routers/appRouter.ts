@@ -314,20 +314,28 @@ export const createAppRouter = () => {
         divisionKey: z.enum(['mfnc', 'sfnc', 'rr']),
         name: z.string().min(1),
         contact: z.string().min(1),
-        email: z.string().email().optional(),
-        phone: z.string().optional(),
-        address: z.string().optional(),
+        email: z.string().email().optional().or(z.literal('').transform(() => undefined)),
+        phone: z.string().optional().or(z.literal('').transform(() => undefined)),
+        address: z.string().optional().or(z.literal('').transform(() => undefined)),
         status: z.enum(['new', 'contacted', 'qualified', 'proposal', 'negotiation', 'won', 'lost']).default('new'),
         value: z.number().optional(),
-        source: z.string().optional(),
-        projectType: z.string().optional(),
-        timeline: z.string().optional(),
-        budget: z.string().optional(),
-        assignedTo: z.string().optional(),
-        notes: z.string().optional(),
+        source: z.string().optional().or(z.literal('').transform(() => undefined)),
+        projectType: z.string().optional().or(z.literal('').transform(() => undefined)),
+        timeline: z.string().optional().or(z.literal('').transform(() => undefined)),
+        budget: z.string().optional().or(z.literal('').transform(() => undefined)),
+        assignedTo: z.any().optional(),
+        notes: z.any().optional(),
       });
       
-      const input = inputSchema.parse(req.body?.input || {});
+      // Preprocess input to handle null values
+      const rawInput = req.body?.input || {};
+      const processedInput = {
+        ...rawInput,
+        assignedTo: rawInput.assignedTo === null ? undefined : rawInput.assignedTo,
+        notes: rawInput.notes === null ? undefined : rawInput.notes,
+      };
+      
+      const input = inputSchema.parse(processedInput);
       
       // Get division by key and enforce scoping
       const division = await storage.getDivisionByKey(input.divisionKey);
