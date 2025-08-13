@@ -241,15 +241,33 @@ export default function Contacts() {
     }
   }
 
-  const renderStars = (rating: number) => {
+  const renderStars = (rating: number, contactId?: string, isInteractive = false, onRatingChange?: (rating: number) => void) => {
     return Array.from({ length: 5 }).map((_, i) => (
       <Star
         key={i}
-        className={`w-4 h-4 ${
-          i < rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'
+        className={`w-4 h-4 transition-colors ${
+          i < rating 
+            ? 'text-yellow-400 fill-yellow-400' 
+            : isInteractive 
+              ? 'text-gray-300 hover:text-yellow-300 cursor-pointer' 
+              : 'text-gray-300'
         }`}
+        onClick={isInteractive ? () => {
+          if (contactId) {
+            handleRatingChange(contactId, i + 1);
+          } else if (onRatingChange) {
+            onRatingChange(i + 1);
+          }
+        } : undefined}
       />
     ))
+  }
+
+  const handleRatingChange = (contactId: string, newRating: number) => {
+    updateContactMutation.mutate({
+      id: contactId,
+      rating: newRating
+    })
   }
 
   const columns: ColumnDef<Contact>[] = [
@@ -317,7 +335,7 @@ export default function Contacts() {
       header: "Rating",
       cell: ({ row }) => (
         <div className="flex items-center gap-1">
-          {renderStars(row.original.rating)}
+          {renderStars(row.original.rating, row.original.id, true)}
           <span className="text-sm text-slate-600 ml-2">
             {row.original.rating}/5
           </span>
@@ -545,6 +563,16 @@ export default function Contacts() {
                 value={newContact.address}
                 onChange={(e) => setNewContact({...newContact, address: e.target.value})}
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="rating">Rating</Label>
+              <div className="flex items-center gap-1">
+                {renderStars(newContact.rating, undefined, true, (rating) => setNewContact({...newContact, rating}))}
+                <span className="text-sm text-slate-600 ml-2">
+                  {newContact.rating}/5
+                </span>
+              </div>
             </div>
 
             <div className="space-y-2">
