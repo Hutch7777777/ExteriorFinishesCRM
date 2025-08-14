@@ -56,6 +56,10 @@ export default function LeadDetail() {
     enabled: !!leadId
   })
 
+  console.log('LeadDetail - leadId:', leadId, 'division:', division);
+  console.log('LeadDetail - lead data:', lead);
+  console.log('LeadDetail - error:', leadError);
+
   // If no lead found or loading, show appropriate state
   if (leadLoading) {
     return (
@@ -74,7 +78,10 @@ export default function LeadDetail() {
         <div className="text-center">
           <h2 className="text-xl font-semibold text-slate-900 mb-2">Lead Not Found</h2>
           <p className="text-slate-600 mb-4">The lead you're looking for doesn't exist or has been removed.</p>
-          <Button onClick={() => navigate(`/${division}/lead-management`)}>
+          <Button onClick={() => {
+            console.log('Button clicked, navigating to:', `/${division}/lead-management`);
+            navigate(`/${division}/lead-management`);
+          }}>
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Lead Management
           </Button>
