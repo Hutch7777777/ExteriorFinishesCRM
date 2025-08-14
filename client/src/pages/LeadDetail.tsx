@@ -322,34 +322,76 @@ export default function LeadDetail() {
     }
   }
 
-  const handleAddDocument = () => {
+  const handleAddDocument = async () => {
     if (newDocument.name.trim() && newDocument.file) {
-      const document = {
-        id: (documents.length + 1).toString(),
-        name: newDocument.name,
-        type: newDocument.type,
-        uploadedBy: user?.name || "Unknown User",
-        uploadedAt: new Date().toISOString().split('T')[0],
-        size: formatFileSize(newDocument.file.size)
+      try {
+        // Get upload URL from backend
+        const uploadResponse = await fetch('/api/objects/upload', {
+          method: 'POST',
+          credentials: 'include'
+        })
+        
+        if (!uploadResponse.ok) {
+          throw new Error('Failed to get upload URL')
+        }
+        
+        const { uploadURL } = await uploadResponse.json()
+        
+        // Upload file to object storage
+        const fileUploadResponse = await fetch(uploadURL, {
+          method: 'PUT',
+          body: newDocument.file,
+          headers: {
+            'Content-Type': newDocument.file.type || 'application/octet-stream'
+          }
+        })
+        
+        if (!fileUploadResponse.ok) {
+          throw new Error('Failed to upload file')
+        }
+        
+        // Set document metadata with file URL
+        const fileExtension = newDocument.file.name.split('.').pop()
+        const timestamp = Date.now()
+        const fileName = `${newDocument.name.replace(/[^a-zA-Z0-9]/g, '_')}_${timestamp}.${fileExtension}`
+        const fileUrl = `/objects/uploads/${fileName}`
+        
+        const document = {
+          id: (documents.length + 1).toString(),
+          name: newDocument.name,
+          type: newDocument.type,
+          uploadedBy: user?.name || "Unknown User",
+          uploadedAt: new Date().toISOString().split('T')[0],
+          size: formatFileSize(newDocument.file.size),
+          fileUrl: fileUrl,
+          originalFileName: newDocument.file.name
+        }
+        
+        // Add to the top of the documents list
+        setDocuments([document, ...documents])
+        
+        // Reset form
+        setNewDocument({ name: '', type: 'Proposal', file: null })
+        
+        // Close modal
+        setIsDocumentModalOpen(false)
+        
+        // Show success toast
+        toast({
+          title: "Document uploaded",
+          description: "Your document has been uploaded successfully.",
+        })
+        
+        console.log('Document uploaded successfully:', document)
+        
+      } catch (error) {
+        console.error('Error uploading document:', error)
+        toast({
+          title: "Upload failed",
+          description: "There was an error uploading your document. Please try again.",
+          variant: "destructive"
+        })
       }
-      
-      // Add to the top of the documents list
-      setDocuments([document, ...documents])
-      
-      // Reset form
-      setNewDocument({ name: '', type: 'Proposal', file: null })
-      
-      // Close modal
-      setIsDocumentModalOpen(false)
-      
-      // Show success toast
-      toast({
-        title: "Document uploaded",
-        description: "Your document has been uploaded successfully.",
-      })
-      
-      // In real app, upload file to storage and save document via API
-      console.log('Uploading document:', document)
     }
   }
 
@@ -362,21 +404,41 @@ export default function LeadDetail() {
   }
 
   const handleViewDocument = (document: any) => {
-    // Directly trigger download/open instead of showing modal
-    toast({
-      title: "Opening document",
-      description: `Opening ${document.name}`,
-    })
-    
-    // In real app, this would open the actual file
-    // For now, we'll simulate the file opening
-    console.log('Opening document:', document)
-    
-    // You could also trigger a direct download here:
-    // const link = document.createElement('a')
-    // link.href = document.fileUrl // In real app, this would be the actual file URL
-    // link.download = document.name
-    // link.click()
+    // Open the actual uploaded file
+    if (document.fileUrl) {
+      // Create a temporary link element to trigger download/open
+      const link = document.createElement('a')
+      link.href = document.fileUrl
+      link.target = '_blank' // Open in new tab for viewing
+      link.rel = 'noopener noreferrer'
+      
+      // For PDFs and images, open in new tab for viewing
+      // For other files, trigger download
+      const fileExtension = document.originalFileName?.split('.').pop()?.toLowerCase()
+      if (['pdf', 'jpg', 'jpeg', 'png', 'gif'].includes(fileExtension || '')) {
+        // Open in new tab for viewing
+        link.click()
+        toast({
+          title: "Opening document",
+          description: `Opening ${document.name} in new tab`,
+        })
+      } else {
+        // Trigger download for other file types
+        link.download = document.originalFileName || document.name
+        link.click()
+        toast({
+          title: "Downloading document",
+          description: `Downloading ${document.name}`,
+        })
+      }
+    } else {
+      // Fallback for documents without fileUrl (old documents)
+      toast({
+        title: "File not available",
+        description: "This document file is not available for viewing.",
+        variant: "destructive"
+      })
+    }
   }
 
 

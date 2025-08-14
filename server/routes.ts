@@ -13,6 +13,7 @@ import {
   insertEstimateSchema,
 } from "@shared/schema";
 import Anthropic from '@anthropic-ai/sdk';
+import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // JWT Auth routes
@@ -90,6 +91,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching recent activity:", error);
       res.status(500).json({ message: "Failed to fetch recent activity" });
+    }
+  });
+
+  // Object Storage Routes for Document Upload
+  app.post('/api/objects/upload', authenticateToken, async (req: any, res) => {
+    try {
+      const objectStorageService = new ObjectStorageService();
+      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+      res.json({ uploadURL });
+    } catch (error) {
+      console.error("Error getting upload URL:", error);
+      res.status(500).json({ error: "Failed to get upload URL" });
+    }
+  });
+
+  // Serve uploaded documents
+  app.get('/objects/:objectPath(*)', authenticateToken, async (req: any, res) => {
+    try {
+      const objectStorageService = new ObjectStorageService();
+      const objectFile = await objectStorageService.getObjectFile(`${objectStorageService.getPrivateObjectDir()}/uploads/${req.params.objectPath}`);
+      await objectStorageService.downloadObject(objectFile, res);
+    } catch (error) {
+      console.error("Error serving object:", error);
+      if (error instanceof ObjectNotFoundError) {
+        return res.status(404).json({ error: "File not found" });
+      }
+      return res.status(500).json({ error: "Error serving file" });
     }
   });
 

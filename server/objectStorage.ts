@@ -47,8 +47,8 @@ export class ObjectStorageService {
     return dir;
   }
 
-  // Gets the upload URL for a PDF file.
-  async getPDFUploadURL(): Promise<string> {
+  // Gets the upload URL for any file type.
+  async getObjectEntityUploadURL(): Promise<string> {
     const privateObjectDir = this.getPrivateObjectDir();
     if (!privateObjectDir) {
       throw new Error(
@@ -58,7 +58,7 @@ export class ObjectStorageService {
     }
 
     const objectId = randomUUID();
-    const fullPath = `${privateObjectDir}/pdfs/${objectId}.pdf`;
+    const fullPath = `${privateObjectDir}/uploads/${objectId}`;
 
     const { bucketName, objectName } = parseObjectPath(fullPath);
 
