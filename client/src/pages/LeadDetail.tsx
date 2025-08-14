@@ -230,82 +230,51 @@ export default function LeadDetail() {
           </Card>
         </div>
 
-        {/* Location & Weather Card */}
+        {/* Compact Location & Weather Card */}
         <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span className="flex items-center gap-2">
-                <MapPin className="w-5 h-5" />
-                LOCATION
-              </span>
-              <span className="text-sm font-normal text-slate-600">
-                Tax Rate 10.35%
-              </span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Map Section */}
-              <div className="space-y-4">
-                <div className="bg-slate-100 dark:bg-slate-800 rounded-lg p-4 h-48 flex items-center justify-center relative overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-green-50"></div>
-                  <div className="relative z-10 text-center">
-                    <MapPin className="w-8 h-8 text-red-500 mx-auto mb-2" />
-                    <p className="text-sm font-medium">2801</p>
-                    <Button variant="outline" size="sm" className="mt-2">
-                      View larger map
-                    </Button>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              {/* Location Section */}
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <div className="bg-slate-100 dark:bg-slate-800 rounded p-2 w-12 h-12 flex items-center justify-center">
+                    <MapPin className="w-5 h-5 text-red-500" />
                   </div>
-                  {/* Simulated map elements */}
-                  <div className="absolute top-2 right-2 bg-white rounded px-2 py-1 text-xs">
-                    Google
+                  <div>
+                    <p className="text-sm font-medium">Job Location</p>
+                    <p className="text-xs text-slate-600">
+                      {lead.address ? lead.address.split(',')[0] : '2801 SW Nevada St'}
+                    </p>
                   </div>
                 </div>
-                <p className="text-sm text-slate-600">
-                  {lead.address || '2801 SW Nevada St, Seattle, WA 98126, USA'}
-                </p>
+                
+                {/* Weather Section */}
+                <div className="flex items-center gap-3 border-l pl-4">
+                  <weatherData.current.icon className="w-6 h-6 text-yellow-500" />
+                  <div>
+                    <p className="text-sm font-bold">{weatherData.current.temp}°F</p>
+                    <p className="text-xs text-slate-600">Sunny</p>
+                  </div>
+                </div>
+
+                {/* Today's Forecast */}
+                <div className="flex items-center gap-2 border-l pl-4">
+                  {weatherData.forecast.slice(0, 4).map((hour, index) => (
+                    <div key={index} className="text-center">
+                      <p className="text-xs text-slate-600">{hour.day}</p>
+                      <hour.icon className="w-3 h-3 mx-auto my-1 text-blue-500" />
+                      <p className="text-xs font-medium">{hour.temp}°</p>
+                    </div>
+                  ))}
+                </div>
               </div>
 
-              {/* Weather Section */}
-              <div className="space-y-4">
-                {/* Current Weather */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <weatherData.current.icon className="w-8 h-8 text-yellow-500" />
-                    <div>
-                      <p className="text-2xl font-bold">{weatherData.current.temp}°</p>
-                      <p className="text-sm text-slate-600">{weatherData.current.humidity}%</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Hourly Forecast */}
-                <div className="flex gap-2 overflow-x-auto pb-2">
-                  {weatherData.forecast.map((hour, index) => (
-                    <div key={index} className="flex-shrink-0 text-center bg-slate-50 dark:bg-slate-800 rounded-lg p-2 min-w-[60px]">
-                      <p className="text-xs text-slate-600 mb-1">{hour.day}</p>
-                      <hour.icon className="w-4 h-4 mx-auto mb-1 text-blue-500" />
-                      <p className="text-sm font-medium">{hour.temp}°</p>
-                      <p className="text-xs text-slate-500">{hour.humidity}%</p>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Weekly Forecast */}
-                <div className="space-y-2">
-                  {weatherData.weekly.map((day, index) => (
-                    <div key={index} className="flex items-center justify-between py-1">
-                      <div className="flex items-center gap-3 flex-1">
-                        <span className="text-sm font-medium w-8">{day.day}</span>
-                        <day.icon className="w-4 h-4 text-blue-500" />
-                        <span className="text-xs text-slate-600">{day.chance}%</span>
-                      </div>
-                      <div className="text-sm font-medium">
-                        {day.high}° <span className="text-slate-500">{day.low}°</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+              {/* Tax Rate & Action */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-600">Tax Rate: 10.35%</span>
+                <Button variant="outline" size="sm" className="text-xs">
+                  Directions
+                </Button>
               </div>
             </div>
           </CardContent>
