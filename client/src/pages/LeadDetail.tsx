@@ -175,6 +175,24 @@ export default function LeadDetail() {
   ]
 
   const [newNote, setNewNote] = useState('')
+  
+  // Mock notes data with state management
+  const [notes, setNotes] = useState([
+    {
+      id: 1,
+      content: "Client is very interested in eco-friendly siding options. Mentioned they want to achieve LEED certification for the building.",
+      author: "Mike Johnson",
+      createdAt: "January 9, 2025 at 3:15 PM",
+      color: "blue"
+    },
+    {
+      id: 2,
+      content: "Site visit went well. Building has good access for equipment. No major structural concerns identified.",
+      author: "Sarah Wilson", 
+      createdAt: "January 7, 2025 at 11:30 AM",
+      color: "green"
+    }
+  ])
   const [newTask, setNewTask] = useState({ title: '', description: '', dueDate: '', assignee: '' })
   const [tasks, setTasks] = useState(mockTasks)
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false)
@@ -247,9 +265,32 @@ export default function LeadDetail() {
 
   const handleAddNote = () => {
     if (newNote.trim()) {
-      // In real app, save note via API
-      console.log('Adding note:', newNote)
+      const colors = ['blue', 'green', 'purple', 'orange', 'red']
+      const randomColor = colors[Math.floor(Math.random() * colors.length)]
+      
+      const newNoteObj = {
+        id: Date.now(), // Simple ID generation
+        content: newNote.trim(),
+        author: user?.name || "Unknown User",
+        createdAt: new Date().toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long', 
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        }),
+        color: randomColor
+      }
+      
+      // Add new note to the beginning of the list
+      setNotes(prevNotes => [newNoteObj, ...prevNotes])
       setNewNote('')
+      
+      // Show success toast
+      toast({
+        title: "Note Added",
+        description: "Your note has been saved successfully.",
+      })
     }
   }
 
@@ -1248,24 +1289,20 @@ export default function LeadDetail() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="border-l-4 border-blue-500 pl-4">
-                    <p className="text-sm text-slate-700 dark:text-slate-300 mb-2">
-                      Client is very interested in eco-friendly siding options. 
-                      Mentioned they want to achieve LEED certification for the building.
-                    </p>
-                    <div className="text-xs text-slate-500">
-                      Mike Johnson • January 9, 2025 at 3:15 PM
-                    </div>
-                  </div>
-                  <div className="border-l-4 border-green-500 pl-4">
-                    <p className="text-sm text-slate-700 dark:text-slate-300 mb-2">
-                      Site visit went well. Building has good access for equipment. 
-                      No major structural concerns identified.
-                    </p>
-                    <div className="text-xs text-slate-500">
-                      Sarah Wilson • January 7, 2025 at 11:30 AM
-                    </div>
-                  </div>
+                  {notes.length > 0 ? (
+                    notes.map((note) => (
+                      <div key={note.id} className={`border-l-4 border-${note.color}-500 pl-4`}>
+                        <p className="text-sm text-slate-700 dark:text-slate-300 mb-2">
+                          {note.content}
+                        </p>
+                        <div className="text-xs text-slate-500">
+                          {note.author} • {note.createdAt}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-slate-500">No notes yet. Add your first note above.</p>
+                  )}
                 </div>
               </CardContent>
             </Card>
