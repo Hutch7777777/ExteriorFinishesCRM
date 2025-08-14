@@ -176,6 +176,8 @@ export default function LeadDetail() {
 
   const [newNote, setNewNote] = useState('')
   const [newTask, setNewTask] = useState({ title: '', description: '', dueDate: '', assignee: '' })
+  const [tasks, setTasks] = useState(mockTasks)
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false)
   const [isActivityModalOpen, setIsActivityModalOpen] = useState(false)
   const [newActivity, setNewActivity] = useState({
     type: 'call',
@@ -193,6 +195,14 @@ export default function LeadDetail() {
     description: '',
     date: '',
     time: ''
+  })
+  const [isEditTaskModalOpen, setIsEditTaskModalOpen] = useState(false)
+  const [editingTask, setEditingTask] = useState<any>(null)
+  const [editTask, setEditTask] = useState({
+    title: '',
+    description: '',
+    dueDate: '',
+    status: 'pending'
   })
   
   const { toast } = useToast()
@@ -237,9 +247,32 @@ export default function LeadDetail() {
 
   const handleAddTask = () => {
     if (newTask.title.trim()) {
-      // In real app, save task via API
-      console.log('Adding task:', newTask)
+      const task = {
+        id: (tasks.length + 1).toString(),
+        title: newTask.title,
+        description: newTask.description,
+        dueDate: newTask.dueDate || new Date().toISOString().split('T')[0],
+        status: 'pending',
+        assignee: user?.name || "Unassigned"
+      }
+      
+      // Add to the top of the tasks list
+      setTasks([task, ...tasks])
+      
+      // Reset form
       setNewTask({ title: '', description: '', dueDate: '', assignee: '' })
+      
+      // Close modal
+      setIsTaskModalOpen(false)
+      
+      // Show success toast
+      toast({
+        title: "Task created",
+        description: "Your task has been added successfully.",
+      })
+      
+      // In real app, save task via API
+      console.log('Adding task:', task)
     }
   }
 
@@ -278,6 +311,45 @@ export default function LeadDetail() {
       
       // In real app, save to API
       console.log('Adding activity:', activity)
+    }
+  }
+
+  const handleEditTask = (task: any) => {
+    setEditingTask(task)
+    setEditTask({
+      title: task.title,
+      description: task.description,
+      dueDate: task.dueDate,
+      status: task.status
+    })
+    setIsEditTaskModalOpen(true)
+  }
+
+  const handleUpdateTask = () => {
+    if (editTask.title.trim() && editingTask) {
+      const updatedTasks = tasks.map(task => 
+        task.id === editingTask!.id
+          ? {
+              ...task,
+              title: editTask.title,
+              description: editTask.description,
+              dueDate: editTask.dueDate,
+              status: editTask.status
+            }
+          : task
+      )
+      
+      setTasks(updatedTasks)
+      setIsEditTaskModalOpen(false)
+      setEditingTask(null)
+      
+      toast({
+        title: "Task updated",
+        description: "Your task has been updated successfully.",
+      })
+      
+      // In real app, update via API
+      console.log('Updating task:', editingTask!.id, editTask)
     }
   }
 
@@ -752,14 +824,65 @@ export default function LeadDetail() {
           <TabsContent value="tasks" className="space-y-4">
             <div className="flex justify-between items-center">
               <h3 className="text-lg font-semibold">Tasks</h3>
-              <Button className="flex items-center gap-2">
-                <Plus className="w-4 h-4" />
-                Add Task
-              </Button>
+              <Dialog open={isTaskModalOpen} onOpenChange={setIsTaskModalOpen}>
+                <DialogTrigger asChild>
+                  <Button className="flex items-center gap-2 bg-gradient-to-r from-[#4A6FA5] to-[#2C3E50] hover:from-[#3A5A95] hover:to-[#1C2E40]">
+                    <Plus className="w-4 h-4" />
+                    Add Task
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Add New Task</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="task-title">Title *</Label>
+                      <Input
+                        id="task-title"
+                        placeholder="Enter task title"
+                        value={newTask.title}
+                        onChange={(e) => setNewTask({...newTask, title: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="task-description">Description</Label>
+                      <Textarea
+                        id="task-description"
+                        placeholder="Enter task description"
+                        value={newTask.description}
+                        onChange={(e) => setNewTask({...newTask, description: e.target.value})}
+                        rows={3}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="task-due-date">Due Date</Label>
+                      <Input
+                        id="task-due-date"
+                        type="date"
+                        value={newTask.dueDate}
+                        onChange={(e) => setNewTask({...newTask, dueDate: e.target.value})}
+                      />
+                    </div>
+                    <div className="flex justify-end gap-2 pt-4">
+                      <Button variant="outline" onClick={() => setIsTaskModalOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button 
+                        onClick={handleAddTask}
+                        className="bg-gradient-to-r from-[#4A6FA5] to-[#2C3E50] hover:from-[#3A5A95] hover:to-[#1C2E40]"
+                        disabled={!newTask.title.trim()}
+                      >
+                        Add Task
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
 
             <div className="space-y-4">
-              {mockTasks.map((task) => (
+              {tasks.map((task) => (
                 <Card key={task.id}>
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between">
@@ -779,7 +902,11 @@ export default function LeadDetail() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleEditTask(task)}
+                        >
                           <Edit className="w-3 h-3" />
                         </Button>
                         <Button variant="outline" size="sm">
@@ -791,6 +918,74 @@ export default function LeadDetail() {
                 </Card>
               ))}
             </div>
+
+            {/* Edit Task Modal */}
+            <Dialog open={isEditTaskModalOpen} onOpenChange={setIsEditTaskModalOpen}>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Edit Task</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-task-title">Title *</Label>
+                    <Input
+                      id="edit-task-title"
+                      placeholder="Enter task title"
+                      value={editTask.title}
+                      onChange={(e) => setEditTask({...editTask, title: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-task-description">Description</Label>
+                    <Textarea
+                      id="edit-task-description"
+                      placeholder="Enter task description"
+                      value={editTask.description}
+                      onChange={(e) => setEditTask({...editTask, description: e.target.value})}
+                      rows={3}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-task-due-date">Due Date</Label>
+                    <Input
+                      id="edit-task-due-date"
+                      type="date"
+                      value={editTask.dueDate}
+                      onChange={(e) => setEditTask({...editTask, dueDate: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-task-status">Status</Label>
+                    <Select
+                      value={editTask.status}
+                      onValueChange={(value) => setEditTask({...editTask, status: value})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="in_progress">In Progress</SelectItem>
+                        <SelectItem value="completed">Completed</SelectItem>
+                        <SelectItem value="overdue">Overdue</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex justify-end gap-2 pt-4">
+                    <Button variant="outline" onClick={() => setIsEditTaskModalOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button 
+                      onClick={handleUpdateTask}
+                      className="bg-gradient-to-r from-[#4A6FA5] to-[#2C3E50] hover:from-[#3A5A95] hover:to-[#1C2E40]"
+                      disabled={!editTask.title.trim()}
+                    >
+                      Update Task
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
           {/* Documents Tab */}
