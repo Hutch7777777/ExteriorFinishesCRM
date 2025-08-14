@@ -51,7 +51,8 @@ export default function LeadDetail() {
     isLoading: leadLoading, 
     error: leadError 
   } = useOptimizedQuery({
-    queryKey: ['/api/trpc/leads.get', { id: leadId }],
+    queryKey: ['/api/trpc/leads.get', leadId],
+    queryFn: () => fetch(`/api/trpc/leads.get?id=${leadId}`).then(res => res.json()).then(data => data.result?.json || data.result),
     enabled: !!leadId
   })
 
@@ -590,9 +591,9 @@ export default function LeadDetail() {
           </Button>
           <div className="flex-1">
             <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">
-              {lead.companyName}
+              {lead.name}
             </h1>
-            <p className="text-slate-600 dark:text-slate-400">{lead.contactName}</p>
+            <p className="text-slate-600 dark:text-slate-400">{lead.contact}</p>
           </div>
           <Badge className={getStatusColor(lead.status)}>
             {lead.status.charAt(0).toUpperCase() + lead.status.slice(1)}
@@ -619,7 +620,7 @@ export default function LeadDetail() {
                 <DollarSign className="w-8 h-8 text-green-600" />
                 <div>
                   <p className="text-sm text-slate-600 dark:text-slate-400">Lead Value</p>
-                  <p className="text-xl font-semibold">${(lead.valueInCents / 100).toLocaleString()}</p>
+                  <p className="text-xl font-semibold">${(lead.value / 100).toLocaleString()}</p>
                 </div>
               </div>
             </CardContent>
@@ -731,7 +732,7 @@ export default function LeadDetail() {
                   </div>
                   <div>
                     <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Budget Range</p>
-                    <p className="font-medium">${(lead.valueInCents / 100).toLocaleString()}</p>
+                    <p className="font-medium">${(lead.value / 100).toLocaleString()}</p>
                   </div>
                   <div>
                     <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Lead Source</p>
@@ -760,10 +761,10 @@ export default function LeadDetail() {
                     <div className="flex items-center gap-2">
                       <Avatar className="w-6 h-6">
                         <AvatarFallback className="text-xs">
-                          {lead.contactName.split(' ').map(n => n[0]).join('')}
+                          {lead.contact.split(' ').map(n => n[0]).join('')}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="text-sm">{lead.contactName}</span>
+                      <span className="text-sm">{lead.contact}</span>
                     </div>
                   </div>
                 </CardContent>
