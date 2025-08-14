@@ -45,31 +45,41 @@ export default function LeadDetail() {
   const division = (params as any).division || 'mfnc'
   const { user } = useAuth()
 
-  // Create dynamic mock data with current user
-  const mockLead = {
-    id: "lead-1",
-    companyName: "Acme Corporation",
-    contactName: "John Smith",
-    email: "john@acme.com",
-    phone: "(555) 123-4567",
-    address: "123 Business Ave, Suite 100, City, ST 12345",
-    status: "qualified",
-    value: 150000,
-    probability: 75,
-    source: "Website Inquiry",
-    assignedTo: user?.name || "Unassigned",
-    createdAt: "2025-01-05",
-    lastActivity: "2025-01-13",
-    description: "Interested in siding renovation for 5-story building",
-    division: "Multi-Family New Construction",
-    
-    // Additional details
-    projectType: "Commercial Renovation",
-    timeline: "Q2 2025",
-    budget: "$150,000 - $200,000",
-    decisionMakers: ["John Smith (CEO)", "Sarah Davis (Facilities Manager)"],
-    competitors: ["ABC Siding Co.", "XYZ Construction"],
-    nextSteps: "Schedule site visit and prepare detailed proposal"
+  // Fetch the actual lead data
+  const { 
+    data: lead, 
+    isLoading: leadLoading, 
+    error: leadError 
+  } = useOptimizedQuery({
+    queryKey: ['/api/trpc/leads.get', { id: leadId }],
+    enabled: !!leadId
+  })
+
+  // If no lead found or loading, show appropriate state
+  if (leadLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-slate-600">Loading lead details...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (leadError || !lead) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold text-slate-900 mb-2">Lead Not Found</h2>
+          <p className="text-slate-600 mb-4">The lead you're looking for doesn't exist or has been removed.</p>
+          <Button onClick={() => navigate(`/${division}/lead-management`)}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Lead Management
+          </Button>
+        </div>
+      </div>
+    )
   }
 
   const mockActivities = [
@@ -580,12 +590,12 @@ export default function LeadDetail() {
           </Button>
           <div className="flex-1">
             <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">
-              {mockLead.companyName}
+              {lead.companyName}
             </h1>
-            <p className="text-slate-600 dark:text-slate-400">{mockLead.contactName}</p>
+            <p className="text-slate-600 dark:text-slate-400">{lead.contactName}</p>
           </div>
-          <Badge className={getStatusColor(mockLead.status)}>
-            {mockLead.status.charAt(0).toUpperCase() + mockLead.status.slice(1)}
+          <Badge className={getStatusColor(lead.status)}>
+            {lead.status.charAt(0).toUpperCase() + lead.status.slice(1)}
           </Badge>
           <Button 
             variant="outline"
@@ -609,7 +619,7 @@ export default function LeadDetail() {
                 <DollarSign className="w-8 h-8 text-green-600" />
                 <div>
                   <p className="text-sm text-slate-600 dark:text-slate-400">Lead Value</p>
-                  <p className="text-xl font-semibold">${mockLead.value.toLocaleString()}</p>
+                  <p className="text-xl font-semibold">${(lead.valueInCents / 100).toLocaleString()}</p>
                 </div>
               </div>
             </CardContent>
@@ -621,7 +631,7 @@ export default function LeadDetail() {
                 <CheckSquare className="w-8 h-8 text-blue-600" />
                 <div>
                   <p className="text-sm text-slate-600 dark:text-slate-400">Probability</p>
-                  <p className="text-xl font-semibold">{mockLead.probability}%</p>
+                  <p className="text-xl font-semibold">{lead.probability || 0}%</p>
                 </div>
               </div>
             </CardContent>
@@ -633,7 +643,7 @@ export default function LeadDetail() {
                 <Calendar className="w-8 h-8 text-purple-600" />
                 <div>
                   <p className="text-sm text-slate-600 dark:text-slate-400">Last Activity</p>
-                  <p className="text-xl font-semibold">{mockLead.lastActivity}</p>
+                  <p className="text-xl font-semibold">{new Date(lead.createdAt).toLocaleDateString()}</p>
                 </div>
               </div>
             </CardContent>
@@ -645,7 +655,7 @@ export default function LeadDetail() {
                 <User className="w-8 h-8 text-orange-600" />
                 <div>
                   <p className="text-sm text-slate-600 dark:text-slate-400">Assigned To</p>
-                  <p className="text-xl font-semibold">{mockLead.assignedTo}</p>
+                  <p className="text-xl font-semibold">{lead.assignedTo || 'Unassigned'}</p>
                 </div>
               </div>
             </CardContent>
@@ -678,26 +688,26 @@ export default function LeadDetail() {
                   <div className="flex items-center gap-3">
                     <Mail className="w-4 h-4 text-slate-500" />
                     <span className="text-sm text-slate-600 dark:text-slate-400">Email:</span>
-                    <a href={`mailto:${mockLead.email}`} className="text-blue-600 hover:underline">
-                      {mockLead.email}
+                    <a href={`mailto:${lead.email}`} className="text-blue-600 hover:underline">
+                      {lead.email}
                     </a>
                   </div>
                   <div className="flex items-center gap-3">
                     <Phone className="w-4 h-4 text-slate-500" />
                     <span className="text-sm text-slate-600 dark:text-slate-400">Phone:</span>
-                    <a href={`tel:${mockLead.phone}`} className="text-blue-600 hover:underline">
-                      {mockLead.phone}
+                    <a href={`tel:${lead.phone}`} className="text-blue-600 hover:underline">
+                      {lead.phone}
                     </a>
                   </div>
                   <div className="flex items-start gap-3">
                     <MapPin className="w-4 h-4 text-slate-500 mt-0.5" />
                     <span className="text-sm text-slate-600 dark:text-slate-400">Address:</span>
-                    <span className="text-sm">{mockLead.address}</span>
+                    <span className="text-sm">{lead.address}</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <Building className="w-4 h-4 text-slate-500" />
                     <span className="text-sm text-slate-600 dark:text-slate-400">Division:</span>
-                    <span className="text-sm">{mockLead.division}</span>
+                    <span className="text-sm">{division}</span>
                   </div>
                 </CardContent>
               </Card>
@@ -713,19 +723,19 @@ export default function LeadDetail() {
                 <CardContent className="space-y-4">
                   <div>
                     <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Project Type</p>
-                    <p className="font-medium">{mockLead.projectType}</p>
+                    <p className="font-medium">{lead.projectType || 'Not specified'}</p>
                   </div>
                   <div>
                     <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Timeline</p>
-                    <p className="font-medium">{mockLead.timeline}</p>
+                    <p className="font-medium">{lead.timeline || 'Not specified'}</p>
                   </div>
                   <div>
                     <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Budget Range</p>
-                    <p className="font-medium">{mockLead.budget}</p>
+                    <p className="font-medium">${(lead.valueInCents / 100).toLocaleString()}</p>
                   </div>
                   <div>
                     <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Lead Source</p>
-                    <p className="font-medium">{mockLead.source}</p>
+                    <p className="font-medium">{lead.source || 'Not specified'}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -736,7 +746,7 @@ export default function LeadDetail() {
                   <CardTitle>Project Description</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-slate-700 dark:text-slate-300">{mockLead.description}</p>
+                  <p className="text-slate-700 dark:text-slate-300">{lead.notes || 'No description provided'}</p>
                 </CardContent>
               </Card>
 
@@ -747,16 +757,14 @@ export default function LeadDetail() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
-                    {mockLead.decisionMakers.map((person, index) => (
-                      <div key={index} className="flex items-center gap-2">
-                        <Avatar className="w-6 h-6">
-                          <AvatarFallback className="text-xs">
-                            {person.split(' ').map(n => n[0]).join('')}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="text-sm">{person}</span>
-                      </div>
-                    ))}
+                    <div className="flex items-center gap-2">
+                      <Avatar className="w-6 h-6">
+                        <AvatarFallback className="text-xs">
+                          {lead.contactName.split(' ').map(n => n[0]).join('')}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-sm">{lead.contactName}</span>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -768,11 +776,9 @@ export default function LeadDetail() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
-                    {mockLead.competitors.map((competitor, index) => (
-                      <Badge key={index} variant="outline" className="mr-2">
-                        {competitor}
-                      </Badge>
-                    ))}
+                    <Badge variant="outline" className="mr-2">
+                      No competitors identified
+                    </Badge>
                   </div>
                 </CardContent>
               </Card>
