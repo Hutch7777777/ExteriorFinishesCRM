@@ -211,8 +211,7 @@ export default function LeadDetail() {
     type: 'Proposal',
     file: null as File | null
   })
-  const [isDocumentViewerOpen, setIsDocumentViewerOpen] = useState(false)
-  const [selectedDocument, setSelectedDocument] = useState<any>(null)
+
   
   const { toast } = useToast()
 
@@ -363,72 +362,24 @@ export default function LeadDetail() {
   }
 
   const handleViewDocument = (document: any) => {
-    setSelectedDocument(document)
-    setIsDocumentViewerOpen(true)
+    // Directly trigger download/open instead of showing modal
+    toast({
+      title: "Opening document",
+      description: `Opening ${document.name}`,
+    })
+    
+    // In real app, this would open the actual file
+    // For now, we'll simulate the file opening
+    console.log('Opening document:', document)
+    
+    // You could also trigger a direct download here:
+    // const link = document.createElement('a')
+    // link.href = document.fileUrl // In real app, this would be the actual file URL
+    // link.download = document.name
+    // link.click()
   }
 
-  const getFileExtension = (filename: string): string => {
-    return filename.split('.').pop()?.toLowerCase() || ''
-  }
 
-  const renderDocumentPreview = (document: any) => {
-    const extension = getFileExtension(document.name)
-    
-    // For demo purposes, we'll show different previews based on file type
-    // In a real app, you'd load the actual file content
-    if (['pdf'].includes(extension)) {
-      return (
-        <div className="flex flex-col items-center justify-center h-96 bg-slate-50 rounded-lg border-2 border-dashed border-slate-300">
-          <FileText className="w-16 h-16 text-slate-400 mb-4" />
-          <p className="text-slate-600 text-center mb-4">PDF Preview</p>
-          <p className="text-sm text-slate-500 mb-4">In a real application, the PDF would be displayed here</p>
-          <Button 
-            onClick={() => window.open('#', '_blank')}
-            className="bg-gradient-to-r from-[#4A6FA5] to-[#2C3E50] hover:from-[#3A5A95] hover:to-[#1C2E40]"
-          >
-            Open in New Tab
-          </Button>
-        </div>
-      )
-    }
-    
-    if (['jpg', 'jpeg', 'png', 'gif'].includes(extension)) {
-      return (
-        <div className="flex flex-col items-center justify-center h-96 bg-slate-50 rounded-lg border-2 border-dashed border-slate-300">
-          <FileText className="w-16 h-16 text-slate-400 mb-4" />
-          <p className="text-slate-600 text-center mb-4">Image Preview</p>
-          <p className="text-sm text-slate-500 mb-4">In a real application, the image would be displayed here</p>
-          <Button 
-            onClick={() => window.open('#', '_blank')}
-            className="bg-gradient-to-r from-[#4A6FA5] to-[#2C3E50] hover:from-[#3A5A95] hover:to-[#1C2E40]"
-          >
-            Open in New Tab
-          </Button>
-        </div>
-      )
-    }
-    
-    // Default preview for other file types
-    return (
-      <div className="flex flex-col items-center justify-center h-96 bg-slate-50 rounded-lg border-2 border-dashed border-slate-300">
-        <FileText className="w-16 h-16 text-slate-400 mb-4" />
-        <p className="text-slate-600 text-center mb-4">{document.type} Document</p>
-        <p className="text-sm text-slate-500 mb-4">Click download to view this file</p>
-        <Button 
-          onClick={() => {
-            // In real app, this would trigger file download
-            toast({
-              title: "Download started",
-              description: `Downloading ${document.name}`,
-            })
-          }}
-          className="bg-gradient-to-r from-[#4A6FA5] to-[#2C3E50] hover:from-[#3A5A95] hover:to-[#1C2E40]"
-        >
-          Download
-        </Button>
-      </div>
-    )
-  }
 
   const handleEditTask = (task: any) => {
     setEditingTask(task)
@@ -1207,40 +1158,7 @@ export default function LeadDetail() {
               ))}
             </div>
 
-            {/* Document Viewer Modal */}
-            <Dialog open={isDocumentViewerOpen} onOpenChange={setIsDocumentViewerOpen}>
-              <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-hidden">
-                <DialogHeader>
-                  <DialogTitle className="flex items-center gap-3">
-                    <FileText className="w-5 h-5 text-blue-600" />
-                    {selectedDocument?.name}
-                    <Badge variant="outline">{selectedDocument?.type}</Badge>
-                  </DialogTitle>
-                  <div className="text-sm text-slate-500">
-                    Uploaded by {selectedDocument?.uploadedBy} • {selectedDocument?.uploadedAt} • {selectedDocument?.size}
-                  </div>
-                </DialogHeader>
-                <div className="py-4">
-                  {selectedDocument && renderDocumentPreview(selectedDocument)}
-                </div>
-                <div className="flex justify-end gap-2 pt-4 border-t">
-                  <Button variant="outline" onClick={() => setIsDocumentViewerOpen(false)}>
-                    Close
-                  </Button>
-                  <Button 
-                    onClick={() => {
-                      toast({
-                        title: "Download started",
-                        description: `Downloading ${selectedDocument?.name}`,
-                      })
-                    }}
-                    className="bg-gradient-to-r from-[#4A6FA5] to-[#2C3E50] hover:from-[#3A5A95] hover:to-[#1C2E40]"
-                  >
-                    Download
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+
           </TabsContent>
 
           {/* Notes Tab */}
