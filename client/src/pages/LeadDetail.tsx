@@ -159,6 +159,15 @@ export default function LeadDetail() {
     time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   })
   const [activities, setActivities] = useState(mockActivities)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [editingActivity, setEditingActivity] = useState(null)
+  const [editActivity, setEditActivity] = useState({
+    type: 'call',
+    title: '',
+    description: '',
+    date: '',
+    time: ''
+  })
   
   const { toast } = useToast()
 
@@ -243,6 +252,47 @@ export default function LeadDetail() {
       
       // In real app, save to API
       console.log('Adding activity:', activity)
+    }
+  }
+
+  const handleEditActivity = (activity) => {
+    setEditingActivity(activity)
+    setEditActivity({
+      type: activity.type,
+      title: activity.title,
+      description: activity.description,
+      date: activity.date,
+      time: activity.time
+    })
+    setIsEditModalOpen(true)
+  }
+
+  const handleUpdateActivity = () => {
+    if (editActivity.title.trim()) {
+      const updatedActivities = activities.map(activity => 
+        activity.id === editingActivity.id
+          ? {
+              ...activity,
+              type: editActivity.type,
+              title: editActivity.title,
+              description: editActivity.description,
+              date: editActivity.date,
+              time: editActivity.time
+            }
+          : activity
+      )
+      
+      setActivities(updatedActivities)
+      setIsEditModalOpen(false)
+      setEditingActivity(null)
+      
+      toast({
+        title: "Activity updated",
+        description: "Your activity has been updated successfully.",
+      })
+      
+      // In real app, update via API
+      console.log('Updating activity:', editingActivity.id, editActivity)
     }
   }
 
@@ -550,6 +600,87 @@ export default function LeadDetail() {
                   </div>
                 </DialogContent>
               </Dialog>
+
+              {/* Edit Activity Modal */}
+              <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+                <DialogContent className="sm:max-w-[500px]">
+                  <DialogHeader>
+                    <DialogTitle>Edit Activity</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-activity-type">Activity Type</Label>
+                      <Select value={editActivity.type} onValueChange={(value) => setEditActivity({...editActivity, type: value})}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="call">Phone Call</SelectItem>
+                          <SelectItem value="email">Email</SelectItem>
+                          <SelectItem value="meeting">Meeting</SelectItem>
+                          <SelectItem value="note">Note</SelectItem>
+                          <SelectItem value="task">Task</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-activity-title">Title</Label>
+                      <Input
+                        id="edit-activity-title"
+                        placeholder="Brief description of the activity"
+                        value={editActivity.title}
+                        onChange={(e) => setEditActivity({...editActivity, title: e.target.value})}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-activity-description">Description</Label>
+                      <Textarea
+                        id="edit-activity-description"
+                        placeholder="Detailed notes about the activity"
+                        value={editActivity.description}
+                        onChange={(e) => setEditActivity({...editActivity, description: e.target.value})}
+                        rows={3}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="edit-activity-date">Date</Label>
+                        <Input
+                          id="edit-activity-date"
+                          type="date"
+                          value={editActivity.date}
+                          onChange={(e) => setEditActivity({...editActivity, date: e.target.value})}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="edit-activity-time">Time</Label>
+                        <Input
+                          id="edit-activity-time"
+                          type="time"
+                          value={editActivity.time}
+                          onChange={(e) => setEditActivity({...editActivity, time: e.target.value})}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end gap-2 pt-4">
+                      <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button 
+                        onClick={handleUpdateActivity}
+                        className="bg-gradient-to-r from-[#4A6FA5] to-[#2C3E50] hover:from-[#3A5A95] hover:to-[#1C2E40]"
+                        disabled={!editActivity.title.trim()}
+                      >
+                        Update Activity
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
             
             <div className="space-y-4">
@@ -576,6 +707,14 @@ export default function LeadDetail() {
                           </div>
                         </div>
                       </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEditActivity(activity)}
+                        className="opacity-70 hover:opacity-100 transition-opacity"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
