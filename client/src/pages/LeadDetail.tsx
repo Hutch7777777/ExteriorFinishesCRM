@@ -204,6 +204,13 @@ export default function LeadDetail() {
     dueDate: '',
     status: 'pending'
   })
+  const [documents, setDocuments] = useState(mockDocuments)
+  const [isDocumentModalOpen, setIsDocumentModalOpen] = useState(false)
+  const [newDocument, setNewDocument] = useState({
+    name: '',
+    type: 'Proposal',
+    file: null as File | null
+  })
   
   const { toast } = useToast()
 
@@ -312,6 +319,45 @@ export default function LeadDetail() {
       // In real app, save to API
       console.log('Adding activity:', activity)
     }
+  }
+
+  const handleAddDocument = () => {
+    if (newDocument.name.trim() && newDocument.file) {
+      const document = {
+        id: (documents.length + 1).toString(),
+        name: newDocument.name,
+        type: newDocument.type,
+        uploadedBy: user?.name || "Unknown User",
+        uploadedAt: new Date().toISOString().split('T')[0],
+        size: formatFileSize(newDocument.file.size)
+      }
+      
+      // Add to the top of the documents list
+      setDocuments([document, ...documents])
+      
+      // Reset form
+      setNewDocument({ name: '', type: 'Proposal', file: null })
+      
+      // Close modal
+      setIsDocumentModalOpen(false)
+      
+      // Show success toast
+      toast({
+        title: "Document uploaded",
+        description: "Your document has been uploaded successfully.",
+      })
+      
+      // In real app, upload file to storage and save document via API
+      console.log('Uploading document:', document)
+    }
+  }
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 B'
+    const k = 1024
+    const sizes = ['B', 'KB', 'MB', 'GB']
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
   }
 
   const handleEditTask = (task: any) => {
@@ -992,14 +1038,85 @@ export default function LeadDetail() {
           <TabsContent value="documents" className="space-y-4">
             <div className="flex justify-between items-center">
               <h3 className="text-lg font-semibold">Documents</h3>
-              <Button className="flex items-center gap-2">
-                <Plus className="w-4 h-4" />
-                Upload Document
-              </Button>
+              <Dialog open={isDocumentModalOpen} onOpenChange={setIsDocumentModalOpen}>
+                <DialogTrigger asChild>
+                  <Button className="flex items-center gap-2 bg-gradient-to-r from-[#4A6FA5] to-[#2C3E50] hover:from-[#3A5A95] hover:to-[#1C2E40]">
+                    <Plus className="w-4 h-4" />
+                    Upload Document
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Upload Document</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="document-name">Document Name *</Label>
+                      <Input
+                        id="document-name"
+                        placeholder="Enter document name"
+                        value={newDocument.name}
+                        onChange={(e) => setNewDocument({...newDocument, name: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="document-type">Type</Label>
+                      <Select
+                        value={newDocument.type}
+                        onValueChange={(value) => setNewDocument({...newDocument, type: value})}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select document type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Proposal">Proposal</SelectItem>
+                          <SelectItem value="Contract">Contract</SelectItem>
+                          <SelectItem value="Photos">Photos</SelectItem>
+                          <SelectItem value="Plans">Plans</SelectItem>
+                          <SelectItem value="Permits">Permits</SelectItem>
+                          <SelectItem value="Invoice">Invoice</SelectItem>
+                          <SelectItem value="Other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="document-file">File *</Label>
+                      <Input
+                        id="document-file"
+                        type="file"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] || null
+                          setNewDocument({...newDocument, file})
+                          // Auto-fill name if empty
+                          if (file && !newDocument.name) {
+                            setNewDocument(prev => ({...prev, name: file.name, file}))
+                          }
+                        }}
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.zip,.dwg"
+                      />
+                      <p className="text-xs text-slate-500">
+                        Supported formats: PDF, DOC, DOCX, JPG, PNG, ZIP, DWG
+                      </p>
+                    </div>
+                    <div className="flex justify-end gap-2 pt-4">
+                      <Button variant="outline" onClick={() => setIsDocumentModalOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button 
+                        onClick={handleAddDocument}
+                        className="bg-gradient-to-r from-[#4A6FA5] to-[#2C3E50] hover:from-[#3A5A95] hover:to-[#1C2E40]"
+                        disabled={!newDocument.name.trim() || !newDocument.file}
+                      >
+                        Upload Document
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {mockDocuments.map((doc) => (
+              {documents.map((doc) => (
                 <Card key={doc.id} className="hover:shadow-md transition-shadow cursor-pointer">
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between mb-2">
