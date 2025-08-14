@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from '@tanstack/react-router'
 import { useOptimizedQuery } from '@/hooks/useOptimizedQuery'
+import { useAuth } from '@/hooks/useAuth'
 import { trpcClient } from '@/lib/trpc'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -31,122 +32,147 @@ import {
   Building
 } from 'lucide-react'
 
-// Mock data for demonstration - in real app this would come from API
-const mockLead = {
-  id: "lead-1",
-  companyName: "Acme Corporation",
-  contactName: "John Smith",
-  email: "john@acme.com",
-  phone: "(555) 123-4567",
-  address: "123 Business Ave, Suite 100, City, ST 12345",
-  status: "qualified",
-  value: 150000,
-  probability: 75,
-  source: "Website Inquiry",
-  assignedTo: "Mike Johnson",
-  createdAt: "2025-01-05",
-  lastActivity: "2025-01-09",
-  description: "Interested in siding renovation for 5-story building",
-  division: "Multi-Family New Construction",
-  
-  // Additional details
-  projectType: "Commercial Renovation",
-  timeline: "Q2 2025",
-  budget: "$150,000 - $200,000",
-  decisionMakers: ["John Smith (CEO)", "Sarah Davis (Facilities Manager)"],
-  competitors: ["ABC Siding Co.", "XYZ Construction"],
-  nextSteps: "Schedule site visit and prepare detailed proposal"
-}
 
-const mockActivities = [
-  {
-    id: "1",
-    type: "call",
-    title: "Initial consultation call",
-    description: "Discussed project requirements and timeline",
-    date: "2025-01-09",
-    time: "2:30 PM",
-    user: "Mike Johnson"
-  },
-  {
-    id: "2",
-    type: "email",
-    title: "Sent project proposal",
-    description: "Forwarded detailed proposal with pricing breakdown",
-    date: "2025-01-08",
-    time: "4:15 PM",
-    user: "Mike Johnson"
-  },
-  {
-    id: "3",
-    type: "meeting",
-    title: "Site visit scheduled",
-    description: "Arranged on-site evaluation for next Tuesday",
-    date: "2025-01-07",
-    time: "10:00 AM",
-    user: "Sarah Wilson"
-  }
-]
 
-const mockTasks = [
-  {
-    id: "1",
-    title: "Prepare detailed proposal",
-    description: "Include material costs and timeline",
-    dueDate: "2025-01-12",
-    status: "in_progress",
-    assignee: "Mike Johnson"
-  },
-  {
-    id: "2",
-    title: "Schedule site visit",
-    description: "Coordinate with facility manager",
-    dueDate: "2025-01-15",
-    status: "pending",
-    assignee: "Sarah Wilson"
-  },
-  {
-    id: "3",
-    title: "Follow up on proposal",
-    description: "Check if client has any questions",
-    dueDate: "2025-01-18",
-    status: "pending",
-    assignee: "Mike Johnson"
-  }
-]
 
-const mockDocuments = [
-  {
-    id: "1",
-    name: "Initial Proposal - Acme Corp.pdf",
-    type: "Proposal",
-    uploadedBy: "Mike Johnson",
-    uploadedAt: "2025-01-08",
-    size: "2.4 MB"
-  },
-  {
-    id: "2",
-    name: "Site Photos - Building Exterior.zip",
-    type: "Photos",
-    uploadedBy: "Sarah Wilson",
-    uploadedAt: "2025-01-07",
-    size: "15.7 MB"
-  },
-  {
-    id: "3",
-    name: "Building Plans - Acme Corp.dwg",
-    type: "Plans",
-    uploadedBy: "John Smith",
-    uploadedAt: "2025-01-05",
-    size: "5.2 MB"
-  }
-]
+
+
 
 export default function LeadDetail() {
   const params = useParams({ strict: false })
   const navigate = useNavigate()
   const leadId = (params as any).id
   const division = (params as any).division || 'mfnc'
+  const { user } = useAuth()
+
+  // Create dynamic mock data with current user
+  const mockLead = {
+    id: "lead-1",
+    companyName: "Acme Corporation",
+    contactName: "John Smith",
+    email: "john@acme.com",
+    phone: "(555) 123-4567",
+    address: "123 Business Ave, Suite 100, City, ST 12345",
+    status: "qualified",
+    value: 150000,
+    probability: 75,
+    source: "Website Inquiry",
+    assignedTo: user?.name || "Unassigned",
+    createdAt: "2025-01-05",
+    lastActivity: "2025-01-09",
+    description: "Interested in siding renovation for 5-story building",
+    division: "Multi-Family New Construction",
+    
+    // Additional details
+    projectType: "Commercial Renovation",
+    timeline: "Q2 2025",
+    budget: "$150,000 - $200,000",
+    decisionMakers: ["John Smith (CEO)", "Sarah Davis (Facilities Manager)"],
+    competitors: ["ABC Siding Co.", "XYZ Construction"],
+    nextSteps: "Schedule site visit and prepare detailed proposal"
+  }
+
+  const mockActivities = [
+    {
+      id: "1",
+      type: "call",
+      title: "Initial consultation call",
+      description: "Discussed project requirements and timeline",
+      date: "2025-01-09",
+      time: "2:30 PM",
+      user: user?.name || "Unknown User"
+    },
+    {
+      id: "2",
+      type: "email",
+      title: "Sent project proposal",
+      description: "Forwarded detailed proposal with pricing breakdown",
+      date: "2025-01-08",
+      time: "4:15 PM",
+      user: user?.name || "Unknown User"
+    },
+    {
+      id: "3",
+      type: "meeting",
+      title: "Site visit scheduled",
+      description: "Arranged on-site evaluation for next Tuesday",
+      date: "2025-01-07",
+      time: "10:00 AM",
+      user: user?.name || "Unknown User"
+    },
+    {
+      id: "4",
+      type: "note",
+      title: "Follow-up required",
+      description: "Customer requested additional information about warranty terms",
+      date: "2025-01-06",
+      time: "3:45 PM",
+      user: user?.name || "Unknown User"
+    },
+    {
+      id: "5",
+      type: "task",
+      title: "Prepare detailed quote",
+      description: "Create comprehensive pricing breakdown for 5-story renovation",
+      date: "2025-01-05",
+      time: "1:20 PM",
+      user: user?.name || "Unknown User"
+    }
+  ]
+
+  const mockTasks = [
+    {
+      id: "1",
+      title: "Prepare detailed proposal",
+      description: "Include material costs and timeline",
+      dueDate: "2025-01-12",
+      status: "in_progress",
+      assignee: user?.name || "Unassigned"
+    },
+    {
+      id: "2",
+      title: "Schedule site visit",
+      description: "Coordinate with facility manager",
+      dueDate: "2025-01-15",
+      status: "pending",
+      assignee: user?.name || "Unassigned"
+    },
+    {
+      id: "3",
+      title: "Follow up on proposal",
+      description: "Check if client has any questions",
+      dueDate: "2025-01-18",
+      status: "pending",
+      assignee: user?.name || "Unassigned"
+    }
+  ]
+
+  const mockDocuments = [
+    {
+      id: "1",
+      name: "Initial Proposal - Acme Corp.pdf",
+      type: "Proposal",
+      uploadedBy: user?.name || "Unknown User",
+      uploadedAt: "2025-01-08",
+      size: "2.4 MB"
+    },
+    {
+      id: "2",
+      name: "Site Photos - Building Exterior.zip",
+      type: "Photos",
+      uploadedBy: user?.name || "Unknown User",
+      uploadedAt: "2025-01-07",
+      size: "15.7 MB"
+    },
+    {
+      id: "3",
+      name: "Building Plans - Acme Corp.dwg",
+      type: "Plans",
+      uploadedBy: user?.name || "Unknown User",
+      uploadedAt: "2025-01-05",
+      size: "5.2 MB"
+    }
+  ]
 
   const [newNote, setNewNote] = useState('')
   const [newTask, setNewTask] = useState({ title: '', description: '', dueDate: '', assignee: '' })
@@ -226,7 +252,7 @@ export default function LeadDetail() {
         description: newActivity.description,
         date: newActivity.date,
         time: newActivity.time,
-        user: "Mike Johnson" // In real app, use current user
+        user: user?.name || "Unknown User"
       }
       
       // Add to the top of the activities list
@@ -255,7 +281,7 @@ export default function LeadDetail() {
     }
   }
 
-  const handleEditActivity = (activity) => {
+  const handleEditActivity = (activity: any) => {
     setEditingActivity(activity)
     setEditActivity({
       type: activity.type,
@@ -268,9 +294,9 @@ export default function LeadDetail() {
   }
 
   const handleUpdateActivity = () => {
-    if (editActivity.title.trim()) {
+    if (editActivity.title.trim() && editingActivity) {
       const updatedActivities = activities.map(activity => 
-        activity.id === editingActivity.id
+        activity.id === editingActivity!.id
           ? {
               ...activity,
               type: editActivity.type,
@@ -292,7 +318,7 @@ export default function LeadDetail() {
       })
       
       // In real app, update via API
-      console.log('Updating activity:', editingActivity.id, editActivity)
+      console.log('Updating activity:', editingActivity!.id, editActivity)
     }
   }
 
