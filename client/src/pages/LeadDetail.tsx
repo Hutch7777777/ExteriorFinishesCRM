@@ -16,7 +16,11 @@ import {
   Mail,
   User,
   Edit,
-  Building
+  Building,
+  Cloud,
+  Sun,
+  CloudRain,
+  Thermometer
 } from 'lucide-react'
 
 export default function LeadDetail() {
@@ -50,6 +54,34 @@ export default function LeadDetail() {
   console.log('LeadDetail - leadId:', leadId, 'division:', division);
   console.log('LeadDetail - lead data:', lead);
   console.log('LeadDetail - error:', leadError);
+
+  // Mock weather data - in a real app, this would come from a weather API
+  const weatherData = {
+    current: {
+      temp: 71,
+      condition: 'sunny',
+      humidity: 41,
+      icon: Sun
+    },
+    forecast: [
+      { day: 'NOW', temp: 71, condition: 'sunny', icon: Sun, humidity: 41 },
+      { day: '3PM', temp: 73, condition: 'sunny', icon: Sun, humidity: 44 },
+      { day: '4PM', temp: 74, condition: 'cloudy', icon: Cloud, humidity: 44 },
+      { day: '5PM', temp: 74, condition: 'cloudy', icon: Cloud, humidity: 44 },
+      { day: '6PM', temp: 73, condition: 'cloudy', icon: Cloud, humidity: 17 },
+      { day: '7PM', temp: 70, condition: 'cloudy', icon: Cloud, humidity: 17 },
+      { day: '8PM', temp: 67, condition: 'cloudy', icon: Cloud, humidity: 23 }
+    ],
+    weekly: [
+      { day: 'FRI', high: 70, low: 61, condition: 'rainy', icon: CloudRain, chance: 85 },
+      { day: 'SAT', high: 73, low: 60, condition: 'rainy', icon: CloudRain, chance: 85 },
+      { day: 'SUN', high: 73, low: 57, condition: 'cloudy', icon: Cloud, chance: 17 },
+      { day: 'MON', high: 72, low: 58, condition: 'cloudy', icon: Cloud, chance: 17 },
+      { day: 'TUE', high: 73, low: 58, condition: 'cloudy', icon: Cloud, chance: 23 },
+      { day: 'WED', high: 73, low: 57, condition: 'sunny', icon: Sun, chance: 12 },
+      { day: 'THU', high: 76, low: 58, condition: 'sunny', icon: Sun, chance: 12 }
+    ]
+  };
 
   // Status color helper
   const getStatusColor = (status: string) => {
@@ -197,6 +229,87 @@ export default function LeadDetail() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Location & Weather Card */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <MapPin className="w-5 h-5" />
+                LOCATION
+              </span>
+              <span className="text-sm font-normal text-slate-600">
+                Tax Rate 10.35%
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Map Section */}
+              <div className="space-y-4">
+                <div className="bg-slate-100 dark:bg-slate-800 rounded-lg p-4 h-48 flex items-center justify-center relative overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-green-50"></div>
+                  <div className="relative z-10 text-center">
+                    <MapPin className="w-8 h-8 text-red-500 mx-auto mb-2" />
+                    <p className="text-sm font-medium">2801</p>
+                    <Button variant="outline" size="sm" className="mt-2">
+                      View larger map
+                    </Button>
+                  </div>
+                  {/* Simulated map elements */}
+                  <div className="absolute top-2 right-2 bg-white rounded px-2 py-1 text-xs">
+                    Google
+                  </div>
+                </div>
+                <p className="text-sm text-slate-600">
+                  {lead.address || '2801 SW Nevada St, Seattle, WA 98126, USA'}
+                </p>
+              </div>
+
+              {/* Weather Section */}
+              <div className="space-y-4">
+                {/* Current Weather */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <weatherData.current.icon className="w-8 h-8 text-yellow-500" />
+                    <div>
+                      <p className="text-2xl font-bold">{weatherData.current.temp}°</p>
+                      <p className="text-sm text-slate-600">{weatherData.current.humidity}%</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Hourly Forecast */}
+                <div className="flex gap-2 overflow-x-auto pb-2">
+                  {weatherData.forecast.map((hour, index) => (
+                    <div key={index} className="flex-shrink-0 text-center bg-slate-50 dark:bg-slate-800 rounded-lg p-2 min-w-[60px]">
+                      <p className="text-xs text-slate-600 mb-1">{hour.day}</p>
+                      <hour.icon className="w-4 h-4 mx-auto mb-1 text-blue-500" />
+                      <p className="text-sm font-medium">{hour.temp}°</p>
+                      <p className="text-xs text-slate-500">{hour.humidity}%</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Weekly Forecast */}
+                <div className="space-y-2">
+                  {weatherData.weekly.map((day, index) => (
+                    <div key={index} className="flex items-center justify-between py-1">
+                      <div className="flex items-center gap-3 flex-1">
+                        <span className="text-sm font-medium w-8">{day.day}</span>
+                        <day.icon className="w-4 h-4 text-blue-500" />
+                        <span className="text-xs text-slate-600">{day.chance}%</span>
+                      </div>
+                      <div className="text-sm font-medium">
+                        {day.high}° <span className="text-slate-500">{day.low}°</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
