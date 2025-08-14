@@ -59,7 +59,7 @@ export default function LeadDetail() {
     source: "Website Inquiry",
     assignedTo: user?.name || "Unassigned",
     createdAt: "2025-01-05",
-    lastActivity: "2025-01-09",
+    lastActivity: "2025-01-13",
     description: "Interested in siding renovation for 5-story building",
     division: "Multi-Family New Construction",
     
@@ -78,7 +78,7 @@ export default function LeadDetail() {
       type: "call",
       title: "Initial consultation call",
       description: "Discussed project requirements and timeline",
-      date: "2025-01-09",
+      date: "2025-01-13",
       time: "2:30 PM",
       user: user?.name || "Unknown User"
     },
@@ -87,7 +87,7 @@ export default function LeadDetail() {
       type: "email",
       title: "Sent project proposal",
       description: "Forwarded detailed proposal with pricing breakdown",
-      date: "2025-01-08",
+      date: "2025-01-12",
       time: "4:15 PM",
       user: user?.name || "Unknown User"
     },
@@ -96,7 +96,7 @@ export default function LeadDetail() {
       type: "meeting",
       title: "Site visit scheduled",
       description: "Arranged on-site evaluation for next Tuesday",
-      date: "2025-01-07",
+      date: "2025-01-11",
       time: "10:00 AM",
       user: user?.name || "Unknown User"
     },
@@ -105,7 +105,7 @@ export default function LeadDetail() {
       type: "note",
       title: "Follow-up required",
       description: "Customer requested additional information about warranty terms",
-      date: "2025-01-06",
+      date: "2025-01-10",
       time: "3:45 PM",
       user: user?.name || "Unknown User"
     },
@@ -114,7 +114,7 @@ export default function LeadDetail() {
       type: "task",
       title: "Prepare detailed quote",
       description: "Create comprehensive pricing breakdown for 5-story renovation",
-      date: "2025-01-05",
+      date: "2025-01-09",
       time: "1:20 PM",
       user: user?.name || "Unknown User"
     }
@@ -125,7 +125,7 @@ export default function LeadDetail() {
       id: "1",
       title: "Prepare detailed proposal",
       description: "Include material costs and timeline",
-      dueDate: "2025-01-12",
+      dueDate: "2025-01-14",
       status: "in_progress",
       assignee: user?.name || "Unassigned"
     },
@@ -133,7 +133,7 @@ export default function LeadDetail() {
       id: "2",
       title: "Schedule site visit",
       description: "Coordinate with facility manager",
-      dueDate: "2025-01-15",
+      dueDate: "2025-01-16",
       status: "pending",
       assignee: user?.name || "Unassigned"
     },
@@ -141,7 +141,7 @@ export default function LeadDetail() {
       id: "3",
       title: "Follow up on proposal",
       description: "Check if client has any questions",
-      dueDate: "2025-01-18",
+      dueDate: "2025-01-20",
       status: "pending",
       assignee: user?.name || "Unassigned"
     }
@@ -153,7 +153,7 @@ export default function LeadDetail() {
       name: "Initial Proposal - Acme Corp.pdf",
       type: "Proposal",
       uploadedBy: user?.name || "Unknown User",
-      uploadedAt: "2025-01-08",
+      uploadedAt: "2025-01-12",
       size: "2.4 MB"
     },
     {
@@ -161,7 +161,7 @@ export default function LeadDetail() {
       name: "Site Photos - Building Exterior.zip",
       type: "Photos",
       uploadedBy: user?.name || "Unknown User",
-      uploadedAt: "2025-01-07",
+      uploadedAt: "2025-01-11",
       size: "15.7 MB"
     },
     {
@@ -169,7 +169,7 @@ export default function LeadDetail() {
       name: "Building Plans - Acme Corp.dwg",
       type: "Plans",
       uploadedBy: user?.name || "Unknown User",
-      uploadedAt: "2025-01-05",
+      uploadedAt: "2025-01-10",
       size: "5.2 MB"
     }
   ]
@@ -186,7 +186,7 @@ export default function LeadDetail() {
   })
   const [activities, setActivities] = useState(mockActivities)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
-  const [editingActivity, setEditingActivity] = useState(null)
+  const [editingActivity, setEditingActivity] = useState<any>(null)
   const [editActivity, setEditActivity] = useState({
     type: 'call',
     title: '',
