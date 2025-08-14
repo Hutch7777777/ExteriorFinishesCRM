@@ -11,6 +11,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { useToast } from '@/hooks/use-toast'
 import { 
   ArrowLeft, 
   Phone, 
@@ -148,6 +150,17 @@ export default function LeadDetail() {
 
   const [newNote, setNewNote] = useState('')
   const [newTask, setNewTask] = useState({ title: '', description: '', dueDate: '', assignee: '' })
+  const [isActivityModalOpen, setIsActivityModalOpen] = useState(false)
+  const [newActivity, setNewActivity] = useState({
+    type: 'call',
+    title: '',
+    description: '',
+    date: new Date().toISOString().split('T')[0],
+    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  })
+  const [activities, setActivities] = useState(mockActivities)
+  
+  const { toast } = useToast()
 
   // In real app, this would fetch the actual lead data
   // const { data: lead, isLoading } = useOptimizedQuery({
@@ -192,6 +205,44 @@ export default function LeadDetail() {
       // In real app, save task via API
       console.log('Adding task:', newTask)
       setNewTask({ title: '', description: '', dueDate: '', assignee: '' })
+    }
+  }
+
+  const handleAddActivity = () => {
+    if (newActivity.title.trim()) {
+      const activity = {
+        id: (activities.length + 1).toString(),
+        type: newActivity.type,
+        title: newActivity.title,
+        description: newActivity.description,
+        date: newActivity.date,
+        time: newActivity.time,
+        user: "Mike Johnson" // In real app, use current user
+      }
+      
+      // Add to the top of the activities list
+      setActivities([activity, ...activities])
+      
+      // Reset form
+      setNewActivity({
+        type: 'call',
+        title: '',
+        description: '',
+        date: new Date().toISOString().split('T')[0],
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      })
+      
+      // Close modal
+      setIsActivityModalOpen(false)
+      
+      // Show success toast
+      toast({
+        title: "Activity logged",
+        description: "Your activity has been added successfully.",
+      })
+      
+      // In real app, save to API
+      console.log('Adding activity:', activity)
     }
   }
 
@@ -414,14 +465,95 @@ export default function LeadDetail() {
           <TabsContent value="activities" className="space-y-4">
             <div className="flex justify-between items-center">
               <h3 className="text-lg font-semibold">Recent Activities</h3>
-              <Button className="flex items-center gap-2">
-                <Plus className="w-4 h-4" />
-                Log Activity
-              </Button>
+              <Dialog open={isActivityModalOpen} onOpenChange={setIsActivityModalOpen}>
+                <DialogTrigger asChild>
+                  <Button className="flex items-center gap-2 bg-gradient-to-r from-[#4A6FA5] to-[#2C3E50] hover:from-[#3A5A95] hover:to-[#1C2E40]">
+                    <Plus className="w-4 h-4" />
+                    Log Activity
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[500px]">
+                  <DialogHeader>
+                    <DialogTitle>Log New Activity</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="activity-type">Activity Type</Label>
+                      <Select value={newActivity.type} onValueChange={(value) => setNewActivity({...newActivity, type: value})}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="call">Phone Call</SelectItem>
+                          <SelectItem value="email">Email</SelectItem>
+                          <SelectItem value="meeting">Meeting</SelectItem>
+                          <SelectItem value="note">Note</SelectItem>
+                          <SelectItem value="task">Task</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="activity-title">Title</Label>
+                      <Input
+                        id="activity-title"
+                        placeholder="Brief description of the activity"
+                        value={newActivity.title}
+                        onChange={(e) => setNewActivity({...newActivity, title: e.target.value})}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="activity-description">Description</Label>
+                      <Textarea
+                        id="activity-description"
+                        placeholder="Detailed notes about the activity"
+                        value={newActivity.description}
+                        onChange={(e) => setNewActivity({...newActivity, description: e.target.value})}
+                        rows={3}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="activity-date">Date</Label>
+                        <Input
+                          id="activity-date"
+                          type="date"
+                          value={newActivity.date}
+                          onChange={(e) => setNewActivity({...newActivity, date: e.target.value})}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="activity-time">Time</Label>
+                        <Input
+                          id="activity-time"
+                          type="time"
+                          value={newActivity.time}
+                          onChange={(e) => setNewActivity({...newActivity, time: e.target.value})}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end gap-2 pt-4">
+                      <Button variant="outline" onClick={() => setIsActivityModalOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button 
+                        onClick={handleAddActivity}
+                        className="bg-gradient-to-r from-[#4A6FA5] to-[#2C3E50] hover:from-[#3A5A95] hover:to-[#1C2E40]"
+                        disabled={!newActivity.title.trim()}
+                      >
+                        Save Activity
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
             
             <div className="space-y-4">
-              {mockActivities.map((activity) => (
+              {activities.map((activity) => (
                 <Card key={activity.id}>
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between">
@@ -430,6 +562,8 @@ export default function LeadDetail() {
                           {activity.type === 'call' && <Phone className="w-4 h-4 text-blue-600" />}
                           {activity.type === 'email' && <Mail className="w-4 h-4 text-blue-600" />}
                           {activity.type === 'meeting' && <Calendar className="w-4 h-4 text-blue-600" />}
+                          {activity.type === 'note' && <FileText className="w-4 h-4 text-blue-600" />}
+                          {activity.type === 'task' && <CheckSquare className="w-4 h-4 text-blue-600" />}
                         </div>
                         <div className="flex-1">
                           <h4 className="font-medium">{activity.title}</h4>
