@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from '@tanstack/react-router'
-import { useOptimizedQuery } from '@/hooks/useOptimizedQuery'
+import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/hooks/useAuth'
 import { trpcClient } from '@/lib/trpc'
 import { Button } from '@/components/ui/button'
@@ -45,15 +45,26 @@ export default function LeadDetail() {
   const division = (params as any).division || 'mfnc'
   const { user } = useAuth()
 
-  // Fetch the actual lead data
+  // Fetch the actual lead data using React Query directly
   const { 
     data: lead, 
     isLoading: leadLoading, 
     error: leadError 
-  } = useOptimizedQuery({
+  } = useQuery({
     queryKey: ['/api/trpc/leads.get', leadId],
-    queryFn: () => fetch(`/api/trpc/leads.get?id=${leadId}`).then(res => res.json()).then(data => data.result?.json || data.result),
-    enabled: !!leadId
+    queryFn: async () => {
+      if (!leadId) return null;
+      const res = await fetch(`/api/trpc/leads.get?id=${leadId}`, {
+        credentials: 'include'
+      });
+      if (!res.ok) {
+        throw new Error(`Failed to fetch lead: ${res.statusText}`);
+      }
+      const data = await res.json();
+      return data.result?.json || data.result;
+    },
+    enabled: !!leadId,
+    retry: false
   })
 
   console.log('LeadDetail - leadId:', leadId, 'division:', division);
@@ -78,10 +89,13 @@ export default function LeadDetail() {
         <div className="text-center">
           <h2 className="text-xl font-semibold text-slate-900 mb-2">Lead Not Found</h2>
           <p className="text-slate-600 mb-4">The lead you're looking for doesn't exist or has been removed.</p>
-          <Button onClick={() => {
-            console.log('Button clicked, navigating to:', `/${division}/lead-management`);
-            navigate(`/${division}/lead-management`);
-          }}>
+          <Button 
+            onClick={(e) => {
+              e.preventDefault();
+              console.log('Button clicked, navigating to:', `/${division}/lead-management`);
+              window.location.href = `/${division}/lead-management`;
+            }}
+          >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Lead Management
           </Button>
@@ -590,7 +604,11 @@ export default function LeadDetail() {
           <Button 
             variant="outline" 
             size="sm"
-            onClick={() => navigate({ to: `/${division}/lead-management` })}
+            onClick={(e) => {
+              e.preventDefault();
+              console.log('Back to Pipeline clicked, navigating to:', `/${division}/lead-management`);
+              window.location.href = `/${division}/lead-management`;
+            }}
             className="flex items-center gap-2"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -608,7 +626,7 @@ export default function LeadDetail() {
           <Button 
             variant="outline"
             className="flex items-center gap-2"
-            onClick={() => navigate({ to: `/${division}/estimates` })}
+            onClick={() => window.location.href = `/${division}/estimates`}
           >
             <DollarSign className="w-4 h-4" />
             Build Estimate
