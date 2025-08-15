@@ -316,7 +316,10 @@ export class DatabaseStorage implements IStorage {
   async updateLead(id: string, lead: Partial<InsertLead>): Promise<Lead> {
     const [updatedLead] = await db
       .update(leads)
-      .set(lead)
+      .set({
+        ...lead,
+        updatedAt: new Date(),
+      })
       .where(eq(leads.id, id))
       .returning();
     return updatedLead;

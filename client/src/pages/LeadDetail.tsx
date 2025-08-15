@@ -46,7 +46,12 @@ export default function LeadDetail() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ id: leadId, ...updateData })
+        body: JSON.stringify({ 
+          input: { 
+            id: leadId, 
+            ...updateData 
+          } 
+        })
       })
       if (!res.ok) throw new Error('Failed to update lead')
       return res.json()
@@ -722,7 +727,7 @@ export default function LeadDetail() {
                           <p className="text-sm">{lead.notes}</p>
                           <div className="flex items-center justify-between mt-2">
                             <p className="text-xs text-slate-500">
-                              Added on {new Date(lead.createdAt).toLocaleDateString()}
+                              Last updated on {new Date(lead.updatedAt || lead.createdAt).toLocaleDateString()} at {new Date(lead.updatedAt || lead.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </p>
                             <Button 
                               size="sm" 
