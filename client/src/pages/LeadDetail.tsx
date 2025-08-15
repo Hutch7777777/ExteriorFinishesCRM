@@ -883,7 +883,7 @@ export default function LeadDetail() {
                           <div className="h-32 bg-slate-100 dark:bg-slate-700 flex items-center justify-center relative">
                             {isImage ? (
                               <img 
-                                src={doc.objectPath} 
+                                src={`/objects/${doc.filename}`} 
                                 alt={doc.originalFilename}
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
@@ -930,7 +930,7 @@ export default function LeadDetail() {
                                 size="sm"
                                 variant="outline"
                                 className="flex-1"
-                                onClick={() => window.open(doc.objectPath, '_blank')}
+                                onClick={() => window.open(`/objects/${doc.filename}`, '_blank')}
                               >
                                 <Download className="w-3 h-3 mr-1" />
                                 Download
