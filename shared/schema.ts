@@ -118,7 +118,7 @@ export const leads = pgTable("leads", {
   timeline: varchar("timeline", { length: 100 }),
   budget: varchar("budget", { length: 100 }),
   assignedTo: uuid("assigned_to").references(() => users.id),
-  notes: text("notes"),
+  notes: jsonb("notes").default(sql`'[]'::jsonb`), // Array of note objects with text, timestamp, author
   createdBy: uuid("created_by").notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

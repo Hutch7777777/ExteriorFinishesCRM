@@ -526,6 +526,61 @@ export const createAppRouter = () => {
     }
   });
 
+  router.post('/leads.addNote', async (req, res) => {
+    try {
+      const ctx = await createContext(req, res);
+      const user = requireRole('staff')(ctx);
+      
+      const inputSchema = z.object({
+        id: z.string().uuid(),
+        text: z.string().min(1),
+      });
+      
+      const input = inputSchema.parse(req.body?.input || {});
+      
+      // Verify lead exists and user has access
+      const existing = await storage.getLead(input.id);
+      if (!existing) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Lead not found' });
+      }
+      
+      // Check division access
+      if (existing.divisionId) {
+        const division = await storage.getDivision(existing.divisionId);
+        if (division) {
+          const scopedDivisionId = await getDivisionScope(user, division.key);
+          if (scopedDivisionId !== division.id) {
+            throw new TRPCError({ code: 'FORBIDDEN', message: 'Access denied to this division' });
+          }
+        }
+      }
+      
+      // Get current notes array
+      const currentNotes = Array.isArray(existing.notes) ? existing.notes : [];
+      
+      // Create new note object
+      const newNote = {
+        id: Date.now().toString(),
+        text: input.text,
+        createdAt: new Date().toISOString(),
+        createdBy: user.id,
+        author: user.name,
+      };
+      
+      // Add new note to the beginning of the array
+      const updatedNotes = [newNote, ...currentNotes];
+      
+      const result = await storage.updateLead(input.id, { notes: updatedNotes });
+      res.json({ result: superjson.serialize(result) });
+    } catch (error) {
+      if (error instanceof TRPCError) {
+        res.status(error.statusCode).json({ error: { message: error.message, code: error.code } });
+      } else {
+        res.status(500).json({ error: { message: 'Internal server error' } });
+      }
+    }
+  });
+
   // Contacts endpoints
   router.get('/contacts.list', async (req, res) => {
     try {

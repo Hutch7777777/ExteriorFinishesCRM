@@ -38,6 +38,8 @@ export default function LeadDetail() {
   // Editing state
   const [editingField, setEditingField] = useState<string | null>(null)
   const [editValues, setEditValues] = useState<Record<string, any>>({})
+  const [showAddNote, setShowAddNote] = useState(false)
+  const [newNoteText, setNewNoteText] = useState('')
 
   // Update lead mutation
   const updateLeadMutation = useMutation({
@@ -61,6 +63,31 @@ export default function LeadDetail() {
       queryClient.invalidateQueries({ queryKey: ['/api/trpc/leads.list'] })
       setEditingField(null)
       setEditValues({})
+    }
+  })
+
+  // Add note mutation
+  const addNoteMutation = useMutation({
+    mutationFn: async (text: string) => {
+      const res = await fetch('/api/trpc/leads.addNote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ 
+          input: { 
+            id: leadId, 
+            text 
+          } 
+        })
+      })
+      if (!res.ok) throw new Error('Failed to add note')
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/trpc/leads.get'] })
+      queryClient.invalidateQueries({ queryKey: ['/api/trpc/leads.list'] })
+      setShowAddNote(false)
+      setNewNoteText('')
     }
   })
 
@@ -685,76 +712,80 @@ export default function LeadDetail() {
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   <span>Notes</span>
-                  {!editingField && (
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      onClick={() => startEdit('notes', lead.notes || '')}
-                      className="flex items-center gap-2"
-                    >
-                      <Edit className="w-3 h-3" />
-                      {lead.notes ? 'Edit' : 'Add Note'}
-                    </Button>
-                  )}
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={() => setShowAddNote(true)}
+                    className="flex items-center gap-2"
+                  >
+                    <MessageSquare className="w-3 h-3" />
+                    Add Note
+                  </Button>
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {editingField === 'notes' ? (
-                    <div className="space-y-4">
+                  {showAddNote && (
+                    <div className="space-y-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border">
                       <Textarea
-                        value={editValues.notes || ''}
-                        onChange={(e) => setEditValues((prev: Record<string, any>) => ({ ...prev, notes: e.target.value }))}
-                        placeholder="Add notes about this lead..."
-                        className="min-h-[120px]"
+                        value={newNoteText}
+                        onChange={(e) => setNewNoteText(e.target.value)}
+                        placeholder="Add a note..."
+                        className="min-h-[80px] resize-none"
                         autoFocus
                       />
                       <div className="flex items-center justify-end gap-2">
-                        <Button size="sm" variant="outline" onClick={cancelEdit}>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => {
+                            setShowAddNote(false)
+                            setNewNoteText('')
+                          }}
+                        >
                           <X className="w-3 h-3 mr-2" />
                           Cancel
                         </Button>
-                        <Button size="sm" onClick={saveEdit} disabled={updateLeadMutation.isPending}>
-                          <Check className="w-3 h-3 mr-2" />
-                          Save Notes
+                        <Button 
+                          size="sm" 
+                          onClick={() => addNoteMutation.mutate(newNoteText)}
+                          disabled={addNoteMutation.isPending || !newNoteText.trim()}
+                          className="bg-blue-600 hover:bg-blue-700 text-white"
+                        >
+                          {addNoteMutation.isPending ? 'Adding...' : 'Add Note'}
                         </Button>
                       </div>
                     </div>
-                  ) : (
-                    <>
-                      {lead.notes ? (
-                        <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg group">
-                          <p className="text-sm">{lead.notes}</p>
-                          <div className="flex items-center justify-between mt-2">
-                            <p className="text-xs text-slate-500">
-                              Last updated on {new Date(lead.updatedAt || lead.createdAt).toLocaleDateString()} at {new Date(lead.updatedAt || lead.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </p>
-                            <Button 
-                              size="sm" 
-                              variant="ghost" 
-                              className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0"
-                              onClick={() => startEdit('notes', lead.notes || '')}
-                            >
-                              <Edit className="w-3 h-3" />
-                            </Button>
+                  )}
+                  
+                  <div className="space-y-3">
+                    {Array.isArray(lead.notes) && lead.notes.length > 0 ? (
+                      lead.notes.map((note: any) => (
+                        <div key={note.id} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border">
+                          <p className="text-sm text-slate-800 dark:text-slate-200 mb-3 whitespace-pre-wrap">{note.text}</p>
+                          <div className="flex items-center text-xs text-slate-500">
+                            <span>
+                              Added by {note.author} on {new Date(note.createdAt).toLocaleDateString()} at {new Date(note.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
                           </div>
                         </div>
-                      ) : (
-                        <div className="text-center py-8 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-lg">
-                          <p className="text-slate-500 text-sm mb-4">No notes available</p>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => startEdit('notes', '')}
-                            className="flex items-center gap-2"
-                          >
-                            <Edit className="w-3 h-3" />
-                            Add First Note
-                          </Button>
-                        </div>
-                      )}
-                    </>
-                  )}
+                      ))
+                    ) : (
+                      <div className="text-center py-8 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-lg">
+                        <MessageSquare className="h-12 w-12 mx-auto text-slate-400 dark:text-slate-500 mb-4" />
+                        <p className="text-slate-500 text-sm mb-4">No notes yet</p>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => setShowAddNote(true)}
+                          className="flex items-center gap-2"
+                        >
+                          <MessageSquare className="w-3 h-3" />
+                          Add First Note
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
