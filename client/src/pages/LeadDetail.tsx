@@ -104,7 +104,7 @@ export default function LeadDetail() {
       return res.json()
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/trpc/documents.getByLeadId'] })
+      queryClient.invalidateQueries({ queryKey: ['/api/trpc/documents.getByLeadId', leadId] })
     }
   })
 
@@ -121,7 +121,7 @@ export default function LeadDetail() {
       return res.json()
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/trpc/documents.getByLeadId'] })
+      queryClient.invalidateQueries({ queryKey: ['/api/trpc/documents.getByLeadId', leadId] })
     }
   })
 
@@ -866,12 +866,13 @@ export default function LeadDetail() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
+                {console.log('DEBUG - Documents data:', { documents, documentsLoading, documentsLength: documents?.length })}
                 {documentsLoading ? (
                   <div className="flex items-center justify-center py-8">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
                     <p className="ml-3 text-slate-600">Loading documents...</p>
                   </div>
-                ) : documents.length > 0 ? (
+                ) : documents && documents.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {documents.map((doc: any) => {
                       const isImage = doc.mimeType?.startsWith('image/');
