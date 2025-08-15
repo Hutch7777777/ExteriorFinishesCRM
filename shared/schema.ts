@@ -325,7 +325,24 @@ export const planScales = pgTable("plan_scales", {
   index("idx_plan_scales_created_by").on(table.createdBy),
 ]);
 
-export const leadRelations = relations(leads, ({ one }) => ({
+// Documents table - for file storage per lead
+export const documents = pgTable("documents", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  leadId: uuid("lead_id").notNull().references(() => leads.id, { onDelete: 'cascade' }),
+  filename: varchar("filename", { length: 255 }).notNull(),
+  originalFilename: varchar("original_filename", { length: 255 }).notNull(),
+  mimeType: varchar("mime_type", { length: 100 }).notNull(),
+  fileSize: integer("file_size").notNull(),
+  objectPath: varchar("object_path", { length: 500 }).notNull(), // Path in object storage
+  uploadedBy: uuid("uploaded_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_documents_lead_id").on(table.leadId),
+  index("idx_documents_uploaded_by").on(table.uploadedBy),
+  index("idx_documents_created_at").on(table.createdAt),
+]);
+
+export const leadRelations = relations(leads, ({ one, many }) => ({
   division: one(divisions, {
     fields: [leads.divisionId],
     references: [divisions.id],
@@ -339,6 +356,18 @@ export const leadRelations = relations(leads, ({ one }) => ({
     fields: [leads.assignedTo],
     references: [users.id],
     relationName: 'assignedTo',
+  }),
+  documents: many(documents),
+}));
+
+export const documentRelations = relations(documents, ({ one }) => ({
+  lead: one(leads, {
+    fields: [documents.leadId],
+    references: [leads.id],
+  }),
+  uploadedByUser: one(users, {
+    fields: [documents.uploadedBy],
+    references: [users.id],
   }),
 }));
 
@@ -510,6 +539,11 @@ export const insertPlanScaleSchema = createInsertSchema(planScales).omit({
   createdAt: true
 });
 
+export const insertDocumentSchema = createInsertSchema(documents).omit({
+  id: true,
+  createdAt: true
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof insertUserSchema._type;
@@ -547,6 +581,12 @@ export type InsertPlanAnnotation = typeof insertPlanAnnotationSchema._type;
 export type PlanScale = typeof planScales.$inferSelect;
 export type InsertPlanScale = typeof insertPlanScaleSchema._type;
 
+export type Document = typeof documents.$inferSelect;
+export type InsertDocument = typeof insertDocumentSchema._type;
+
+export type Contact = typeof contacts.$inferSelect;
+export type InsertContact = typeof insertContactSchema._type;
+
 // Extended types with relations
 export type UserWithRelations = User & {
   division?: Division;
@@ -574,6 +614,12 @@ export type LeadWithRelations = Lead & {
   division?: Division;
   createdByUser?: User;
   assignedToUser?: User;
+  documents?: Document[];
+};
+
+export type DocumentWithRelations = Document & {
+  lead?: Lead;
+  uploadedByUser?: User;
 };
 
 export type ContactWithRelations = Contact & {

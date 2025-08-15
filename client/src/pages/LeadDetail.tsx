@@ -26,8 +26,14 @@ import {
   Thermometer,
   Check,
   X,
-  MessageSquare
+  MessageSquare,
+  FileText,
+  Upload,
+  Download,
+  Trash2
 } from 'lucide-react'
+import { ObjectUploader } from '@/components/ObjectUploader'
+import type { UploadResult } from '@uppy/core'
 
 export default function LeadDetail() {
   const params = useParams({ strict: false })
@@ -64,6 +70,87 @@ export default function LeadDetail() {
       setEditValues({})
     }
   })
+
+  // Fetch documents for this lead
+  const { data: documents = [], isLoading: documentsLoading } = useQuery({
+    queryKey: ['/api/trpc/documents.getByLeadId', leadId],
+    queryFn: async () => {
+      const res = await fetch('/api/trpc/documents.getByLeadId', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ input: { leadId } })
+      })
+      if (!res.ok) throw new Error('Failed to fetch documents')
+      const data = await res.json()
+      return data.result || []
+    }
+  })
+
+  // Create document mutation
+  const createDocumentMutation = useMutation({
+    mutationFn: async (documentData: any) => {
+      const res = await fetch('/api/trpc/documents.create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ 
+          input: {
+            leadId,
+            ...documentData
+          }
+        })
+      })
+      if (!res.ok) throw new Error('Failed to create document')
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/trpc/documents.getByLeadId'] })
+    }
+  })
+
+  // Delete document mutation
+  const deleteDocumentMutation = useMutation({
+    mutationFn: async (documentId: string) => {
+      const res = await fetch('/api/trpc/documents.delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ input: { id: documentId } })
+      })
+      if (!res.ok) throw new Error('Failed to delete document')
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/trpc/documents.getByLeadId'] })
+    }
+  })
+
+  // Document upload handlers
+  const handleGetUploadParameters = async () => {
+    const res = await fetch('/api/objects/upload', {
+      method: 'POST',
+      credentials: 'include'
+    })
+    if (!res.ok) throw new Error('Failed to get upload URL')
+    const data = await res.json()
+    return {
+      method: 'PUT' as const,
+      url: data.uploadURL
+    }
+  }
+
+  const handleUploadComplete = (result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
+    if (result.successful && result.successful.length > 0) {
+      const file = result.successful[0]
+      createDocumentMutation.mutate({
+        name: file.name,
+        type: file.type || 'application/octet-stream',
+        size: file.size || 0,
+        objectPath: file.uploadURL || ''
+      })
+    }
+  }
 
 
 
@@ -759,6 +846,77 @@ export default function LeadDetail() {
                     </>
                   )}
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Documents Section */}
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <FileText className="w-5 h-5" />
+                    Documents
+                  </span>
+                  <ObjectUploader
+                    maxNumberOfFiles={5}
+                    onGetUploadParameters={handleGetUploadParameters}
+                    onComplete={handleUploadComplete}
+                    buttonClassName="flex items-center gap-2"
+                  >
+                    <Upload className="w-4 h-4" />
+                    Upload Files
+                  </ObjectUploader>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {documentsLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                    <p className="ml-3 text-slate-600">Loading documents...</p>
+                  </div>
+                ) : documents.length > 0 ? (
+                  <div className="space-y-3">
+                    {documents.map((doc: any) => (
+                      <div key={doc.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg group">
+                        <div className="flex items-center gap-3">
+                          <FileText className="w-5 h-5 text-blue-600" />
+                          <div>
+                            <p className="font-medium text-sm">{doc.name}</p>
+                            <p className="text-xs text-slate-500">
+                              {doc.type} • {doc.size ? `${Math.round(doc.size / 1024)}KB` : 'Unknown size'} • 
+                              Uploaded {new Date(doc.createdAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => window.open(doc.objectPath, '_blank')}
+                          >
+                            <Download className="w-3 h-3 mr-1" />
+                            Download
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => deleteDocumentMutation.mutate(doc.id)}
+                            disabled={deleteDocumentMutation.isPending}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-lg">
+                    <FileText className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                    <p className="text-slate-500 text-sm mb-4">No documents uploaded yet</p>
+                    <p className="text-slate-400 text-xs">Upload job-related documents, photos, or files for this lead</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

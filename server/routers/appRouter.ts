@@ -1508,6 +1508,145 @@ export const createAppRouter = () => {
     }
   });
 
+  // Documents endpoints
+  router.get('/documents.list', async (req, res) => {
+    try {
+      const ctx = await createContext(req, res);
+      const user = requireRole('staff')(ctx);
+      
+      const inputSchema = z.object({
+        leadId: z.string().uuid(),
+      });
+      
+      const input = inputSchema.parse(req.query);
+      
+      // Verify lead exists and user has access
+      const lead = await storage.getLead(input.leadId);
+      if (!lead) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Lead not found' });
+      }
+      
+      // Check division access
+      if (lead.divisionId) {
+        const division = await storage.getDivision(lead.divisionId);
+        if (division) {
+          const scopedDivisionId = await getDivisionScope(user, division.key);
+          if (scopedDivisionId !== division.id) {
+            throw new TRPCError({ code: 'FORBIDDEN', message: 'Access denied to this division' });
+          }
+        }
+      }
+      
+      const result = await storage.listDocuments(input.leadId);
+      res.json({ result: superjson.serialize(result) });
+    } catch (error) {
+      if (error instanceof TRPCError) {
+        res.status(error.statusCode).json({ error: { message: error.message, code: error.code } });
+      } else {
+        res.status(500).json({ error: { message: 'Internal server error' } });
+      }
+    }
+  });
+
+  router.post('/documents.create', async (req, res) => {
+    try {
+      const ctx = await createContext(req, res);
+      const user = requireRole('staff')(ctx);
+      
+      const inputSchema = z.object({
+        leadId: z.string().uuid(),
+        filename: z.string(),
+        originalFilename: z.string(),
+        mimeType: z.string(),
+        fileSize: z.number(),
+        objectPath: z.string(),
+      });
+      
+      const input = inputSchema.parse(req.body?.input || {});
+      
+      // Verify lead exists and user has access
+      const lead = await storage.getLead(input.leadId);
+      if (!lead) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Lead not found' });
+      }
+      
+      // Check division access
+      if (lead.divisionId) {
+        const division = await storage.getDivision(lead.divisionId);
+        if (division) {
+          const scopedDivisionId = await getDivisionScope(user, division.key);
+          if (scopedDivisionId !== division.id) {
+            throw new TRPCError({ code: 'FORBIDDEN', message: 'Access denied to this division' });
+          }
+        }
+      }
+      
+      const documentData = {
+        leadId: input.leadId,
+        filename: input.filename,
+        originalFilename: input.originalFilename,
+        mimeType: input.mimeType,
+        fileSize: input.fileSize,
+        objectPath: input.objectPath,
+        uploadedBy: user.id,
+      };
+      
+      const result = await storage.createDocument(documentData);
+      res.json({ result: superjson.serialize(result) });
+    } catch (error) {
+      if (error instanceof TRPCError) {
+        res.status(error.statusCode).json({ error: { message: error.message, code: error.code } });
+      } else {
+        res.status(500).json({ error: { message: 'Internal server error' } });
+      }
+    }
+  });
+
+  router.delete('/documents.delete', async (req, res) => {
+    try {
+      const ctx = await createContext(req, res);
+      const user = requireRole('staff')(ctx);
+      
+      const inputSchema = z.object({
+        id: z.string().uuid(),
+      });
+      
+      const input = inputSchema.parse(req.query);
+      
+      // Verify document exists and user has access
+      const document = await storage.getDocument(input.id);
+      if (!document) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Document not found' });
+      }
+      
+      // Verify lead access
+      const lead = await storage.getLead(document.leadId);
+      if (!lead) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Associated lead not found' });
+      }
+      
+      // Check division access
+      if (lead.divisionId) {
+        const division = await storage.getDivision(lead.divisionId);
+        if (division) {
+          const scopedDivisionId = await getDivisionScope(user, division.key);
+          if (scopedDivisionId !== division.id) {
+            throw new TRPCError({ code: 'FORBIDDEN', message: 'Access denied to this division' });
+          }
+        }
+      }
+      
+      await storage.deleteDocument(input.id);
+      res.json({ result: superjson.serialize({ success: true }) });
+    } catch (error) {
+      if (error instanceof TRPCError) {
+        res.status(error.statusCode).json({ error: { message: error.message, code: error.code } });
+      } else {
+        res.status(500).json({ error: { message: 'Internal server error' } });
+      }
+    }
+  });
+
   return router;
 };
 

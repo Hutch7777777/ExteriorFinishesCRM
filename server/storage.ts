@@ -12,6 +12,7 @@ import {
   planFiles,
   planAnnotations,
   planScales,
+  documents,
   type User,
   type InsertUser,
   type UpsertUser,
@@ -42,6 +43,8 @@ import {
   type PlanFile,
   type PlanAnnotation,
   type PlanScale,
+  type Document,
+  type InsertDocument,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql, count } from "drizzle-orm";
@@ -145,6 +148,12 @@ export interface IStorage {
   upsertPlanAnnotations(planFileId: string, annotations: any[], userId: string): Promise<PlanAnnotation[]>;
   getPlanScales(planFileId: string): Promise<PlanScale[]>;
   upsertPlanScale(planFileId: string, page: number, pixelPerUnit: number, unit: string, userId: string): Promise<PlanScale>;
+
+  // Documents
+  listDocuments(leadId: string): Promise<Document[]>;
+  getDocument(id: string): Promise<Document | undefined>;
+  createDocument(data: InsertDocument): Promise<Document>;
+  deleteDocument(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -872,6 +881,37 @@ export class DatabaseStorage implements IStorage {
       
       return created;
     }
+  }
+
+  // Document operations
+  async listDocuments(leadId: string): Promise<Document[]> {
+    return await db
+      .select()
+      .from(documents)
+      .where(eq(documents.leadId, leadId))
+      .orderBy(desc(documents.createdAt));
+  }
+
+  async getDocument(id: string): Promise<Document | undefined> {
+    const [document] = await db
+      .select()
+      .from(documents)
+      .where(eq(documents.id, id));
+    return document;
+  }
+
+  async createDocument(data: InsertDocument): Promise<Document> {
+    const [document] = await db
+      .insert(documents)
+      .values(data)
+      .returning();
+    return document;
+  }
+
+  async deleteDocument(id: string): Promise<void> {
+    await db
+      .delete(documents)
+      .where(eq(documents.id, id));
   }
 }
 
