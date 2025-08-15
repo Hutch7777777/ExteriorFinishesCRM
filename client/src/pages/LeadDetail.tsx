@@ -82,6 +82,9 @@ export default function LeadDetail() {
       })
       if (!res.ok) throw new Error('Failed to fetch documents')
       const data = await res.json()
+      console.log('FETCH DEBUG - Full response:', data)
+      console.log('FETCH DEBUG - Result:', data.result)
+      console.log('FETCH DEBUG - Result type:', typeof data.result)
       return data.result || []
     }
   })
