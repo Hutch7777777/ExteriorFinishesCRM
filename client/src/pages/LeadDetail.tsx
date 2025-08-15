@@ -30,7 +30,8 @@ import {
   FileText,
   Upload,
   Download,
-  Trash2
+  Trash2,
+  Eye
 } from 'lucide-react'
 import { EnhancedObjectUploader } from '@/components/EnhancedObjectUploader'
 
@@ -936,17 +937,21 @@ export default function LeadDetail() {
                                 className="flex-1"
                                 onClick={() => window.open(`/objects/${doc.filename}`, '_blank')}
                               >
-                                <Download className="w-3 h-3 mr-1" />
-                                Download
+                                <Eye className="w-3 h-3 mr-1" />
+                                View Document
                               </Button>
                               <Button
                                 size="sm"
                                 variant="outline"
                                 onClick={() => deleteDocumentMutation.mutate(doc.id)}
                                 disabled={deleteDocumentMutation.isPending}
-                                className="text-red-600 hover:text-red-700"
+                                className="text-red-600 hover:text-red-700 disabled:opacity-50"
                               >
-                                <Trash2 className="w-3 h-3" />
+                                {deleteDocumentMutation.isPending ? (
+                                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-red-600"></div>
+                                ) : (
+                                  <Trash2 className="w-3 h-3" />
+                                )}
                               </Button>
                             </div>
                           </div>
