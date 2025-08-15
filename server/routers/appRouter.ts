@@ -1548,6 +1548,45 @@ export const createAppRouter = () => {
     }
   });
 
+  router.post('/documents.getByLeadId', async (req, res) => {
+    try {
+      const ctx = await createContext(req, res);
+      const user = requireRole('staff')(ctx);
+      
+      const inputSchema = z.object({
+        leadId: z.string().uuid(),
+      });
+      
+      const input = inputSchema.parse(req.body?.input || {});
+      
+      // Verify lead exists and user has access
+      const lead = await storage.getLead(input.leadId);
+      if (!lead) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Lead not found' });
+      }
+      
+      // Check division access
+      if (lead.divisionId) {
+        const division = await storage.getDivision(lead.divisionId);
+        if (division) {
+          const scopedDivisionId = await getDivisionScope(user, division.key);
+          if (scopedDivisionId !== division.id) {
+            throw new TRPCError({ code: 'FORBIDDEN', message: 'Access denied to this division' });
+          }
+        }
+      }
+      
+      const result = await storage.listDocuments(input.leadId);
+      res.json({ result: superjson.serialize(result) });
+    } catch (error) {
+      if (error instanceof TRPCError) {
+        res.status(error.statusCode).json({ error: { message: error.message, code: error.code } });
+      } else {
+        res.status(500).json({ error: { message: 'Internal server error' } });
+      }
+    }
+  });
+
   router.post('/documents.create', async (req, res) => {
     try {
       const ctx = await createContext(req, res);
@@ -1594,10 +1633,11 @@ export const createAppRouter = () => {
       const result = await storage.createDocument(documentData);
       res.json({ result: superjson.serialize(result) });
     } catch (error) {
+      console.error('Error in documents.create endpoint:', error);
       if (error instanceof TRPCError) {
         res.status(error.statusCode).json({ error: { message: error.message, code: error.code } });
       } else {
-        res.status(500).json({ error: { message: 'Internal server error' } });
+        res.status(500).json({ error: { message: 'Internal server error', details: error.message } });
       }
     }
   });

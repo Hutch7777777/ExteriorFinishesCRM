@@ -32,8 +32,7 @@ import {
   Download,
   Trash2
 } from 'lucide-react'
-import { ObjectUploader } from '@/components/ObjectUploader'
-import type { UploadResult } from '@uppy/core'
+import { EnhancedObjectUploader } from '@/components/EnhancedObjectUploader'
 
 export default function LeadDetail() {
   const params = useParams({ strict: false })
@@ -140,16 +139,14 @@ export default function LeadDetail() {
     }
   }
 
-  const handleUploadComplete = (result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
-    if (result.successful && result.successful.length > 0) {
-      const file = result.successful[0]
-      createDocumentMutation.mutate({
-        name: file.name,
-        type: file.type || 'application/octet-stream',
-        size: file.size || 0,
-        objectPath: file.uploadURL || ''
-      })
-    }
+  const handleUploadComplete = (documentData: {
+    filename: string;
+    originalFilename: string;
+    mimeType: string;
+    fileSize: number;
+    objectPath: string;
+  }) => {
+    createDocumentMutation.mutate(documentData);
   }
 
 
@@ -857,7 +854,7 @@ export default function LeadDetail() {
                     <FileText className="w-5 h-5" />
                     Documents
                   </span>
-                  <ObjectUploader
+                  <EnhancedObjectUploader
                     maxNumberOfFiles={5}
                     onGetUploadParameters={handleGetUploadParameters}
                     onComplete={handleUploadComplete}
@@ -865,7 +862,7 @@ export default function LeadDetail() {
                   >
                     <Upload className="w-4 h-4" />
                     Upload Files
-                  </ObjectUploader>
+                  </EnhancedObjectUploader>
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -875,40 +872,83 @@ export default function LeadDetail() {
                     <p className="ml-3 text-slate-600">Loading documents...</p>
                   </div>
                 ) : documents.length > 0 ? (
-                  <div className="space-y-3">
-                    {documents.map((doc: any) => (
-                      <div key={doc.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg group">
-                        <div className="flex items-center gap-3">
-                          <FileText className="w-5 h-5 text-blue-600" />
-                          <div>
-                            <p className="font-medium text-sm">{doc.name}</p>
-                            <p className="text-xs text-slate-500">
-                              {doc.type} • {doc.size ? `${Math.round(doc.size / 1024)}KB` : 'Unknown size'} • 
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {documents.map((doc: any) => {
+                      const isImage = doc.mimeType?.startsWith('image/');
+                      const isPDF = doc.mimeType === 'application/pdf';
+                      
+                      return (
+                        <div key={doc.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden group shadow-sm hover:shadow-md transition-shadow">
+                          {/* Preview Section */}
+                          <div className="h-32 bg-slate-100 dark:bg-slate-700 flex items-center justify-center relative">
+                            {isImage ? (
+                              <img 
+                                src={doc.objectPath} 
+                                alt={doc.originalFilename}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  const target = e.currentTarget;
+                                  const fallback = target.nextElementSibling as HTMLElement;
+                                  target.style.display = 'none';
+                                  if (fallback) fallback.style.display = 'flex';
+                                }}
+                              />
+                            ) : (
+                              <div className="text-center">
+                                {isPDF ? (
+                                  <FileText className="w-12 h-12 text-red-500 mx-auto mb-2" />
+                                ) : (
+                                  <FileText className="w-12 h-12 text-blue-500 mx-auto mb-2" />
+                                )}
+                                <p className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wide">
+                                  {doc.mimeType?.split('/')[1] || 'File'}
+                                </p>
+                              </div>
+                            )}
+                            {/* Hidden fallback for broken images */}
+                            <div className="text-center" style={{ display: 'none' }}>
+                              <FileText className="w-12 h-12 text-blue-500 mx-auto mb-2" />
+                              <p className="text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wide">
+                                {doc.mimeType?.split('/')[1] || 'File'}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          {/* Document Info */}
+                          <div className="p-3">
+                            <h4 className="font-medium text-sm text-slate-900 dark:text-slate-100 truncate mb-1">
+                              {doc.originalFilename}
+                            </h4>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+                              {doc.fileSize ? `${Math.round(doc.fileSize / 1024)}KB` : 'Unknown size'} • 
                               Uploaded {new Date(doc.createdAt).toLocaleDateString()}
                             </p>
+                            
+                            {/* Actions */}
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="flex-1"
+                                onClick={() => window.open(doc.objectPath, '_blank')}
+                              >
+                                <Download className="w-3 h-3 mr-1" />
+                                Download
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => deleteDocumentMutation.mutate(doc.id)}
+                                disabled={deleteDocumentMutation.isPending}
+                                className="text-red-600 hover:text-red-700"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            </div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => window.open(doc.objectPath, '_blank')}
-                          >
-                            <Download className="w-3 h-3 mr-1" />
-                            Download
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => deleteDocumentMutation.mutate(doc.id)}
-                            disabled={deleteDocumentMutation.isPending}
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 ) : (
                   <div className="text-center py-8 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-lg">
