@@ -115,6 +115,7 @@ export default function LeadDetail() {
   // Delete document mutation
   const deleteDocumentMutation = useMutation({
     mutationFn: async (documentId: string) => {
+      console.log('DELETING DOCUMENT:', documentId)
       const res = await fetch('/api/trpc/documents.delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -124,8 +125,14 @@ export default function LeadDetail() {
       if (!res.ok) throw new Error('Failed to delete document')
       return res.json()
     },
-    onSuccess: () => {
+    onSuccess: (data, documentId) => {
+      console.log('DELETE SUCCESS:', data, documentId)
+      // Force a complete refresh of the documents
+      queryClient.removeQueries({ queryKey: ['/api/trpc/documents.getByLeadId', leadId] })
       queryClient.invalidateQueries({ queryKey: ['/api/trpc/documents.getByLeadId', leadId] })
+    },
+    onError: (error) => {
+      console.error('DELETE ERROR:', error)
     }
   })
 
