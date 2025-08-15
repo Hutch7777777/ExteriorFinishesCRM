@@ -1,11 +1,14 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useParams } from '@tanstack/react-router'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/hooks/useAuth'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
   ArrowLeft,
   DollarSign,
@@ -20,7 +23,9 @@ import {
   Cloud,
   Sun,
   CloudRain,
-  Thermometer
+  Thermometer,
+  Check,
+  X
 } from 'lucide-react'
 
 export default function LeadDetail() {
@@ -28,6 +33,48 @@ export default function LeadDetail() {
   const leadId = (params as any).id
   const division = (params as any).division || 'mfnc'
   const { user } = useAuth()
+  const queryClient = useQueryClient()
+
+  // Editing state
+  const [editingField, setEditingField] = useState<string | null>(null)
+  const [editValues, setEditValues] = useState<Record<string, any>>({})
+
+  // Update lead mutation
+  const updateLeadMutation = useMutation({
+    mutationFn: async (updateData: any) => {
+      const res = await fetch('/api/trpc/leads.update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ id: leadId, ...updateData })
+      })
+      if (!res.ok) throw new Error('Failed to update lead')
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/trpc/leads.get'] })
+      queryClient.invalidateQueries({ queryKey: ['/api/trpc/leads.list'] })
+      setEditingField(null)
+      setEditValues({})
+    }
+  })
+
+  // Handle field editing
+  const startEdit = (fieldName: string, currentValue: any) => {
+    setEditingField(fieldName)
+    setEditValues({ [fieldName]: currentValue })
+  }
+
+  const saveEdit = () => {
+    if (editingField && editValues[editingField] !== undefined) {
+      updateLeadMutation.mutate(editValues)
+    }
+  }
+
+  const cancelEdit = () => {
+    setEditingField(null)
+    setEditValues({})
+  }
 
   // Fetch the actual lead data
   const { 
@@ -293,32 +340,151 @@ export default function LeadDetail() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="flex items-center gap-2">
+                  {/* Contact Name */}
+                  <div className="flex items-center gap-2 group">
                     <Avatar className="w-6 h-6">
                       <AvatarFallback className="text-xs">
                         {lead.contact.split(' ').map((n: string) => n[0]).join('')}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="text-sm">{lead.contact}</span>
+                    <div className="flex-1 flex items-center gap-2">
+                      {editingField === 'contact' ? (
+                        <div className="flex items-center gap-2 flex-1">
+                          <Input
+                            value={editValues.contact || ''}
+                            onChange={(e) => setEditValues((prev: Record<string, any>) => ({ ...prev, contact: e.target.value }))}
+                            className="h-7 text-sm"
+                            autoFocus
+                          />
+                          <Button size="sm" variant="ghost" onClick={saveEdit} disabled={updateLeadMutation.isPending}>
+                            <Check className="w-3 h-3 text-green-600" />
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={cancelEdit}>
+                            <X className="w-3 h-3 text-red-600" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          <span className="text-sm">{lead.contact}</span>
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0"
+                            onClick={() => startEdit('contact', lead.contact)}
+                          >
+                            <Edit className="w-3 h-3" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
                   </div>
-                  {lead.email && (
-                    <div className="flex items-center gap-2 text-sm text-slate-600">
-                      <Mail className="w-4 h-4" />
-                      <span>{lead.email}</span>
+
+                  {/* Email */}
+                  <div className="flex items-center gap-2 text-sm text-slate-600 group">
+                    <Mail className="w-4 h-4" />
+                    <div className="flex-1 flex items-center gap-2">
+                      {editingField === 'email' ? (
+                        <div className="flex items-center gap-2 flex-1">
+                          <Input
+                            type="email"
+                            value={editValues.email || ''}
+                            onChange={(e) => setEditValues((prev: Record<string, any>) => ({ ...prev, email: e.target.value }))}
+                            className="h-7 text-sm"
+                            autoFocus
+                          />
+                          <Button size="sm" variant="ghost" onClick={saveEdit} disabled={updateLeadMutation.isPending}>
+                            <Check className="w-3 h-3 text-green-600" />
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={cancelEdit}>
+                            <X className="w-3 h-3 text-red-600" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          <span>{lead.email || 'No email'}</span>
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0"
+                            onClick={() => startEdit('email', lead.email || '')}
+                          >
+                            <Edit className="w-3 h-3" />
+                          </Button>
+                        </>
+                      )}
                     </div>
-                  )}
-                  {lead.phone && (
-                    <div className="flex items-center gap-2 text-sm text-slate-600">
-                      <Phone className="w-4 h-4" />
-                      <span>{lead.phone}</span>
+                  </div>
+
+                  {/* Phone */}
+                  <div className="flex items-center gap-2 text-sm text-slate-600 group">
+                    <Phone className="w-4 h-4" />
+                    <div className="flex-1 flex items-center gap-2">
+                      {editingField === 'phone' ? (
+                        <div className="flex items-center gap-2 flex-1">
+                          <Input
+                            type="tel"
+                            value={editValues.phone || ''}
+                            onChange={(e) => setEditValues((prev: Record<string, any>) => ({ ...prev, phone: e.target.value }))}
+                            className="h-7 text-sm"
+                            autoFocus
+                          />
+                          <Button size="sm" variant="ghost" onClick={saveEdit} disabled={updateLeadMutation.isPending}>
+                            <Check className="w-3 h-3 text-green-600" />
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={cancelEdit}>
+                            <X className="w-3 h-3 text-red-600" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          <span>{lead.phone || 'No phone'}</span>
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0"
+                            onClick={() => startEdit('phone', lead.phone || '')}
+                          >
+                            <Edit className="w-3 h-3" />
+                          </Button>
+                        </>
+                      )}
                     </div>
-                  )}
-                  {lead.address && (
-                    <div className="flex items-center gap-2 text-sm text-slate-600">
-                      <MapPin className="w-4 h-4" />
-                      <span>{lead.address}</span>
+                  </div>
+
+                  {/* Address */}
+                  <div className="flex items-center gap-2 text-sm text-slate-600 group">
+                    <MapPin className="w-4 h-4" />
+                    <div className="flex-1 flex items-center gap-2">
+                      {editingField === 'address' ? (
+                        <div className="flex items-center gap-2 flex-1">
+                          <Input
+                            value={editValues.address || ''}
+                            onChange={(e) => setEditValues((prev: Record<string, any>) => ({ ...prev, address: e.target.value }))}
+                            className="h-7 text-sm"
+                            autoFocus
+                          />
+                          <Button size="sm" variant="ghost" onClick={saveEdit} disabled={updateLeadMutation.isPending}>
+                            <Check className="w-3 h-3 text-green-600" />
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={cancelEdit}>
+                            <X className="w-3 h-3 text-red-600" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          <span>{lead.address || 'No address'}</span>
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0"
+                            onClick={() => startEdit('address', lead.address || '')}
+                          >
+                            <Edit className="w-3 h-3" />
+                          </Button>
+                        </>
+                      )}
                     </div>
-                  )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -333,21 +499,175 @@ export default function LeadDetail() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div>
+                  {/* Project Type */}
+                  <div className="group">
                     <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Project Type</p>
-                    <p className="font-medium">{lead.projectType || 'Not specified'}</p>
+                    <div className="flex items-center gap-2">
+                      {editingField === 'projectType' ? (
+                        <div className="flex items-center gap-2 flex-1">
+                          <Select 
+                            value={editValues.projectType || ''} 
+                            onValueChange={(value) => setEditValues((prev: Record<string, any>) => ({ ...prev, projectType: value }))}
+                          >
+                            <SelectTrigger className="h-7">
+                              <SelectValue placeholder="Select project type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Residential Renovation">Residential Renovation</SelectItem>
+                              <SelectItem value="Commercial Siding">Commercial Siding</SelectItem>
+                              <SelectItem value="New Construction">New Construction</SelectItem>
+                              <SelectItem value="Repair Work">Repair Work</SelectItem>
+                              <SelectItem value="Maintenance">Maintenance</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Button size="sm" variant="ghost" onClick={saveEdit} disabled={updateLeadMutation.isPending}>
+                            <Check className="w-3 h-3 text-green-600" />
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={cancelEdit}>
+                            <X className="w-3 h-3 text-red-600" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          <p className="font-medium flex-1">{lead.projectType || 'Not specified'}</p>
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0"
+                            onClick={() => startEdit('projectType', lead.projectType || '')}
+                          >
+                            <Edit className="w-3 h-3" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
                   </div>
-                  <div>
+
+                  {/* Timeline */}
+                  <div className="group">
                     <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Timeline</p>
-                    <p className="font-medium">{lead.timeline || 'Not specified'}</p>
+                    <div className="flex items-center gap-2">
+                      {editingField === 'timeline' ? (
+                        <div className="flex items-center gap-2 flex-1">
+                          <Select 
+                            value={editValues.timeline || ''} 
+                            onValueChange={(value) => setEditValues((prev: Record<string, any>) => ({ ...prev, timeline: value }))}
+                          >
+                            <SelectTrigger className="h-7">
+                              <SelectValue placeholder="Select timeline" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="1-3 months">1-3 months</SelectItem>
+                              <SelectItem value="3-6 months">3-6 months</SelectItem>
+                              <SelectItem value="6-12 months">6-12 months</SelectItem>
+                              <SelectItem value="1+ years">1+ years</SelectItem>
+                              <SelectItem value="Flexible">Flexible</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Button size="sm" variant="ghost" onClick={saveEdit} disabled={updateLeadMutation.isPending}>
+                            <Check className="w-3 h-3 text-green-600" />
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={cancelEdit}>
+                            <X className="w-3 h-3 text-red-600" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          <p className="font-medium flex-1">{lead.timeline || 'Not specified'}</p>
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0"
+                            onClick={() => startEdit('timeline', lead.timeline || '')}
+                          >
+                            <Edit className="w-3 h-3" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
                   </div>
-                  <div>
+
+                  {/* Budget Range */}
+                  <div className="group">
                     <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Budget Range</p>
-                    <p className="font-medium">${(lead.value / 100).toLocaleString()}</p>
+                    <div className="flex items-center gap-2">
+                      {editingField === 'value' ? (
+                        <div className="flex items-center gap-2 flex-1">
+                          <Input
+                            type="number"
+                            value={editValues.value ? editValues.value / 100 : ''}
+                            onChange={(e) => setEditValues((prev: Record<string, any>) => ({ ...prev, value: Math.round(parseFloat(e.target.value) * 100) || 0 }))}
+                            className="h-7 text-sm"
+                            placeholder="Enter amount"
+                            autoFocus
+                          />
+                          <Button size="sm" variant="ghost" onClick={saveEdit} disabled={updateLeadMutation.isPending}>
+                            <Check className="w-3 h-3 text-green-600" />
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={cancelEdit}>
+                            <X className="w-3 h-3 text-red-600" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          <p className="font-medium flex-1">${(lead.value / 100).toLocaleString()}</p>
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0"
+                            onClick={() => startEdit('value', lead.value)}
+                          >
+                            <Edit className="w-3 h-3" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
                   </div>
-                  <div>
+
+                  {/* Lead Source */}
+                  <div className="group">
                     <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Lead Source</p>
-                    <p className="font-medium">{lead.source || 'Not specified'}</p>
+                    <div className="flex items-center gap-2">
+                      {editingField === 'source' ? (
+                        <div className="flex items-center gap-2 flex-1">
+                          <Select 
+                            value={editValues.source || ''} 
+                            onValueChange={(value) => setEditValues((prev: Record<string, any>) => ({ ...prev, source: value }))}
+                          >
+                            <SelectTrigger className="h-7">
+                              <SelectValue placeholder="Select lead source" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Website">Website</SelectItem>
+                              <SelectItem value="Referral">Referral</SelectItem>
+                              <SelectItem value="Google Ads">Google Ads</SelectItem>
+                              <SelectItem value="Social Media">Social Media</SelectItem>
+                              <SelectItem value="Trade Show">Trade Show</SelectItem>
+                              <SelectItem value="Direct Mail">Direct Mail</SelectItem>
+                              <SelectItem value="Cold Call">Cold Call</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Button size="sm" variant="ghost" onClick={saveEdit} disabled={updateLeadMutation.isPending}>
+                            <Check className="w-3 h-3 text-green-600" />
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={cancelEdit}>
+                            <X className="w-3 h-3 text-red-600" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          <p className="font-medium flex-1">{lead.source || 'Not specified'}</p>
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0"
+                            onClick={() => startEdit('source', lead.source || '')}
+                          >
+                            <Edit className="w-3 h-3" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -358,19 +678,77 @@ export default function LeadDetail() {
           <div className="lg:col-span-2">
             <Card>
               <CardHeader>
-                <CardTitle>Notes</CardTitle>
+                <CardTitle className="flex items-center justify-between">
+                  <span>Notes</span>
+                  {!editingField && (
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => startEdit('notes', lead.notes || '')}
+                      className="flex items-center gap-2"
+                    >
+                      <Edit className="w-3 h-3" />
+                      {lead.notes ? 'Edit' : 'Add Note'}
+                    </Button>
+                  )}
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {lead.notes ? (
-                    <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                      <p className="text-sm">{lead.notes}</p>
-                      <p className="text-xs text-slate-500 mt-2">
-                        Added on {new Date(lead.createdAt).toLocaleDateString()}
-                      </p>
+                  {editingField === 'notes' ? (
+                    <div className="space-y-4">
+                      <Textarea
+                        value={editValues.notes || ''}
+                        onChange={(e) => setEditValues((prev: Record<string, any>) => ({ ...prev, notes: e.target.value }))}
+                        placeholder="Add notes about this lead..."
+                        className="min-h-[120px]"
+                        autoFocus
+                      />
+                      <div className="flex items-center justify-end gap-2">
+                        <Button size="sm" variant="outline" onClick={cancelEdit}>
+                          <X className="w-3 h-3 mr-2" />
+                          Cancel
+                        </Button>
+                        <Button size="sm" onClick={saveEdit} disabled={updateLeadMutation.isPending}>
+                          <Check className="w-3 h-3 mr-2" />
+                          Save Notes
+                        </Button>
+                      </div>
                     </div>
                   ) : (
-                    <p className="text-slate-500 text-sm">No notes available</p>
+                    <>
+                      {lead.notes ? (
+                        <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg group">
+                          <p className="text-sm">{lead.notes}</p>
+                          <div className="flex items-center justify-between mt-2">
+                            <p className="text-xs text-slate-500">
+                              Added on {new Date(lead.createdAt).toLocaleDateString()}
+                            </p>
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0"
+                              onClick={() => startEdit('notes', lead.notes || '')}
+                            >
+                              <Edit className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-center py-8 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-lg">
+                          <p className="text-slate-500 text-sm mb-4">No notes available</p>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => startEdit('notes', '')}
+                            className="flex items-center gap-2"
+                          >
+                            <Edit className="w-3 h-3" />
+                            Add First Note
+                          </Button>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </CardContent>
