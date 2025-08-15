@@ -85,7 +85,7 @@ export default function LeadDetail() {
       console.log('FETCH DEBUG - Full response:', data)
       console.log('FETCH DEBUG - Result:', data.result)
       console.log('FETCH DEBUG - Result type:', typeof data.result)
-      return data.result || []
+      return data.result?.json || []
     }
   })
 
