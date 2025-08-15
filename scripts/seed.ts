@@ -31,14 +31,14 @@ async function seed() {
       },
       {
         key: 'rr',
-        name: 'Repair & Retrofit'
+        name: 'R&R'
       }
     ]).returning()
 
     // Hash the admin password
     console.log('🔐 Creating admin user...')
     const hashedPassword = await bcrypt.hash(adminPassword, 12)
-    
+
     // Seed admin user
     const [adminUser] = await db.insert(users).values([
       {
