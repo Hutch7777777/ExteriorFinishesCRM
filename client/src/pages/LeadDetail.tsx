@@ -127,9 +127,11 @@ export default function LeadDetail() {
     },
     onSuccess: (data, documentId) => {
       console.log('DELETE SUCCESS:', data, documentId)
-      // Force a complete refresh of the documents
-      queryClient.removeQueries({ queryKey: ['/api/trpc/documents.getByLeadId', leadId] })
-      queryClient.invalidateQueries({ queryKey: ['/api/trpc/documents.getByLeadId', leadId] })
+      // Force immediate refresh with a delay to ensure server update
+      setTimeout(() => {
+        queryClient.removeQueries({ queryKey: ['/api/trpc/documents.getByLeadId', leadId] })
+        queryClient.refetchQueries({ queryKey: ['/api/trpc/documents.getByLeadId', leadId] })
+      }, 100)
     },
     onError: (error) => {
       console.error('DELETE ERROR:', error)
