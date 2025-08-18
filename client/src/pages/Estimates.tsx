@@ -269,10 +269,7 @@ export default function Estimates() {
   const typedEstimates = Array.isArray(estimates?.result?.json) ? estimates.result.json as any[] : []
   const typedLeads = Array.isArray(leads?.result?.json) ? leads.result.json as any[] : []
   
-  // Debug the leads data
-  console.log('Raw leads data:', leads)
-  console.log('Extracted leads:', typedLeads)
-  console.log('Is loading leads:', leadsLoading)
+
 
   const createEstimateMutation = useMutation({
     mutationFn: async (data: { leadId: string; title: string; description?: string }) => {
@@ -293,6 +290,7 @@ export default function Estimates() {
             overheadPercentage: '15',
             profitMarginPercentage: '20',
             notes: '',
+            estimatedBy: 'placeholder-will-be-set-by-server',
           }
         })
       })

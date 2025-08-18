@@ -110,6 +110,7 @@ export const addEstimatesRoutes = (router: Router) => {
         res.status(error.statusCode).json({ error: { message: error.message, code: error.code } });
       } else {
         console.error('❌ Estimates create error:', error);
+        console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack available');
         res.status(500).json({ error: { message: 'Internal server error', details: error instanceof Error ? error.message : String(error) } });
       }
     }
