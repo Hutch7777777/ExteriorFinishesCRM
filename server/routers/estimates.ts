@@ -83,6 +83,7 @@ export const addEstimatesRoutes = (router: Router) => {
       
       const input = req.body.input;
       console.log('📝 Received estimate create input:', JSON.stringify(input, null, 2));
+      console.log('🔑 Authenticated user:', JSON.stringify(user, null, 2));
       
       if (!input) {
         return res.status(400).json({ error: { message: 'Input is required' } });
