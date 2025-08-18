@@ -77,13 +77,18 @@ export const addEstimatesRoutes = (router: Router) => {
 
   // Create estimate
   router.post('/estimates.create', async (req, res) => {
+    console.log('🚀 Starting estimate creation...');
+    console.log('📨 Raw request body:', JSON.stringify(req.body, null, 2));
+    
     try {
+      console.log('🔐 Creating context...');
       const ctx = await createContext(req, res);
+      console.log('🔐 Context created, checking auth...');
       const user = requireAuthed(ctx);
+      console.log('✅ User authenticated:', JSON.stringify(user, null, 2));
       
       const input = req.body.input;
       console.log('📝 Received estimate create input:', JSON.stringify(input, null, 2));
-      console.log('🔑 Authenticated user:', JSON.stringify(user, null, 2));
       
       if (!input) {
         return res.status(400).json({ error: { message: 'Input is required' } });
