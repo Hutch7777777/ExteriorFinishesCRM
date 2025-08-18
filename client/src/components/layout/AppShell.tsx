@@ -17,6 +17,7 @@ const LeadDetail = lazy(() => import('@/pages/LeadDetail'))
 const ProposalView = lazy(() => import('@/pages/ProposalView'))
 const FieldManagement = lazy(() => import('@/pages/FieldManagement'))
 const BusinessInsight = lazy(() => import('@/pages/BusinessInsight'))
+const Settings = lazy(() => import('@/pages/Settings'))
 
 export default function AppShell() {
   const currentPath = window.location.pathname
@@ -76,6 +77,15 @@ export default function AppShell() {
 
   // Render the appropriate component based on the route with suspense
   const renderContent = () => {
+    // Handle settings route
+    if (currentPath === '/settings') {
+      return (
+        <Suspense fallback={<PageSkeleton />}>
+          <Settings />
+        </Suspense>
+      )
+    }
+    
     // Handle edit routes
     if (currentPath.includes('/customers/edit/')) {
       return (

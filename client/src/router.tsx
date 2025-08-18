@@ -7,6 +7,7 @@ import SignUp from '@/pages/SignUp'
 import Customers from '@/pages/Customers'
 import Jobs from '@/pages/Jobs'
 import Estimates from '@/pages/Estimates'
+import Settings from '@/pages/Settings'
 import NotFound from '@/pages/not-found'
 import AppShell from '@/components/layout/AppShell'
 import PlansPage from '@/features/plans/PlansPage'
@@ -182,6 +183,15 @@ const fullBluebeamRoute = createRoute({
   component: lazy(() => import('./features/plans/FullBluebeamEditor'))
 })
 
+// Settings route
+const settingsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/settings',
+  component: () => {
+    return <AppShell />
+  }
+})
+
 // 404 route
 const notFoundRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -209,6 +219,7 @@ const routeTree = rootRoute.addChildren([
   testNavigationRoute,
   simpleNavRoute,
   fullBluebeamRoute,
+  settingsRoute,
   notFoundRoute
 ])
 

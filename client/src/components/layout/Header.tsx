@@ -1,9 +1,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
-import { LogOut, Menu } from 'lucide-react'
+import { LogOut, Menu, Settings } from 'lucide-react'
 import { apiRequest } from '@/lib/queryClient'
 import { useToast } from '@/hooks/use-toast'
 import { useSidebar } from '@/contexts/SidebarContext'
+import { Link } from 'wouter'
 
 import { DivisionSwitcher } from '@/components/DivisionSwitcher'
 
@@ -60,7 +61,16 @@ export function Header() {
         </div>
         
         {/* Right section - User menu */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          <Link href="/settings">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-50 p-2"
+            >
+              <Settings className="w-4 h-4" />
+            </Button>
+          </Link>
           <Button
             variant="ghost"
             size="sm"
