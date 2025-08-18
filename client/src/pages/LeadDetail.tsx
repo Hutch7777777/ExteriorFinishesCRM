@@ -112,38 +112,59 @@ export default function LeadDetail() {
     }
   })
 
-  // Delete document mutation
+  // Delete document mutation with optimistic updates
   const deleteDocumentMutation = useMutation({
     mutationFn: async (documentId: string) => {
-      console.log('DELETING DOCUMENT:', documentId)
+      console.log('🗑️ DELETING DOCUMENT:', documentId)
       const res = await fetch('/api/trpc/documents.delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ input: { id: documentId } })
       })
-      if (!res.ok) throw new Error('Failed to delete document')
+      if (!res.ok) {
+        const errorText = await res.text()
+        console.error('DELETE API ERROR:', errorText)
+        throw new Error(`Failed to delete document: ${res.status} ${errorText}`)
+      }
       return res.json()
     },
-    onSuccess: (data, documentId) => {
-      console.log('DELETE SUCCESS:', data, documentId)
-      console.log('CURRENT CACHE DATA:', queryClient.getQueryData(['/api/trpc/documents.getByLeadId', leadId]))
+    // Optimistic update - remove immediately from UI
+    onMutate: async (documentId) => {
+      console.log('🔄 OPTIMISTIC DELETE for:', documentId)
       
-      // Immediately update the cache by removing the deleted document
-      queryClient.setQueryData(['/api/trpc/documents.getByLeadId', leadId], (oldData: any) => {
-        console.log('OLD DATA IN CACHE UPDATE:', oldData)
-        if (!oldData) return []
-        const filteredData = oldData.filter((doc: any) => doc.id !== documentId)
-        console.log('NEW FILTERED DATA:', filteredData)
-        return filteredData
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['/api/trpc/documents.getByLeadId', leadId] })
+      
+      // Snapshot current data
+      const previousData = queryClient.getQueryData(['/api/trpc/documents.getByLeadId', leadId])
+      console.log('📸 SNAPSHOT DATA:', previousData)
+      
+      // Optimistically update cache
+      queryClient.setQueryData(['/api/trpc/documents.getByLeadId', leadId], (old: any) => {
+        if (!old) return []
+        const filtered = old.filter((doc: any) => doc.id !== documentId)
+        console.log('✂️ OPTIMISTIC FILTERED:', filtered)
+        return filtered
       })
       
-      // Force a complete refetch
-      queryClient.invalidateQueries({ queryKey: ['/api/trpc/documents.getByLeadId', leadId] })
-      queryClient.refetchQueries({ queryKey: ['/api/trpc/documents.getByLeadId', leadId] })
+      return { previousData }
     },
-    onError: (error) => {
-      console.error('DELETE ERROR:', error)
+    onSuccess: (data, documentId) => {
+      console.log('✅ DELETE SUCCESS:', data, documentId)
+    },
+    onError: (error, documentId, context) => {
+      console.error('❌ DELETE ERROR:', error)
+      
+      // Rollback on error
+      if (context?.previousData) {
+        queryClient.setQueryData(['/api/trpc/documents.getByLeadId', leadId], context.previousData)
+        console.log('🔄 ROLLED BACK DATA')
+      }
+    },
+    onSettled: () => {
+      // Always refetch to ensure sync
+      queryClient.invalidateQueries({ queryKey: ['/api/trpc/documents.getByLeadId', leadId] })
     }
   })
 
@@ -961,9 +982,15 @@ export default function LeadDetail() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => deleteDocumentMutation.mutate(doc.id)}
+                                onClick={() => {
+                                  console.log('🖱️ DELETE BUTTON CLICKED for document:', doc.id);
+                                  deleteDocumentMutation.mutate(doc.id);
+                                }}
                                 disabled={deleteDocumentMutation.isPending}
                                 className="text-red-600 hover:text-red-700 disabled:opacity-50"
+                                data-testid="delete-document"
+                                data-document-id={doc.id}
+                                title="Delete document"
                               >
                                 {deleteDocumentMutation.isPending ? (
                                   <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-red-600"></div>
