@@ -1642,6 +1642,61 @@ export const createAppRouter = () => {
     }
   });
 
+  // POST version for frontend compatibility
+  router.post('/documents.delete', async (req, res) => {
+    try {
+      console.log('🗑️ Documents delete POST request received:', req.body);
+      const ctx = await createContext(req, res);
+      const user = requireRole('staff')(ctx);
+      
+      const inputSchema = z.object({
+        id: z.string().uuid(),
+      });
+      
+      const input = inputSchema.parse(req.body?.input || {});
+      console.log('🔍 Parsed delete input:', input);
+      
+      // Verify document exists and user has access
+      const document = await storage.getDocument(input.id);
+      if (!document) {
+        console.log('❌ Document not found:', input.id);
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Document not found' });
+      }
+      console.log('📄 Found document:', document);
+      
+      // Verify lead access
+      const lead = await storage.getLead(document.leadId);
+      if (!lead) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Associated lead not found' });
+      }
+      
+      // Check division access
+      if (lead.divisionId) {
+        const division = await storage.getDivision(lead.divisionId);
+        if (division) {
+          const scopedDivisionId = await getDivisionScope(user, division.key);
+          if (scopedDivisionId !== division.id) {
+            throw new TRPCError({ code: 'FORBIDDEN', message: 'Access denied to this division' });
+          }
+        }
+      }
+      
+      console.log('🗑️ Attempting to delete document:', input.id);
+      await storage.deleteDocument(input.id);
+      console.log('✅ Document deleted successfully:', input.id);
+      
+      res.json({ result: superjson.serialize({ success: true }) });
+    } catch (error) {
+      console.error('❌ Error in documents.delete POST:', error);
+      if (error instanceof TRPCError) {
+        res.status(error.statusCode).json({ error: { message: error.message, code: error.code } });
+      } else {
+        res.status(500).json({ error: { message: 'Internal server error' } });
+      }
+    }
+  });
+
+  // DELETE version (keeping for completeness)
   router.delete('/documents.delete', async (req, res) => {
     try {
       const ctx = await createContext(req, res);

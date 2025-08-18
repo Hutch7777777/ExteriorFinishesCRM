@@ -84,6 +84,9 @@ The system features a React-based frontend with TypeScript, a Node.js Express ba
 - ✅ Added /login route alias for /signin to improve user experience
 - ✅ Implemented loading states and error messages for better user feedback
 - ✅ Enhanced API error handling with proper 401/403 authentication failure responses
+- ✅ Fixed Kanban pipeline "leads.reduce is not a function" error with Array.isArray() checks
+- ✅ Resolved document deletion API mismatch (frontend POST vs backend DELETE) by adding POST endpoint
+- ✅ Enhanced document deletion with comprehensive server-side logging and proper error handling
 
 ### UI/UX and Branding Updates (August 2025)
 - ✅ Implemented collapsible sidebar with smooth animations and toggle functionality
