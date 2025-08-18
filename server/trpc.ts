@@ -13,9 +13,12 @@ export interface TRPCContext {
 
 // Create context function - extracts user from JWT if present
 export const createContext = async (req: Request, res: Response): Promise<TRPCContext> => {
+  console.log('🍪 All cookies:', JSON.stringify(req.cookies, null, 2));
   const token = req.cookies?.access_token;
+  console.log('🔑 Access token from cookies:', token ? 'Found' : 'Not found');
   
   if (!token) {
+    console.log('❌ No access token found in cookies');
     return { user: null, req, res };
   }
 
