@@ -31,10 +31,17 @@ const landingRoute = createRoute({
   component: Landing
 })
 
-// Sign in route
+// Sign in route (also available as /login for convenience)
 const signInRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/signin',
+  component: SignIn
+})
+
+// Additional login route
+const loginRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/login',
   component: SignIn
 })
 
@@ -186,6 +193,7 @@ const notFoundRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   landingRoute,
   signInRoute,
+  loginRoute,
   signUpRoute,
   indexRoute,
   shellRoute,

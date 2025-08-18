@@ -162,19 +162,46 @@ export default function LeadManagement() {
   const navigate = useNavigate()
   const division = (params as any).division || 'mfnc'
   const [activeTab, setActiveTab] = useState('pipeline')
-  const [leads, setLeads] = useState(mockLeads)
+  // Check authentication status
+  const { data: user, isLoading: userLoading, error: userError } = useQuery({
+    queryKey: ['/api/trpc/auth.me'],
+    queryFn: () => apiRequest('GET', '/api/trpc/auth.me'),
+    retry: false,
+    staleTime: 5 * 60 * 1000,
+  })
+
+  // Fetch leads for the current division
+  const { data: leadsData = [], isLoading: leadsLoading, error: leadsError } = useQuery({
+    queryKey: ['/api/trpc/leads.list', division],
+    queryFn: () => apiRequest('GET', `/api/trpc/leads.list?divisionKey=${division}`),
+    enabled: !!user, // Only fetch if user is authenticated
+    staleTime: 5 * 60 * 1000,
+    select: (data: any) => data?.result?.json || []
+  })
+
+  // Use real leads data from API, fallback to mock data for development
+  const [localLeads, setLocalLeads] = useState(mockLeads)
+  const realLeads = leadsData || []
+  const leads = realLeads.length > 0 ? realLeads : localLeads
 
   // Function to handle adding new leads to the pipeline
   const handleLeadAdded = (newLead: any) => {
-    setLeads(prevLeads => [newLead, ...prevLeads])
+    if (realLeads.length > 0) {
+      // If using real data, the query will refetch automatically
+      // We could also optimistically update the cache here
+    } else {
+      // If using mock data, update local state
+      setLocalLeads(prevLeads => [newLead, ...prevLeads])
+    }
   }
 
   // Fetch proposals for the current division
   const { data: proposals = [], isLoading: proposalsLoading } = useQuery({
     queryKey: ['proposals', division],
     queryFn: () => apiRequest('GET', `/api/trpc/proposals.list?divisionKey=${division}`),
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    select: (data: any) => data || []
+    enabled: !!user, // Only fetch if user is authenticated
+    staleTime: 5 * 60 * 1000,
+    select: (data: any) => data?.result?.json || []
   })
 
   // Summary stats
@@ -188,6 +215,43 @@ export default function LeadManagement() {
     proposalValue: proposalsArray.reduce((sum: number, prop: any) => sum + (prop.baseCostCents / 100), 0)
   }
 
+  // Show authentication required message if user is not logged in
+  if (userError && !user && !userLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
+            <XCircle className="w-8 h-8 text-red-600" />
+          </div>
+          <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-50 mb-2">
+            Authentication Required
+          </h2>
+          <p className="text-slate-600 dark:text-slate-400 mb-4">
+            Please log in to access the lead management system.
+          </p>
+          <Button 
+            onClick={() => window.location.href = '/login'}
+            className="bg-gradient-to-r from-[#4A6FA5] to-[#2C3E50] hover:from-[#2C3E50] hover:to-[#1A252F] text-white"
+          >
+            Go to Login
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  // Show loading state while checking authentication
+  if (userLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-slate-600 dark:text-slate-400">Checking authentication...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6 w-full max-w-full overflow-x-hidden">
       {/* Header */}
@@ -198,6 +262,11 @@ export default function LeadManagement() {
           </h1>
           <p className="text-slate-600 dark:text-slate-400 mt-1">
             Manage your sales pipeline, proposals, and contracts for {division.toUpperCase()} division
+            {leadsError && (
+              <span className="block text-red-600 text-sm mt-1">
+                Error loading leads: {leadsError.message || 'Failed to fetch leads'}
+              </span>
+            )}
           </p>
         </div>
         <div className="flex gap-3">
