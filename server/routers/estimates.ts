@@ -118,7 +118,9 @@ export const addEstimatesRoutes = (router: Router) => {
         res.status(error.statusCode).json({ error: { message: error.message, code: error.code } });
       } else {
         console.error('❌ Estimates create error:', error);
+        console.error('❌ Error message:', error instanceof Error ? error.message : 'Unknown error');
         console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack available');
+        console.error('❌ Full error object:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
         res.status(500).json({ error: { message: 'Internal server error', details: error instanceof Error ? error.message : String(error) } });
       }
     }
