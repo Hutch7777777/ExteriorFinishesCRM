@@ -97,8 +97,14 @@ export const addEstimatesRoutes = (router: Router) => {
       console.log('🔍 Prepared estimate data:', JSON.stringify(estimateData, null, 2));
 
       // Validate input with schema
+      try {
+        const validatedInput = insertEstimateSchema.parse(estimateData);
+        console.log('✅ Validated estimate input:', JSON.stringify(validatedInput, null, 2));
+      } catch (validationError) {
+        console.error('🚨 Validation error details:', validationError);
+        throw validationError;
+      }
       const validatedInput = insertEstimateSchema.parse(estimateData);
-      console.log('✅ Validated estimate input:', JSON.stringify(validatedInput, null, 2));
 
       const newEstimate = await storage.createEstimate(validatedInput);
       console.log('🎉 Created estimate:', JSON.stringify(newEstimate, null, 2));
