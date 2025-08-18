@@ -64,27 +64,35 @@ export const addEstimatesRoutes = (router: Router) => {
       const user = requireAuthed(ctx);
       
       const input = req.body.input;
+      console.log('📝 Received estimate create input:', JSON.stringify(input, null, 2));
+      
       if (!input) {
         return res.status(400).json({ error: { message: 'Input is required' } });
       }
 
-      // Validate input with schema
-      const validatedInput = insertEstimateSchema.parse(input);
-      
       // Set estimatedBy to current user if not provided
       const estimateData = {
-        ...validatedInput,
-        estimatedBy: validatedInput.estimatedBy || user.id,
+        ...input,
+        estimatedBy: input.estimatedBy || user.id,
       };
 
-      const newEstimate = await storage.createEstimate(estimateData);
+      console.log('🔍 Prepared estimate data:', JSON.stringify(estimateData, null, 2));
+
+      // Validate input with schema
+      const validatedInput = insertEstimateSchema.parse(estimateData);
+      console.log('✅ Validated estimate input:', JSON.stringify(validatedInput, null, 2));
+
+      const newEstimate = await storage.createEstimate(validatedInput);
+      console.log('🎉 Created estimate:', JSON.stringify(newEstimate, null, 2));
+      
       res.json({ result: superjson.serialize(newEstimate) });
     } catch (error) {
       if (error instanceof TRPCError) {
+        console.error('❌ TRPCError in estimates.create:', error);
         res.status(error.statusCode).json({ error: { message: error.message, code: error.code } });
       } else {
-        console.error('Estimates create error:', error);
-        res.status(500).json({ error: { message: 'Internal server error' } });
+        console.error('❌ Estimates create error:', error);
+        res.status(500).json({ error: { message: 'Internal server error', details: error.message } });
       }
     }
   });
