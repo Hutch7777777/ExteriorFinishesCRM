@@ -138,20 +138,29 @@ export default function LeadDetail() {
       
       // Snapshot current data
       const previousData = queryClient.getQueryData(['/api/trpc/documents.getByLeadId', leadId])
-      console.log('📸 SNAPSHOT DATA:', previousData)
+      console.log('📸 SNAPSHOT DATA:', previousData, 'Type:', Array.isArray(previousData))
       
-      // Optimistically update cache
+      // Optimistically update cache - handle array directly
       queryClient.setQueryData(['/api/trpc/documents.getByLeadId', leadId], (old: any) => {
-        if (!old) return []
-        const filtered = old.filter((doc: any) => doc.id !== documentId)
-        console.log('✂️ OPTIMISTIC FILTERED:', filtered)
+        console.log('🔍 OLD DATA:', old, 'Type:', Array.isArray(old))
+        if (!old || !Array.isArray(old)) {
+          console.log('⚠️ Old data is not an array, returning empty array')
+          return []
+        }
+        const filtered = old.filter((doc: any) => {
+          console.log('🔍 Comparing doc.id:', doc.id, 'with documentId:', documentId)
+          return doc.id !== documentId
+        })
+        console.log('✂️ OPTIMISTIC FILTERED:', filtered, 'Original length:', old.length, 'Filtered length:', filtered.length)
         return filtered
       })
       
       return { previousData }
     },
     onSuccess: (data, documentId) => {
-      console.log('✅ DELETE SUCCESS:', data, documentId)
+      console.log('✅ DELETE SUCCESS:', data, 'Deleted document ID:', documentId)
+      // Invalidate and refetch to ensure the UI is in sync
+      queryClient.invalidateQueries({ queryKey: ['/api/trpc/documents.getByLeadId', leadId] })
     },
     onError: (error, documentId, context) => {
       console.error('❌ DELETE ERROR:', error)
@@ -163,6 +172,7 @@ export default function LeadDetail() {
       }
     },
     onSettled: () => {
+      console.log('🔄 DELETE SETTLED - Invalidating queries to ensure sync')
       // Always refetch to ensure sync
       queryClient.invalidateQueries({ queryKey: ['/api/trpc/documents.getByLeadId', leadId] })
     }
