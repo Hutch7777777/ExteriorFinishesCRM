@@ -92,6 +92,14 @@ export interface IStorage {
   createJob(job: InsertJob): Promise<Job>;
   updateJob(id: string, job: Partial<InsertJob>): Promise<Job>;
   deleteJob(id: string): Promise<void>;
+
+  // Estimate operations
+  getEstimates(leadId?: string, jobId?: string): Promise<Estimate[]>;
+  getEstimate(id: string): Promise<Estimate | undefined>;
+  getEstimatesByLeadId(leadId: string): Promise<Estimate[]>;
+  createEstimate(estimate: InsertEstimate): Promise<Estimate>;
+  updateEstimate(id: string, estimate: Partial<InsertEstimate>): Promise<Estimate>;
+  deleteEstimate(id: string): Promise<void>;
   getRecentJobs(limit?: number): Promise<JobWithRelations[]>;
 
   // Estimate operations
@@ -481,48 +489,50 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Estimate operations
-  async getEstimates(jobId?: string): Promise<EstimateWithRelations[]> {
-    const query = db
-      .select()
-      .from(estimates)
-      .leftJoin(jobs, eq(estimates.jobId, jobs.id))
-      .orderBy(desc(estimates.createdAt));
-
+  async getEstimates(leadId?: string, jobId?: string): Promise<Estimate[]> {
+    const conditions = [];
+    
+    if (leadId) {
+      conditions.push(eq(estimates.leadId, leadId));
+    }
+    
     if (jobId) {
-      query.where(eq(estimates.jobId, jobId));
+      conditions.push(eq(estimates.jobId, jobId));
     }
 
-    const results = await query;
-    return results.map(row => ({
-      ...row.estimates,
-      job: row.jobs || undefined,
-    }));
+    return await db.select().from(estimates)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(estimates.createdAt));
   }
 
-  async getEstimate(id: string): Promise<EstimateWithRelations | undefined> {
-    const [result] = await db
-      .select()
-      .from(estimates)
-      .leftJoin(jobs, eq(estimates.jobId, jobs.id))
+  async getEstimate(id: string): Promise<Estimate | undefined> {
+    const [estimate] = await db.select().from(estimates)
       .where(eq(estimates.id, id));
+    
+    return estimate;
+  }
 
-    if (!result) return undefined;
-
-    return {
-      ...result.estimates,
-      job: result.jobs || undefined,
-    };
+  async getEstimatesByLeadId(leadId: string): Promise<Estimate[]> {
+    return await db.select().from(estimates)
+      .where(eq(estimates.leadId, leadId))
+      .orderBy(desc(estimates.createdAt));
   }
 
   async createEstimate(estimate: InsertEstimate): Promise<Estimate> {
-    const [newEstimate] = await db.insert(estimates).values(estimate).returning();
+    const [newEstimate] = await db.insert(estimates).values({
+      ...estimate,
+      updatedAt: new Date()
+    }).returning();
     return newEstimate;
   }
 
   async updateEstimate(id: string, estimate: Partial<InsertEstimate>): Promise<Estimate> {
     const [updatedEstimate] = await db
       .update(estimates)
-      .set(estimate)
+      .set({
+        ...estimate,
+        updatedAt: new Date()
+      })
       .where(eq(estimates.id, id))
       .returning();
     return updatedEstimate;

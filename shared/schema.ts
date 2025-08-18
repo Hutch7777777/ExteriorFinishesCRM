@@ -89,19 +89,6 @@ export const jobs = pgTable("jobs", {
   index("idx_jobs_status").on(table.status),
 ]);
 
-// Estimates table
-export const estimates = pgTable("estimates", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  jobId: uuid("job_id").notNull().references(() => jobs.id),
-  status: estimateStatusEnum("status").notNull().default('draft'),
-  totalCents: integer("total_cents").notNull().default(0),
-  linesJson: jsonb("lines_json"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-}, (table) => [
-  index("idx_estimates_job_id").on(table.jobId),
-  index("idx_estimates_status").on(table.status),
-]);
-
 // Leads table - for sales pipeline management
 export const leads = pgTable("leads", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -128,6 +115,32 @@ export const leads = pgTable("leads", {
   index("idx_leads_assigned_to").on(table.assignedTo),
   index("idx_leads_created_by").on(table.createdBy),
   index("idx_leads_created_at").on(table.createdAt),
+]);
+
+// Estimates table - now properly placed after leads table
+export const estimates = pgTable("estimates", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  leadId: uuid("lead_id").references(() => leads.id), // Reference to leads
+  jobId: uuid("job_id").references(() => jobs.id), // Made optional
+  title: varchar("title", { length: 200 }).notNull(),
+  description: text("description"),
+  status: estimateStatusEnum("status").notNull().default('draft'),
+  totalCents: integer("total_cents").notNull().default(0),
+  laborHours: numeric("labor_hours").default("0"),
+  materialCosts: integer("material_costs_cents").default(0),
+  equipmentCosts: integer("equipment_costs_cents").default(0),
+  overheadPercentage: numeric("overhead_percentage").default("15"),
+  profitMarginPercentage: numeric("profit_margin_percentage").default("20"),
+  linesJson: jsonb("lines_json"), // Detailed line items
+  notes: text("notes"),
+  estimatedBy: uuid("estimated_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_estimates_lead_id").on(table.leadId),
+  index("idx_estimates_job_id").on(table.jobId),
+  index("idx_estimates_status").on(table.status),
+  index("idx_estimates_estimated_by").on(table.estimatedBy),
 ]);
 
 // Contacts table
@@ -358,6 +371,7 @@ export const leadRelations = relations(leads, ({ one, many }) => ({
     relationName: 'assignedTo',
   }),
   documents: many(documents),
+  estimates: many(estimates),
 }));
 
 export const documentRelations = relations(documents, ({ one }) => ({
@@ -383,9 +397,17 @@ export const contactRelations = relations(contacts, ({ one }) => ({
 }));
 
 export const estimateRelations = relations(estimates, ({ one }) => ({
+  lead: one(leads, {
+    fields: [estimates.leadId],
+    references: [leads.id],
+  }),
   job: one(jobs, {
     fields: [estimates.jobId],
     references: [jobs.id],
+  }),
+  estimatedByUser: one(users, {
+    fields: [estimates.estimatedBy],
+    references: [users.id],
   }),
 }));
 
@@ -492,7 +514,8 @@ export const insertJobSchema = createInsertSchema(jobs).omit({
 
 export const insertEstimateSchema = createInsertSchema(estimates).omit({ 
   id: true, 
-  createdAt: true 
+  createdAt: true,
+  updatedAt: true
 });
 
 export const insertLeadSchema = createInsertSchema(leads).omit({ 

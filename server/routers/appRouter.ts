@@ -12,6 +12,7 @@ import {
   insertLeadSchema,
   insertContactSchema
 } from '@shared/schema';
+import { addEstimatesRoutes } from './estimates';
 
 // Custom tRPC-like router implementation
 export const createAppRouter = () => {
@@ -1741,6 +1742,9 @@ export const createAppRouter = () => {
       }
     }
   });
+
+  // Add estimates routes
+  addEstimatesRoutes(router);
 
   return router;
 };

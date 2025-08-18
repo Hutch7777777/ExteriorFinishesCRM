@@ -34,6 +34,7 @@ import {
   Eye
 } from 'lucide-react'
 import { EnhancedObjectUploader } from '@/components/EnhancedObjectUploader'
+import { NewEstimateDialog } from '@/components/NewEstimateDialog'
 
 export default function LeadDetail() {
   const params = useParams({ strict: false })
@@ -45,6 +46,9 @@ export default function LeadDetail() {
   // Editing state
   const [editingField, setEditingField] = useState<string | null>(null)
   const [editValues, setEditValues] = useState<Record<string, any>>({})
+  
+  // Estimate dialog state
+  const [showEstimateDialog, setShowEstimateDialog] = useState(false)
 
   // Update lead mutation
   const updateLeadMutation = useMutation({
@@ -351,10 +355,10 @@ export default function LeadDetail() {
           <Button 
             variant="outline"
             className="flex items-center gap-2"
-            onClick={() => window.location.href = `/${division}/estimates`}
+            onClick={() => setShowEstimateDialog(true)}
           >
             <DollarSign className="w-4 h-4" />
-            Build Estimate
+            New Estimate
           </Button>
           <Button className="flex items-center gap-2">
             <Edit className="w-4 h-4" />
@@ -1026,6 +1030,14 @@ export default function LeadDetail() {
           </div>
         </div>
       </div>
+
+      {/* New Estimate Dialog */}
+      <NewEstimateDialog
+        open={showEstimateDialog}
+        onOpenChange={setShowEstimateDialog}
+        leadId={leadId}
+        leadName={lead.name}
+      />
     </div>
   )
 }
