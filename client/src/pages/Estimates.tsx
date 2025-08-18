@@ -79,9 +79,9 @@ interface TakeoffData {
 }
 
 const createEstimateSchema = z.object({
-  jobId: z.string().min(1, 'Job is required'),
-  status: z.enum(['draft', 'sent', 'approved', 'rejected']),
-  totalCents: z.number().min(0, 'Total must be positive'),
+  leadId: z.string().min(1, 'Lead is required'),
+  title: z.string().min(1, 'Title is required'),
+  description: z.string().optional(),
 })
 
 type CreateEstimateData = z.infer<typeof createEstimateSchema>
@@ -249,42 +249,69 @@ export default function Estimates() {
   const form = useForm<CreateEstimateData>({
     resolver: zodResolver(createEstimateSchema),
     defaultValues: {
-      jobId: '',
-      status: 'draft',
-      totalCents: 0,
+      leadId: '',
+      title: '',
+      description: '',
     },
   })
 
-  // Mock estimates data
-  const estimates: Estimate[] = [
-    {
-      id: '1',
-      jobId: 'job-1',
-      status: 'draft',
-      totalCents: 4784218,
-      linesJson: takeoffData,
-      createdAt: '2025-01-11T10:00:00Z',
-      job: {
-        id: 'job-1',
-        customer: {
-          id: 'cust-1',
-          name: 'Robert Johnson'
-        }
-      }
-    }
-  ]
+  // Fetch real estimates data
+  const { data: estimates = [], isLoading: estimatesLoading } = useQuery({
+    queryKey: ['/api/trpc/estimates.list'],
+  })
 
-  const jobs: Job[] = [
-    {
-      id: 'job-1',
-      customerId: 'cust-1',
-      status: 'active',
-      customer: {
-        id: 'cust-1',
-        name: 'Robert Johnson'
+  // Fetch leads for creating new estimates
+  const { data: leads = [], isLoading: leadsLoading } = useQuery({
+    queryKey: ['/api/trpc/leads.list'],
+  })
+
+  const createEstimateMutation = useMutation({
+    mutationFn: async (data: { leadId: string; title: string; description?: string }) => {
+      const res = await fetch('/api/trpc/estimates.create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          input: {
+            leadId: data.leadId,
+            title: data.title,
+            description: data.description || '',
+            status: 'draft',
+            totalCents: 0,
+            laborHours: '0',
+            materialCosts: 0,
+            equipmentCosts: 0,
+            overheadPercentage: '15',
+            profitMarginPercentage: '20',
+            notes: '',
+          }
+        })
+      })
+
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error?.message || 'Failed to create estimate')
       }
-    }
-  ]
+
+      return res.json()
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Success',
+        description: 'Estimate created successfully',
+      })
+      queryClient.invalidateQueries({ queryKey: ['/api/trpc/estimates.list'] })
+      setIsCreateDialogOpen(false)
+      form.reset()
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      })
+    },
+  })
 
   const addMaterialLine = () => {
     const newLine: MaterialLine = {
@@ -1040,7 +1067,10 @@ export default function Estimates() {
               <SelectItem value="rejected">Rejected</SelectItem>
             </SelectContent>
           </Select>
-          <Button className="bg-gradient-to-r from-[#4A6FA5] to-[#2C3E50] hover:from-[#3A5A95] hover:to-[#1C2E40]">
+          <Button 
+            className="bg-gradient-to-r from-[#4A6FA5] to-[#2C3E50] hover:from-[#3A5A95] hover:to-[#1C2E40]"
+            onClick={() => setIsCreateDialogOpen(true)}
+          >
             <Plus className="w-4 h-4 mr-2" />
             New Estimate
           </Button>
@@ -1048,58 +1078,177 @@ export default function Estimates() {
       </div>
 
       {/* Estimates List */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-        {estimates.map((estimate) => (
-          <Card key={estimate.id} className="cursor-pointer hover:shadow-lg transition-shadow" 
-                onClick={() => setActiveEstimate(estimate.id)}>
-            <CardHeader>
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle className="text-lg">{estimate.job?.customer?.name}</CardTitle>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                    Estimate #{estimate.id.slice(-6)}
-                  </p>
-                </div>
-                <Badge variant={getStatusVariant(estimate.status) as any}>
-                  {statusOptions.find(opt => opt.value === estimate.status)?.label || estimate.status}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-slate-600 dark:text-slate-400">Total Amount:</span>
-                  <span className="font-semibold text-[#4A6FA5]">
-                    {formatCurrency(estimate.totalCents / 100)}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-slate-600 dark:text-slate-400">Created:</span>
-                  <span className="text-sm">{new Date(estimate.createdAt).toLocaleDateString()}</span>
-                </div>
-                {estimate.linesJson?.projectInfo && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-slate-600 dark:text-slate-400">Square Feet:</span>
-                    <span className="text-sm">{estimate.linesJson.projectInfo.sqft?.toLocaleString()}</span>
+      {estimatesLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <p className="ml-3 text-slate-600">Loading estimates...</p>
+        </div>
+      ) : estimates.length > 0 ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+          {estimates.map((estimate: any) => (
+            <Card key={estimate.id} className="cursor-pointer hover:shadow-lg transition-shadow" 
+                  onClick={() => setActiveEstimate(estimate.id)}>
+              <CardHeader>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <CardTitle className="text-lg">{estimate.lead?.name || 'Unknown Lead'}</CardTitle>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                      {estimate.title}
+                    </p>
                   </div>
-                )}
-              </div>
-              <div className="mt-4 pt-4 border-t">
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm">
-                    <Edit className="w-4 h-4 mr-1" />
-                    Edit
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    <Download className="w-4 h-4 mr-1" />
-                    Export
-                  </Button>
+                  <Badge variant={getStatusVariant(estimate.status) as any}>
+                    {statusOptions.find(opt => opt.value === estimate.status)?.label || estimate.status}
+                  </Badge>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-slate-600 dark:text-slate-400">Total Amount:</span>
+                    <span className="font-semibold text-[#4A6FA5]">
+                      {formatCurrency(estimate.totalCents / 100)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-slate-600 dark:text-slate-400">Created:</span>
+                    <span className="text-sm">{new Date(estimate.createdAt).toLocaleDateString()}</span>
+                  </div>
+                  {estimate.laborHours && estimate.laborHours !== '0' && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-slate-600 dark:text-slate-400">Labor Hours:</span>
+                      <span className="text-sm">{estimate.laborHours}</span>
+                    </div>
+                  )}
+                </div>
+                <div className="mt-4 pt-4 border-t">
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm">
+                      <Edit className="w-4 h-4 mr-1" />
+                      Edit
+                    </Button>
+                    <Button variant="outline" size="sm">
+                      <Download className="w-4 h-4 mr-1" />
+                      Export
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-12 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-lg">
+          <Calculator className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+          <p className="text-slate-500 text-lg mb-2">No estimates found</p>
+          <p className="text-slate-400 text-sm mb-4">Create your first estimate to get started</p>
+          <Button 
+            onClick={() => setIsCreateDialogOpen(true)}
+            className="bg-gradient-to-r from-[#4A6FA5] to-[#2C3E50] hover:from-[#3A5A95] hover:to-[#1C2E40]"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Create First Estimate
+          </Button>
+        </div>
+      )}
+
+      {/* Create Estimate Dialog */}
+      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create New Estimate</DialogTitle>
+            <DialogDescription>
+              Create an estimate for an existing lead
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={form.handleSubmit((data) => createEstimateMutation.mutate(data))} className="space-y-4">
+            <div>
+              <Label htmlFor="leadId">Lead</Label>
+              <Select 
+                value={form.watch('leadId')} 
+                onValueChange={(value) => {
+                  form.setValue('leadId', value)
+                  const selectedLead = leads.find((lead: any) => lead.id === value)
+                  if (selectedLead) {
+                    form.setValue('title', `Estimate for ${selectedLead.name}`)
+                  }
+                }}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select a lead" />
+                </SelectTrigger>
+                <SelectContent>
+                  {leadsLoading ? (
+                    <SelectItem value="loading" disabled>Loading leads...</SelectItem>
+                  ) : leads.length > 0 ? (
+                    leads.map((lead: any) => (
+                      <SelectItem key={lead.id} value={lead.id}>
+                        {lead.name} - {lead.projectType || 'No project type'}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="no-leads" disabled>No leads available</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+              {form.formState.errors.leadId && (
+                <p className="text-sm text-red-600 mt-1">{form.formState.errors.leadId.message}</p>
+              )}
+            </div>
+
+            <div>
+              <Label htmlFor="title">Estimate Title</Label>
+              <Input
+                id="title"
+                {...form.register('title')}
+                placeholder="Enter estimate title"
+                className="mt-1"
+              />
+              {form.formState.errors.title && (
+                <p className="text-sm text-red-600 mt-1">{form.formState.errors.title.message}</p>
+              )}
+            </div>
+
+            <div>
+              <Label htmlFor="description">Description (Optional)</Label>
+              <Textarea
+                id="description"
+                {...form.register('description')}
+                placeholder="Brief description of the estimate"
+                className="mt-1"
+                rows={3}
+              />
+            </div>
+
+            <DialogFooter>
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => setIsCreateDialogOpen(false)}
+                disabled={createEstimateMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button 
+                type="submit"
+                disabled={createEstimateMutation.isPending}
+                className="bg-gradient-to-r from-[#4A6FA5] to-[#2C3E50] hover:from-[#3A5A95] hover:to-[#1C2E40]"
+              >
+                {createEstimateMutation.isPending ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Estimate
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
