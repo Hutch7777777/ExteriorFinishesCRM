@@ -15,18 +15,24 @@ import {
   User, 
   Shield, 
   Bell, 
-  Palette, 
+  Users, 
   Building2, 
   Database, 
   FileText, 
-  Users, 
   Monitor,
   Moon,
   Sun,
   Check,
   X,
   AlertTriangle,
-  Settings as SettingsIcon
+  Settings as SettingsIcon,
+  UserPlus,
+  Edit3,
+  Trash2,
+  Mail,
+  Phone,
+  Calendar,
+  Badge as BadgeIcon
 } from 'lucide-react';
 
 export default function Settings() {
@@ -39,6 +45,52 @@ export default function Settings() {
     projectAlerts: true,
     systemMaintenance: false,
   });
+
+  // Mock team data - in real app this would come from API
+  const [teamMembers] = useState([
+    {
+      id: 1,
+      name: "John Smith",
+      email: "john@exteriorfinishes.com",
+      role: "admin",
+      division: "All Divisions",
+      status: "active",
+      lastLogin: "2 hours ago",
+      joinedDate: "Jan 15, 2024"
+    },
+    {
+      id: 2,
+      name: "Sarah Johnson",
+      email: "sarah@exteriorfinishes.com", 
+      role: "staff",
+      division: "MFNC",
+      status: "active",
+      lastLogin: "1 day ago",
+      joinedDate: "Mar 22, 2024"
+    },
+    {
+      id: 3,
+      name: "Mike Chen",
+      email: "mike@exteriorfinishes.com",
+      role: "staff", 
+      division: "R&R",
+      status: "active",
+      lastLogin: "3 days ago",
+      joinedDate: "Feb 8, 2024"
+    },
+    {
+      id: 4,
+      name: "Lisa Rodriguez",
+      email: "lisa@exteriorfinishes.com",
+      role: "staff",
+      division: "SFNC", 
+      status: "inactive",
+      lastLogin: "2 weeks ago",
+      joinedDate: "Dec 5, 2023"
+    }
+  ]);
+
+  const [showAddUser, setShowAddUser] = useState(false);
 
   const handleSave = (category: string) => {
     toast({
@@ -70,7 +122,7 @@ export default function Settings() {
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
-          <TabsTrigger value="appearance">Appearance</TabsTrigger>
+          <TabsTrigger value="team">Team</TabsTrigger>
           <TabsTrigger value="company">Company</TabsTrigger>
           <TabsTrigger value="system">System</TabsTrigger>
         </TabsList>
@@ -255,65 +307,144 @@ export default function Settings() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="appearance" className="space-y-6">
+        <TabsContent value="team" className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Palette className="w-5 h-5" />
-                Appearance & Theme
+                <Users className="w-5 h-5" />
+                Team Management
               </CardTitle>
               <CardDescription>
-                Customize how your interface looks and feels.
+                Manage team members, roles, and permissions within your CRM.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-4">
-                <div>
-                  <Label className="text-base">Theme Preference</Label>
-                  <p className="text-sm text-muted-foreground mb-3">Choose your preferred color scheme</p>
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="flex flex-col items-center gap-2 p-3 border rounded-lg cursor-pointer hover:bg-muted">
-                      <Sun className="w-6 h-6" />
-                      <span className="text-sm">Light</span>
-                    </div>
-                    <div className="flex flex-col items-center gap-2 p-3 border rounded-lg cursor-pointer hover:bg-muted">
-                      <Moon className="w-6 h-6" />
-                      <span className="text-sm">Dark</span>
-                    </div>
-                    <div className="flex flex-col items-center gap-2 p-3 border rounded-lg cursor-pointer hover:bg-muted">
-                      <Monitor className="w-6 h-6" />
-                      <span className="text-sm">System</span>
-                    </div>
+            <CardContent className="space-y-6">
+              {/* Team Overview Stats */}
+              <div className="grid grid-cols-4 gap-4">
+                <div className="bg-blue-50 dark:bg-blue-950/30 p-4 rounded-lg">
+                  <div className="text-2xl font-bold text-blue-600">{teamMembers.length}</div>
+                  <div className="text-sm text-blue-600/70">Total Members</div>
+                </div>
+                <div className="bg-green-50 dark:bg-green-950/30 p-4 rounded-lg">
+                  <div className="text-2xl font-bold text-green-600">
+                    {teamMembers.filter(m => m.status === 'active').length}
                   </div>
+                  <div className="text-sm text-green-600/70">Active</div>
                 </div>
-                <Separator />
-                <div className="space-y-2">
-                  <Label>Sidebar Position</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Left (Default)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="left">Left</SelectItem>
-                      <SelectItem value="right">Right</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="bg-orange-50 dark:bg-orange-950/30 p-4 rounded-lg">
+                  <div className="text-2xl font-bold text-orange-600">
+                    {teamMembers.filter(m => m.role === 'admin').length}
+                  </div>
+                  <div className="text-sm text-orange-600/70">Admins</div>
                 </div>
-                <div className="space-y-2">
-                  <Label>Density</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Comfortable (Default)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="compact">Compact</SelectItem>
-                      <SelectItem value="comfortable">Comfortable</SelectItem>
-                      <SelectItem value="spacious">Spacious</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="bg-purple-50 dark:bg-purple-950/30 p-4 rounded-lg">
+                  <div className="text-2xl font-bold text-purple-600">
+                    {teamMembers.filter(m => m.role === 'staff').length}
+                  </div>
+                  <div className="text-sm text-purple-600/70">Staff</div>
                 </div>
               </div>
-              <Button onClick={() => handleSave('Appearance')}>Save Appearance Settings</Button>
+
+              {/* Add New Team Member Button */}
+              <div className="flex justify-between items-center">
+                <div>
+                  <h4 className="text-lg font-medium">Team Members</h4>
+                  <p className="text-sm text-muted-foreground">Manage user accounts and permissions</p>
+                </div>
+                <Button 
+                  onClick={() => setShowAddUser(true)}
+                  className="flex items-center gap-2"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  Add Team Member
+                </Button>
+              </div>
+
+              {/* Team Members List */}
+              <div className="space-y-4">
+                {teamMembers.map((member) => (
+                  <Card key={member.id} className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-medium">
+                          {member.name.split(' ').map(n => n[0]).join('')}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-3">
+                            <h5 className="font-medium">{member.name}</h5>
+                            <Badge variant={member.role === 'admin' ? 'default' : 'secondary'}>
+                              {member.role}
+                            </Badge>
+                            <Badge variant={member.status === 'active' ? 'outline' : 'destructive'} className={
+                              member.status === 'active' ? 'text-green-600 border-green-600' : ''
+                            }>
+                              {member.status}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                            <span className="flex items-center gap-1">
+                              <Mail className="w-3 h-3" />
+                              {member.email}
+                            </span>
+                            <span>{member.division}</span>
+                            <span className="flex items-center gap-1">
+                              <Calendar className="w-3 h-3" />
+                              Joined {member.joinedDate}
+                            </span>
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            Last login: {member.lastLogin}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button variant="outline" size="sm">
+                          <Edit3 className="w-4 h-4" />
+                        </Button>
+                        <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+
+              {/* Role Permissions Summary */}
+              <Separator />
+              <div className="space-y-4">
+                <h4 className="text-lg font-medium">Role Permissions</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <Card className="p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <BadgeIcon className="w-5 h-5 text-orange-600" />
+                      <h5 className="font-medium">Administrator</h5>
+                    </div>
+                    <ul className="space-y-1 text-sm text-muted-foreground">
+                      <li>• Full system access</li>
+                      <li>• Manage all divisions</li>
+                      <li>• User management</li>
+                      <li>• System settings</li>
+                      <li>• Data export/import</li>
+                    </ul>
+                  </Card>
+                  <Card className="p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <User className="w-5 h-5 text-blue-600" />
+                      <h5 className="font-medium">Staff</h5>
+                    </div>
+                    <ul className="space-y-1 text-sm text-muted-foreground">
+                      <li>• Division-specific access</li>
+                      <li>• Lead management</li>
+                      <li>• Customer records</li>
+                      <li>• Project tracking</li>
+                      <li>• Reports viewing</li>
+                    </ul>
+                  </Card>
+                </div>
+              </div>
+
+              <Button onClick={() => handleSave('Team')}>Save Team Settings</Button>
             </CardContent>
           </Card>
         </TabsContent>
