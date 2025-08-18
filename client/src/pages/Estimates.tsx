@@ -290,7 +290,6 @@ export default function Estimates() {
             overheadPercentage: '15',
             profitMarginPercentage: '20',
             notes: '',
-            estimatedBy: 'placeholder-will-be-set-by-server',
           }
         })
       })

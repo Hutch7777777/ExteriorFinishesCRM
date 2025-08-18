@@ -88,23 +88,24 @@ export const addEstimatesRoutes = (router: Router) => {
         return res.status(400).json({ error: { message: 'Input is required' } });
       }
 
-      // Set estimatedBy to current user if not provided
+      // Set estimatedBy to current user (required field)
       const estimateData = {
         ...input,
-        estimatedBy: input.estimatedBy || user.id,
+        estimatedBy: user.id, // Always use the authenticated user's ID
       };
 
       console.log('🔍 Prepared estimate data:', JSON.stringify(estimateData, null, 2));
 
-      // Validate input with schema
-      try {
-        const validatedInput = insertEstimateSchema.parse(estimateData);
-        console.log('✅ Validated estimate input:', JSON.stringify(validatedInput, null, 2));
-      } catch (validationError) {
-        console.error('🚨 Validation error details:', validationError);
-        throw validationError;
+      // Check if lead exists before creating estimate
+      const existingLead = await storage.getLead(estimateData.leadId);
+      if (!existingLead) {
+        console.error('❌ Lead not found:', estimateData.leadId);
+        return res.status(400).json({ error: { message: 'Selected lead does not exist' } });
       }
+
+      // Validate input with schema
       const validatedInput = insertEstimateSchema.parse(estimateData);
+      console.log('✅ Validated estimate input:', JSON.stringify(validatedInput, null, 2));
 
       const newEstimate = await storage.createEstimate(validatedInput);
       console.log('🎉 Created estimate:', JSON.stringify(newEstimate, null, 2));
