@@ -214,7 +214,7 @@ interface KanbanColumnProps {
 }
 
 function KanbanColumn({ stage, leads, division, onLeadAdded }: KanbanColumnProps) {
-  const stageLeads = leads.filter(lead => lead.status === stage.id)
+  const stageLeads = Array.isArray(leads) ? leads.filter(lead => lead.status === stage.id) : []
   const totalValue = stageLeads.reduce((sum, lead) => sum + (lead.value || 0), 0)
 
   const { setNodeRef, isOver } = useDroppable({
@@ -475,7 +475,7 @@ export default function KanbanBoard({ onLeadAdded }: KanbanBoardProps = {}) {
             <CardContent className="p-4">
               <div className="text-center">
                 <p className="text-2xl font-bold text-green-600">
-                  ${(leads.reduce((sum: number, lead: Lead) => sum + (lead.value || 0), 0) / 100).toLocaleString()}
+                  ${((Array.isArray(leads) ? leads.reduce((sum: number, lead: Lead) => sum + (lead.value || 0), 0) : 0) / 100).toLocaleString()}
                 </p>
                 <p className="text-sm text-slate-600 dark:text-slate-400">Total Pipeline Value</p>
               </div>
@@ -485,7 +485,7 @@ export default function KanbanBoard({ onLeadAdded }: KanbanBoardProps = {}) {
             <CardContent className="p-4">
               <div className="text-center">
                 <p className="text-2xl font-bold text-blue-600">
-                  {leads.filter((lead: Lead) => ['qualified', 'proposal', 'negotiation'].includes(lead.status)).length}
+                  {Array.isArray(leads) ? leads.filter((lead: Lead) => ['qualified', 'proposal', 'negotiation'].includes(lead.status)).length : 0}
                 </p>
                 <p className="text-sm text-slate-600 dark:text-slate-400">Active Opportunities</p>
               </div>
@@ -495,7 +495,7 @@ export default function KanbanBoard({ onLeadAdded }: KanbanBoardProps = {}) {
             <CardContent className="p-4">
               <div className="text-center">
                 <p className="text-2xl font-bold text-emerald-600">
-                  {leads.length > 0 ? Math.round((leads.filter((lead: Lead) => lead.status === 'won').length / leads.length) * 100) : 0}%
+                  {Array.isArray(leads) && leads.length > 0 ? Math.round((leads.filter((lead: Lead) => lead.status === 'won').length / leads.length) * 100) : 0}%
                 </p>
                 <p className="text-sm text-slate-600 dark:text-slate-400">Win Rate</p>
               </div>
