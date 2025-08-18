@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { 
   ArrowLeft, 
@@ -47,7 +49,7 @@ export default function Settings() {
   });
 
   // Mock team data - in real app this would come from API
-  const [teamMembers] = useState([
+  const [teamMembers, setTeamMembers] = useState([
     {
       id: 1,
       name: "John Smith",
@@ -91,6 +93,93 @@ export default function Settings() {
   ]);
 
   const [showAddUser, setShowAddUser] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+  const [newUser, setNewUser] = useState({
+    name: '',
+    email: '',
+    role: 'staff',
+    division: 'MFNC'
+  });
+
+  const handleAddUser = () => {
+    if (!newUser.name || !newUser.email) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const newMember = {
+      id: teamMembers.length + 1,
+      name: newUser.name,
+      email: newUser.email,
+      role: newUser.role,
+      division: newUser.division,
+      status: "active",
+      lastLogin: "Never",
+      joinedDate: new Date().toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric', 
+        year: 'numeric' 
+      })
+    };
+
+    setTeamMembers([...teamMembers, newMember]);
+    setNewUser({ name: '', email: '', role: 'staff', division: 'MFNC' });
+    setShowAddUser(false);
+    
+    toast({
+      title: "Team Member Added",
+      description: `${newUser.name} has been added to the team.`
+    });
+  };
+
+  const handleEditUser = (user) => {
+    setEditingUser(user);
+    setNewUser({
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      division: user.division
+    });
+  };
+
+  const handleUpdateUser = () => {
+    if (!newUser.name || !newUser.email) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setTeamMembers(teamMembers.map(member => 
+      member.id === editingUser.id 
+        ? { ...member, ...newUser }
+        : member
+    ));
+    
+    setEditingUser(null);
+    setNewUser({ name: '', email: '', role: 'staff', division: 'MFNC' });
+    
+    toast({
+      title: "Team Member Updated",
+      description: `${newUser.name}'s information has been updated.`
+    });
+  };
+
+  const handleDeleteUser = (userId) => {
+    const user = teamMembers.find(m => m.id === userId);
+    setTeamMembers(teamMembers.filter(member => member.id !== userId));
+    
+    toast({
+      title: "Team Member Removed",
+      description: `${user?.name} has been removed from the team.`
+    });
+  };
 
   const handleSave = (category: string) => {
     toast({
@@ -351,13 +440,95 @@ export default function Settings() {
                   <h4 className="text-lg font-medium">Team Members</h4>
                   <p className="text-sm text-muted-foreground">Manage user accounts and permissions</p>
                 </div>
-                <Button 
-                  onClick={() => setShowAddUser(true)}
-                  className="flex items-center gap-2"
-                >
-                  <UserPlus className="w-4 h-4" />
-                  Add Team Member
-                </Button>
+                <Dialog open={showAddUser || editingUser} onOpenChange={(open) => {
+                  if (!open) {
+                    setShowAddUser(false);
+                    setEditingUser(null);
+                    setNewUser({ name: '', email: '', role: 'staff', division: 'MFNC' });
+                  }
+                }}>
+                  <DialogTrigger asChild>
+                    <Button 
+                      onClick={() => setShowAddUser(true)}
+                      className="flex items-center gap-2"
+                    >
+                      <UserPlus className="w-4 h-4" />
+                      Add Team Member
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>
+                        {editingUser ? 'Edit Team Member' : 'Add New Team Member'}
+                      </DialogTitle>
+                      <DialogDescription>
+                        {editingUser 
+                          ? 'Update the team member\'s information below.'
+                          : 'Enter the details for the new team member.'
+                        }
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="name">Full Name</Label>
+                        <Input
+                          id="name"
+                          value={newUser.name}
+                          onChange={(e) => setNewUser(prev => ({ ...prev, name: e.target.value }))}
+                          placeholder="Enter full name"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="email">Email Address</Label>
+                        <Input
+                          id="email"
+                          type="email"
+                          value={newUser.email}
+                          onChange={(e) => setNewUser(prev => ({ ...prev, email: e.target.value }))}
+                          placeholder="Enter email address"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="role">Role</Label>
+                        <Select value={newUser.role} onValueChange={(value) => setNewUser(prev => ({ ...prev, role: value }))}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="admin">Administrator</SelectItem>
+                            <SelectItem value="staff">Staff</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="division">Division</Label>
+                        <Select value={newUser.division} onValueChange={(value) => setNewUser(prev => ({ ...prev, division: value }))}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="All Divisions">All Divisions</SelectItem>
+                            <SelectItem value="MFNC">MFNC</SelectItem>
+                            <SelectItem value="SFNC">SFNC</SelectItem>
+                            <SelectItem value="R&R">R&R</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex justify-end gap-3 pt-4">
+                        <Button variant="outline" onClick={() => {
+                          setShowAddUser(false);
+                          setEditingUser(null);
+                          setNewUser({ name: '', email: '', role: 'staff', division: 'MFNC' });
+                        }}>
+                          Cancel
+                        </Button>
+                        <Button onClick={editingUser ? handleUpdateUser : handleAddUser}>
+                          {editingUser ? 'Update Member' : 'Add Member'}
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </div>
 
               {/* Team Members List */}
@@ -398,12 +569,37 @@ export default function Settings() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleEditUser(member)}
+                        >
                           <Edit3 className="w-4 h-4" />
                         </Button>
-                        <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Remove Team Member</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to remove {member.name} from the team? This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction 
+                                onClick={() => handleDeleteUser(member.id)}
+                                className="bg-red-600 hover:bg-red-700"
+                              >
+                                Remove Member
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     </div>
                   </Card>
