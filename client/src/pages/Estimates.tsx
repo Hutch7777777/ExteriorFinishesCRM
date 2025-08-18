@@ -265,9 +265,14 @@ export default function Estimates() {
     queryKey: ['/api/trpc/leads.list'],
   })
 
-  // Type the data properly
-  const typedEstimates = Array.isArray(estimates) ? estimates as any[] : []
-  const typedLeads = Array.isArray(leads) ? leads as any[] : []
+  // Extract data from the TanStack Query response structure
+  const typedEstimates = Array.isArray(estimates?.result?.json) ? estimates.result.json as any[] : []
+  const typedLeads = Array.isArray(leads?.result?.json) ? leads.result.json as any[] : []
+  
+  // Debug the leads data
+  console.log('Raw leads data:', leads)
+  console.log('Extracted leads:', typedLeads)
+  console.log('Is loading leads:', leadsLoading)
 
   const createEstimateMutation = useMutation({
     mutationFn: async (data: { leadId: string; title: string; description?: string }) => {
