@@ -82,6 +82,7 @@ export function NewEstimateDialog({ open, onOpenChange, leadId, leadName }: NewE
         overheadPercentage: overheadPercentage.toString(),
         profitMarginPercentage: profitMarginPercentage.toString(),
         notes: data.notes || '',
+        // The estimatedBy field will be set on the server side from the authenticated user
       }
 
       const res = await fetch('/api/trpc/estimates.create', {
@@ -103,7 +104,9 @@ export function NewEstimateDialog({ open, onOpenChange, leadId, leadName }: NewE
         title: 'Success',
         description: 'Estimate created successfully',
       })
+      // Invalidate both the lead-specific estimates and the general estimates list
       queryClient.invalidateQueries({ queryKey: ['/api/trpc/estimates.getByLeadId', leadId] })
+      queryClient.invalidateQueries({ queryKey: ['/api/trpc/estimates.list'] })
       onOpenChange(false)
       form.reset()
     },

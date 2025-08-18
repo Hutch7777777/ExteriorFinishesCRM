@@ -7,6 +7,24 @@ import superjson from 'superjson';
 import { insertEstimateSchema } from '@shared/schema';
 
 export const addEstimatesRoutes = (router: Router) => {
+  // List all estimates
+  router.get('/estimates.list', async (req, res) => {
+    try {
+      const ctx = await createContext(req, res);
+      requireAuthed(ctx);
+      
+      const estimates = await storage.getEstimates();
+      res.json({ result: superjson.serialize(estimates) });
+    } catch (error) {
+      if (error instanceof TRPCError) {
+        res.status(error.statusCode).json({ error: { message: error.message, code: error.code } });
+      } else {
+        console.error('Estimates list error:', error);
+        res.status(500).json({ error: { message: 'Internal server error' } });
+      }
+    }
+  });
+
   // Get estimates for a lead
   router.post('/estimates.getByLeadId', async (req, res) => {
     try {
@@ -92,7 +110,7 @@ export const addEstimatesRoutes = (router: Router) => {
         res.status(error.statusCode).json({ error: { message: error.message, code: error.code } });
       } else {
         console.error('❌ Estimates create error:', error);
-        res.status(500).json({ error: { message: 'Internal server error', details: error.message } });
+        res.status(500).json({ error: { message: 'Internal server error', details: error instanceof Error ? error.message : String(error) } });
       }
     }
   });
