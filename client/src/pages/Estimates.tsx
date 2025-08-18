@@ -265,6 +265,10 @@ export default function Estimates() {
     queryKey: ['/api/trpc/leads.list'],
   })
 
+  // Type the data properly
+  const typedEstimates = Array.isArray(estimates) ? estimates as any[] : []
+  const typedLeads = Array.isArray(leads) ? leads as any[] : []
+
   const createEstimateMutation = useMutation({
     mutationFn: async (data: { leadId: string; title: string; description?: string }) => {
       const res = await fetch('/api/trpc/estimates.create', {
@@ -1083,9 +1087,9 @@ export default function Estimates() {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
           <p className="ml-3 text-slate-600">Loading estimates...</p>
         </div>
-      ) : estimates.length > 0 ? (
+      ) : typedEstimates.length > 0 ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {estimates.map((estimate: any) => (
+          {typedEstimates.map((estimate: any) => (
             <Card key={estimate.id} className="cursor-pointer hover:shadow-lg transition-shadow" 
                   onClick={() => setActiveEstimate(estimate.id)}>
               <CardHeader>
@@ -1167,7 +1171,7 @@ export default function Estimates() {
                 value={form.watch('leadId')} 
                 onValueChange={(value) => {
                   form.setValue('leadId', value)
-                  const selectedLead = leads.find((lead: any) => lead.id === value)
+                  const selectedLead = typedLeads.find((lead: any) => lead.id === value)
                   if (selectedLead) {
                     form.setValue('title', `Estimate for ${selectedLead.name}`)
                   }
@@ -1179,8 +1183,8 @@ export default function Estimates() {
                 <SelectContent>
                   {leadsLoading ? (
                     <SelectItem value="loading" disabled>Loading leads...</SelectItem>
-                  ) : leads.length > 0 ? (
-                    leads.map((lead: any) => (
+                  ) : typedLeads.length > 0 ? (
+                    typedLeads.map((lead: any) => (
                       <SelectItem key={lead.id} value={lead.id}>
                         {lead.name} - {lead.projectType || 'No project type'}
                       </SelectItem>
