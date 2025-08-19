@@ -545,7 +545,7 @@ Format your response in clear sections with actionable insights.`;
   });
 
   // Plan file management routes
-  app.get('/api/jobs/:jobId/plan-files', authenticateToken, async (req: AuthenticatedRequest, res) => {
+  app.get('/api/jobs/:jobId/plan-files', authenticateToken, async (req: any, res) => {
     try {
       const { jobId } = req.params;
       const userId = req.user!.id;
@@ -564,7 +564,7 @@ Format your response in clear sections with actionable insights.`;
     }
   });
 
-  app.post('/api/plans/upload-url', authenticateToken, async (req: AuthenticatedRequest, res) => {
+  app.post('/api/plans/upload-url', authenticateToken, async (req: any, res) => {
     try {
       const { ObjectStorageService } = await import('./objectStorage.js');
       const objectStorageService = new ObjectStorageService();
@@ -577,7 +577,7 @@ Format your response in clear sections with actionable insights.`;
     }
   });
 
-  app.post('/api/plans/files', authenticateToken, async (req: AuthenticatedRequest, res) => {
+  app.post('/api/plans/files', authenticateToken, async (req: any, res) => {
     try {
       const { jobId, url, filename, pages } = req.body;
       const userId = req.user!.id;
@@ -615,7 +615,7 @@ Format your response in clear sections with actionable insights.`;
   });
 
   // Plan annotation routes
-  app.get('/api/plans/:planId/annotations', authenticateToken, async (req: AuthenticatedRequest, res) => {
+  app.get('/api/plans/:planId/annotations', authenticateToken, async (req: any, res) => {
     try {
       const { planId } = req.params;
       const userId = req.user!.id;
@@ -634,7 +634,7 @@ Format your response in clear sections with actionable insights.`;
     }
   });
 
-  app.post('/api/plans/:planId/annotations', authenticateToken, async (req: AuthenticatedRequest, res) => {
+  app.post('/api/plans/:planId/annotations', authenticateToken, async (req: any, res) => {
     try {
       const { planId } = req.params;
       const { annotations } = req.body;
@@ -660,7 +660,7 @@ Format your response in clear sections with actionable insights.`;
   });
 
   // Plan scale routes
-  app.get('/api/plans/:planId/scales', authenticateToken, async (req: AuthenticatedRequest, res) => {
+  app.get('/api/plans/:planId/scales', authenticateToken, async (req: any, res) => {
     try {
       const { planId } = req.params;
       const userId = req.user!.id;
@@ -679,7 +679,7 @@ Format your response in clear sections with actionable insights.`;
     }
   });
 
-  app.post('/api/plans/:planId/scales', authenticateToken, async (req: AuthenticatedRequest, res) => {
+  app.post('/api/plans/:planId/scales', authenticateToken, async (req: any, res) => {
     try {
       const { planId } = req.params;
       const { page, pixelPerUnit, unit } = req.body;
@@ -705,7 +705,7 @@ Format your response in clear sections with actionable insights.`;
   });
 
   // Plan export route - flatten annotations into PDF
-  app.post('/api/plans/:planId/export', authenticateToken, async (req: AuthenticatedRequest, res) => {
+  app.post('/api/plans/:planId/export', authenticateToken, async (req: any, res) => {
     try {
       const { planId } = req.params;
       const userId = req.user!.id;
@@ -726,7 +726,7 @@ Format your response in clear sections with actionable insights.`;
       const scalesByPage: Record<number, { pixelPerUnit: number; unit: string }> = {};
       scales.forEach(scale => {
         scalesByPage[scale.page] = {
-          pixelPerUnit: scale.pixelPerUnit,
+          pixelPerUnit: Number(scale.pixelPerUnit),
           unit: scale.unit
         };
       });
@@ -782,7 +782,7 @@ Format your response in clear sections with actionable insights.`;
         
         // Process each annotation on this page
         for (const annotation of pageAnnotations) {
-          const shape = annotation.data as any; // Shape data from client
+          const shape = annotation.dataJson as any; // Shape data from client
           
           // Convert color from hex to RGB
           const hexColor = shape.style?.stroke || '#ff0000';

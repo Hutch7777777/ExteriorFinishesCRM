@@ -94,20 +94,13 @@ export interface IStorage {
   deleteJob(id: string): Promise<void>;
 
   // Estimate operations
-  getEstimates(leadId?: string, jobId?: string): Promise<Estimate[]>;
-  getEstimate(id: string): Promise<Estimate | undefined>;
+  getEstimates(divisionId?: string): Promise<EstimateWithRelations[]>;
+  getEstimate(id: string): Promise<EstimateWithRelations | undefined>;
   getEstimatesByLeadId(leadId: string): Promise<Estimate[]>;
   createEstimate(estimate: InsertEstimate): Promise<Estimate>;
   updateEstimate(id: string, estimate: Partial<InsertEstimate>): Promise<Estimate>;
   deleteEstimate(id: string): Promise<void>;
   getRecentJobs(limit?: number): Promise<JobWithRelations[]>;
-
-  // Estimate operations
-  getEstimates(jobId?: string): Promise<EstimateWithRelations[]>;
-  getEstimate(id: string): Promise<EstimateWithRelations | undefined>;
-  createEstimate(estimate: InsertEstimate): Promise<Estimate>;
-  updateEstimate(id: string, estimate: Partial<InsertEstimate>): Promise<Estimate>;
-  deleteEstimate(id: string): Promise<void>;
 
   // Proposal operations
   getProposals(divisionId?: string): Promise<ProposalWithRelations[]>;
