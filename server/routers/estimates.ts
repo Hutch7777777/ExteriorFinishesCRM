@@ -90,6 +90,16 @@ export const addEstimatesRoutes = (router: Router) => {
       const input = req.body.input;
       console.log('📝 Received estimate create input:', JSON.stringify(input, null, 2));
       
+      // Validate input data
+      console.log('🔍 Validating input data...');
+      if (!input.leadId || !input.title) {
+        console.log('❌ Missing required fields:', { leadId: input.leadId, title: input.title });
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Lead ID and title are required'
+        });
+      }
+      
       if (!input) {
         return res.status(400).json({ error: { message: 'Input is required' } });
       }
