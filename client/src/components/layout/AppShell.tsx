@@ -34,6 +34,11 @@ export default function AppShell() {
     division,
     section
   })
+  
+  // Special debug for calendar route
+  if (currentPath.includes('/calendars')) {
+    console.log('CALENDAR PATH DETECTED:', currentPath)
+  }
 
 
 
@@ -78,6 +83,16 @@ export default function AppShell() {
 
   // Render the appropriate component based on the route with suspense
   const renderContent = () => {
+    // PRIORITY: Handle calendar route first to prevent conflicts
+    if (currentPath.includes('/calendars')) {
+      console.log('CALENDAR ROUTE INTERCEPTED EARLY - Loading Calendars component')
+      return (
+        <Suspense fallback={<PageSkeleton />}>
+          <Calendars />
+        </Suspense>
+      )
+    }
+    
     // Handle settings route
     if (currentPath === '/settings') {
       return (
