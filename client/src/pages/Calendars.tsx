@@ -436,14 +436,34 @@ const NewEventDialog = ({
   )
 }
 
+// Calendar types with separate data
+const calendarTypes = [
+  { id: 'overview', name: 'Calendar Overview', description: 'View all your scheduled events across bid appointments, subcontractor meetings, and daily tasks' },
+  { id: 'bids', name: 'Bid Appointments', description: 'Schedule and track bid appointments with customers' },
+  { id: 'subcontractors', name: 'Subcontractor Meetings', description: 'Coordinate meetings and schedules with subcontractors' },
+  { id: 'daily', name: 'Daily Operations', description: 'Manage daily tasks and operational activities' },
+  { id: 'inspections', name: 'Site Inspections', description: 'Schedule and track site inspections and follow-ups' },
+  { id: 'deliveries', name: 'Material Deliveries', description: 'Track material deliveries and logistics' }
+]
+
 export default function Calendars() {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
-  const [activeTab, setActiveTab] = useState('calendar')
+  const [activeCalendar, setActiveCalendar] = useState('overview')
   const [showNewEventDialog, setShowNewEventDialog] = useState(false)
 
-  // This will be replaced with actual API calls
-  const events = mockEvents
+  // Filter events based on active calendar
+  const getEventsForCalendar = (calendarId: string) => {
+    if (calendarId === 'overview') return mockEvents
+    if (calendarId === 'bids') return mockEvents.filter(e => e.type === 'bid')
+    if (calendarId === 'subcontractors') return mockEvents.filter(e => e.type === 'subcontracting')
+    if (calendarId === 'daily') return mockEvents.filter(e => e.type === 'daily')
+    // For new calendar types, return empty array until data is added
+    return []
+  }
+
+  const events = getEventsForCalendar(activeCalendar)
+  const currentCalendar = calendarTypes.find(c => c.id === activeCalendar)
 
   const handleBackToMain = () => {
     window.location.href = '/mfnc/lead-management'
@@ -476,8 +496,8 @@ export default function Calendars() {
             Back to Main
           </Button>
           <div>
-            <h1 className="text-3xl font-bold">Business Calendars</h1>
-            <p className="text-gray-600">Coordinate bids, subcontractor meetings, and daily operations</p>
+            <h1 className="text-3xl font-bold">{currentCalendar?.name || 'Business Calendars'}</h1>
+            <p className="text-gray-600">{currentCalendar?.description}</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -492,6 +512,25 @@ export default function Calendars() {
             New Event
           </Button>
         </div>
+      </div>
+
+      {/* Calendar Type Selector */}
+      <div className="border-b border-gray-200">
+        <nav className="flex space-x-8">
+          {calendarTypes.map((calendar) => (
+            <button
+              key={calendar.id}
+              onClick={() => setActiveCalendar(calendar.id)}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeCalendar === calendar.id
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              {calendar.name}
+            </button>
+          ))}
+        </nav>
       </div>
 
       {/* Calendar Controls */}
@@ -524,84 +563,16 @@ export default function Calendars() {
         </div>
       </div>
 
-      {/* Main Calendar Interface */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="calendar">Calendar View</TabsTrigger>
-          <TabsTrigger value="bids">Bid Calendar</TabsTrigger>
-          <TabsTrigger value="subcontracting">Subcontracting</TabsTrigger>
-          <TabsTrigger value="daily">Daily Schedule</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="calendar" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Calendar Overview</CardTitle>
-              <CardDescription>
-                View all your scheduled events across bid appointments, subcontractor meetings, and daily tasks
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <CalendarGrid 
-                events={events}
-                currentDate={currentDate}
-                onDateClick={handleDateClick}
-              />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="bids" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CalendarDays className="w-5 h-5" />
-                Bid Calendar
-              </CardTitle>
-              <CardDescription>
-                Scheduled bid appointments and estimate meetings with potential clients
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <EventsList events={events} type="bid" />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="subcontracting" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="w-5 h-5" />
-                Subcontracting Calendar
-              </CardTitle>
-              <CardDescription>
-                Meetings and coordination with subcontractors, vendors, and partners
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <EventsList events={events} type="subcontracting" />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="daily" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Clock className="w-5 h-5" />
-                Daily Schedule
-              </CardTitle>
-              <CardDescription>
-                Daily tasks, site visits, inspections, and other operational activities
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <EventsList events={events} type="daily" />
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      {/* Calendar View */}
+      <Card>
+        <CardContent className="p-6">
+          <CalendarGrid 
+            events={events}
+            currentDate={currentDate}
+            onDateClick={handleDateClick}
+          />
+        </CardContent>
+      </Card>
       
       <NewEventDialog 
         isOpen={showNewEventDialog}
