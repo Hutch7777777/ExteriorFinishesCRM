@@ -16,7 +16,8 @@ interface CalendarEvent {
   id: string
   title: string
   date: Date
-  type: 'bid' | 'subcontracting' | 'daily'
+  type: 'bid' | 'subcontracting' | 'daily' | 'inspection' | 'delivery'
+  calendarType: 'bids' | 'subcontractors' | 'daily' | 'inspections' | 'deliveries'
   status?: string
   description?: string
   time?: string
@@ -31,6 +32,7 @@ const mockEvents: CalendarEvent[] = [
     title: 'Residential Siding Bid',
     date: new Date(2025, 7, 20),
     type: 'bid',
+    calendarType: 'bids',
     status: 'scheduled',
     description: '123 Main St - Vinyl siding estimate',
     time: '10:00 AM',
@@ -41,6 +43,7 @@ const mockEvents: CalendarEvent[] = [
     title: 'Commercial Roofing Bid',
     date: new Date(2025, 7, 21),
     type: 'bid',
+    calendarType: 'bids',
     status: 'confirmed',
     description: 'Downtown office building roofing assessment',
     time: '2:00 PM',
@@ -51,6 +54,7 @@ const mockEvents: CalendarEvent[] = [
     title: 'Electrical Subcontractor Meeting',
     date: new Date(2025, 7, 22),
     type: 'subcontracting',
+    calendarType: 'subcontractors',
     status: 'confirmed',
     description: 'Discuss wiring for commercial project',
     time: '2:00 PM',
@@ -62,6 +66,7 @@ const mockEvents: CalendarEvent[] = [
     title: 'HVAC Coordination Call',
     date: new Date(2025, 7, 23),
     type: 'subcontracting',
+    calendarType: 'subcontractors',
     status: 'scheduled',
     description: 'Review installation timeline with HVAC team',
     time: '9:00 AM',
@@ -72,7 +77,8 @@ const mockEvents: CalendarEvent[] = [
     id: '5',
     title: 'Site Inspection',
     date: new Date(2025, 7, 25),
-    type: 'daily',
+    type: 'inspection',
+    calendarType: 'inspections',
     status: 'pending',
     description: 'Morning site walkthrough',
     time: '8:00 AM',
@@ -83,7 +89,8 @@ const mockEvents: CalendarEvent[] = [
     id: '6',
     title: 'Material Delivery',
     date: new Date(2025, 7, 26),
-    type: 'daily',
+    type: 'delivery',
+    calendarType: 'deliveries',
     status: 'scheduled',
     description: 'Siding materials arrival for Oak St project',
     time: '7:00 AM',
@@ -95,6 +102,7 @@ const mockEvents: CalendarEvent[] = [
     title: 'Customer Follow-up',
     date: new Date(2025, 7, 27),
     type: 'daily',
+    calendarType: 'daily',
     status: 'pending',
     description: 'Check in with recent installation customers',
     time: '3:00 PM',
@@ -105,6 +113,7 @@ const mockEvents: CalendarEvent[] = [
     title: 'Industrial Siding Estimate',
     date: new Date(2025, 7, 28),
     type: 'bid',
+    calendarType: 'bids',
     status: 'scheduled',
     description: 'Large warehouse siding evaluation',
     time: '11:00 AM',
@@ -305,6 +314,7 @@ const NewEventDialog = ({
   const [newEvent, setNewEvent] = useState({
     title: '',
     type: 'bid' as CalendarEvent['type'],
+    calendarType: 'bids' as CalendarEvent['calendarType'],
     date: '',
     time: '',
     location: '',
@@ -321,6 +331,7 @@ const NewEventDialog = ({
     setNewEvent({
       title: '',
       type: 'bid',
+      calendarType: 'bids',
       date: '',
       time: '',
       location: '',
@@ -351,15 +362,28 @@ const NewEventDialog = ({
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="type">Event Type</Label>
-            <Select value={newEvent.type} onValueChange={(value: CalendarEvent['type']) => setNewEvent({ ...newEvent, type: value })}>
+            <Label htmlFor="calendarType">Save to Calendar</Label>
+            <Select 
+              value={newEvent.calendarType} 
+              onValueChange={(value: CalendarEvent['calendarType']) => {
+                setNewEvent({ ...newEvent, calendarType: value })
+                // Auto-update type based on calendar selection
+                if (value === 'bids') setNewEvent(prev => ({ ...prev, calendarType: value, type: 'bid' }))
+                else if (value === 'subcontractors') setNewEvent(prev => ({ ...prev, calendarType: value, type: 'subcontracting' }))
+                else if (value === 'daily') setNewEvent(prev => ({ ...prev, calendarType: value, type: 'daily' }))
+                else if (value === 'inspections') setNewEvent(prev => ({ ...prev, calendarType: value, type: 'inspection' }))
+                else if (value === 'deliveries') setNewEvent(prev => ({ ...prev, calendarType: value, type: 'delivery' }))
+              }}
+            >
               <SelectTrigger>
-                <SelectValue placeholder="Select event type" />
+                <SelectValue placeholder="Select calendar" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="bid">Bid Appointment</SelectItem>
-                <SelectItem value="subcontracting">Subcontractor Meeting</SelectItem>
-                <SelectItem value="daily">Daily Task</SelectItem>
+                <SelectItem value="bids">Bid Appointments</SelectItem>
+                <SelectItem value="subcontractors">Subcontractor Meetings</SelectItem>
+                <SelectItem value="daily">Daily Operations</SelectItem>
+                <SelectItem value="inspections">Site Inspections</SelectItem>
+                <SelectItem value="deliveries">Material Deliveries</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -455,11 +479,7 @@ export default function Calendars() {
   // Filter events based on active calendar
   const getEventsForCalendar = (calendarId: string) => {
     if (calendarId === 'overview') return mockEvents
-    if (calendarId === 'bids') return mockEvents.filter(e => e.type === 'bid')
-    if (calendarId === 'subcontractors') return mockEvents.filter(e => e.type === 'subcontracting')
-    if (calendarId === 'daily') return mockEvents.filter(e => e.type === 'daily')
-    // For new calendar types, return empty array until data is added
-    return []
+    return mockEvents.filter(e => e.calendarType === calendarId)
   }
 
   const events = getEventsForCalendar(activeCalendar)
