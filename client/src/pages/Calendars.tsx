@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { Calendar, CalendarDays, Hammer, Users, Clock, Plus, ChevronLeft, ChevronRight, MapPin, User } from 'lucide-react'
+import { Calendar, CalendarDays, Hammer, Users, Clock, Plus, ChevronLeft, ChevronRight, MapPin, User, ArrowLeft, Home } from 'lucide-react'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek } from 'date-fns'
 
 interface CalendarEvent {
@@ -445,6 +445,10 @@ export default function Calendars() {
   // This will be replaced with actual API calls
   const events = mockEvents
 
+  const handleBackToMain = () => {
+    window.location.href = '/mfnc/lead-management'
+  }
+
   const handlePreviousMonth = () => {
     setCurrentDate(prev => subMonths(prev, 1))
   }
@@ -461,9 +465,20 @@ export default function Calendars() {
     <div className="container mx-auto p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Business Calendars</h1>
-          <p className="text-gray-600">Coordinate bids, subcontractor meetings, and daily operations</p>
+        <div className="flex items-center gap-4">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={handleBackToMain}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Main
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold">Business Calendars</h1>
+            <p className="text-gray-600">Coordinate bids, subcontractor meetings, and daily operations</p>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <div className="text-sm text-gray-500">
