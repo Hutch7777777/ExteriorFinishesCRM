@@ -12,7 +12,8 @@ import {
   BarChart3,
   UserCircle,
   Wrench,
-  Brain
+  Brain,
+  Calendar
 } from 'lucide-react'
 
 interface NavLinkProps {
@@ -93,6 +94,13 @@ export function Sidebar() {
               icon={<Wrench className="w-5 h-5" />}
               label="Field Management"
               isActive={currentPath.includes('/field-management')}
+              isCollapsed={isCollapsed}
+            />
+            <NavLink
+              href={`/${currentDivision}/calendars`}
+              icon={<Calendar className="w-5 h-5" />}
+              label="Calendars"
+              isActive={currentPath.includes('/calendars')}
               isCollapsed={isCollapsed}
             />
           </nav>

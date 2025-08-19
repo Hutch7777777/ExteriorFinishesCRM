@@ -18,6 +18,7 @@ const ProposalView = lazy(() => import('@/pages/ProposalView'))
 const FieldManagement = lazy(() => import('@/pages/FieldManagement'))
 const BusinessInsight = lazy(() => import('@/pages/BusinessInsight'))
 const Settings = lazy(() => import('@/pages/Settings'))
+const Calendars = lazy(() => import('@/pages/Calendars'))
 
 export default function AppShell() {
   const currentPath = window.location.pathname
@@ -166,6 +167,9 @@ export default function AppShell() {
         case 'business-insight':
           console.log('Loading BusinessInsight component')
           return BusinessInsight
+        case 'calendars':
+          console.log('Loading Calendars component')
+          return Calendars
         default: 
           console.log('No match found for section:', section, 'defaulting to Customers')
           return Customers
