@@ -28,6 +28,12 @@ function NavLink({ href, icon, label, isActive, isCollapsed }: NavLinkProps) {
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault()
     console.log('NavLink clicked:', { href, label })
+    
+    // Special logging for calendar navigation
+    if (label === 'Calendars') {
+      console.log('CALENDAR NAVIGATION TRIGGERED - redirecting to:', href)
+    }
+    
     // Force a full page navigation to ensure routing works
     window.location.href = href
   }

@@ -168,7 +168,7 @@ export default function AppShell() {
           console.log('Loading BusinessInsight component')
           return BusinessInsight
         case 'calendars':
-          console.log('Loading Calendars component')
+          console.log('Loading Calendars component - CALENDAR ROUTE MATCHED!')
           return Calendars
         default: 
           console.log('No match found for section:', section, 'defaulting to Customers')
