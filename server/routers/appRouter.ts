@@ -949,46 +949,70 @@ export const createAppRouter = () => {
       const ctx = await createContext(req, res);
       const user = requireRole('staff')(ctx);
       
+      console.log('🚀 AppRouter - Creating estimate with data:', JSON.stringify(req.body, null, 2));
+      
       const inputSchema = z.object({
-        jobId: z.string().uuid(),
+        leadId: z.string().uuid().optional(),
+        jobId: z.string().uuid().optional(),
+        title: z.string().min(1),
+        description: z.string().optional(),
         status: z.enum(['draft', 'sent', 'approved', 'rejected']).default('draft'),
-        totalCents: z.number().min(0),
-        linesJson: z.any(),
+        totalCents: z.number().min(0).default(0),
+        laborHours: z.string().default('0'),
+        materialCosts: z.number().default(0),
+        equipmentCosts: z.number().default(0),
+        overheadPercentage: z.string().default('15'),
+        profitMarginPercentage: z.string().default('20'),
+        linesJson: z.any().optional(),
+        notes: z.string().optional(),
       });
       
       const input = inputSchema.parse(req.body?.input || {});
       
-      // Verify job exists and user has access
-      const job = await storage.getJob(input.jobId);
-      if (!job) {
-        throw new TRPCError({ code: 'NOT_FOUND', message: 'Job not found' });
+      // Verify lead exists if provided
+      if (input.leadId) {
+        const lead = await storage.getLead(input.leadId);
+        if (!lead) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Lead not found' });
+        }
       }
       
-      // Check division access
-      if (job.divisionId) {
-        const division = await storage.getDivision(job.divisionId);
-        if (division) {
-          const scopedDivisionId = await getDivisionScope(user, division.key);
-          if (scopedDivisionId !== division.id) {
-            throw new TRPCError({ code: 'FORBIDDEN', message: 'Access denied to this division' });
-          }
+      // Verify job exists if provided  
+      if (input.jobId) {
+        const job = await storage.getJob(input.jobId);
+        if (!job) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Job not found' });
         }
       }
       
       const estimateData = {
+        leadId: input.leadId,
         jobId: input.jobId,
+        title: input.title,
+        description: input.description,
         status: input.status,
         totalCents: input.totalCents,
+        laborHours: input.laborHours,
+        materialCosts: input.materialCosts,
+        equipmentCosts: input.equipmentCosts,
+        overheadPercentage: input.overheadPercentage,
+        profitMarginPercentage: input.profitMarginPercentage,
         linesJson: input.linesJson,
+        notes: input.notes,
+        estimatedBy: user.id,
       };
       
+      console.log('💾 AppRouter - Calling storage.createEstimate with:', JSON.stringify(estimateData, null, 2));
       const result = await storage.createEstimate(estimateData);
+      console.log('✅ AppRouter - Estimate created successfully:', result.id);
+      
       res.json({ result: superjson.serialize(result) });
     } catch (error) {
+      console.error('❌ AppRouter - Error creating estimate:', error);
       if (error instanceof TRPCError) {
         res.status(error.statusCode).json({ error: { message: error.message, code: error.code } });
       } else {
-        res.status(500).json({ error: { message: 'Internal server error' } });
+        res.status(500).json({ error: { message: 'Internal server error', details: error.message } });
       }
     }
   });
