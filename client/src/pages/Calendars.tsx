@@ -4,7 +4,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Calendar, CalendarDays, Hammer, Users, Clock, Plus, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
+import { Calendar, CalendarDays, Hammer, Users, Clock, Plus, ChevronLeft, ChevronRight, MapPin, User } from 'lucide-react'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek } from 'date-fns'
 
 interface CalendarEvent {
@@ -19,7 +24,7 @@ interface CalendarEvent {
   assignedTo?: string
 }
 
-// Mock data for now - this will be replaced with real API calls
+// Sample events for demonstration - these would come from your backend API
 const mockEvents: CalendarEvent[] = [
   {
     id: '1',
@@ -33,23 +38,78 @@ const mockEvents: CalendarEvent[] = [
   },
   {
     id: '2',
+    title: 'Commercial Roofing Bid',
+    date: new Date(2025, 7, 21),
+    type: 'bid',
+    status: 'confirmed',
+    description: 'Downtown office building roofing assessment',
+    time: '2:00 PM',
+    assignedTo: 'Mike Johnson'
+  },
+  {
+    id: '3',
     title: 'Electrical Subcontractor Meeting',
     date: new Date(2025, 7, 22),
     type: 'subcontracting',
     status: 'confirmed',
     description: 'Discuss wiring for commercial project',
     time: '2:00 PM',
-    location: 'Office'
+    location: 'Office',
+    assignedTo: 'Sarah Davis'
   },
   {
-    id: '3',
+    id: '4',
+    title: 'HVAC Coordination Call',
+    date: new Date(2025, 7, 23),
+    type: 'subcontracting',
+    status: 'scheduled',
+    description: 'Review installation timeline with HVAC team',
+    time: '9:00 AM',
+    location: 'Remote',
+    assignedTo: 'Tom Wilson'
+  },
+  {
+    id: '5',
     title: 'Site Inspection',
     date: new Date(2025, 7, 25),
     type: 'daily',
     status: 'pending',
     description: 'Morning site walkthrough',
     time: '8:00 AM',
-    location: '456 Oak Avenue'
+    location: '456 Oak Avenue',
+    assignedTo: 'John Smith'
+  },
+  {
+    id: '6',
+    title: 'Material Delivery',
+    date: new Date(2025, 7, 26),
+    type: 'daily',
+    status: 'scheduled',
+    description: 'Siding materials arrival for Oak St project',
+    time: '7:00 AM',
+    location: '789 Oak Street',
+    assignedTo: 'Mike Johnson'
+  },
+  {
+    id: '7',
+    title: 'Customer Follow-up',
+    date: new Date(2025, 7, 27),
+    type: 'daily',
+    status: 'pending',
+    description: 'Check in with recent installation customers',
+    time: '3:00 PM',
+    assignedTo: 'Sarah Davis'
+  },
+  {
+    id: '8',
+    title: 'Industrial Siding Estimate',
+    date: new Date(2025, 7, 28),
+    type: 'bid',
+    status: 'scheduled',
+    description: 'Large warehouse siding evaluation',
+    time: '11:00 AM',
+    location: 'Industrial District',
+    assignedTo: 'Tom Wilson'
   }
 ]
 
@@ -201,9 +261,24 @@ const EventsList = ({
                     
                     <div className="flex items-center gap-4 text-xs text-gray-500">
                       <span>{format(event.date, 'MMM d, yyyy')}</span>
-                      {event.time && <span>{event.time}</span>}
-                      {event.location && <span>{event.location}</span>}
-                      {event.assignedTo && <span>Assigned: {event.assignedTo}</span>}
+                      {event.time && (
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {event.time}
+                        </span>
+                      )}
+                      {event.location && (
+                        <span className="flex items-center gap-1">
+                          <MapPin className="w-3 h-3" />
+                          {event.location}
+                        </span>
+                      )}
+                      {event.assignedTo && (
+                        <span className="flex items-center gap-1">
+                          <User className="w-3 h-3" />
+                          {event.assignedTo}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -220,10 +295,152 @@ const EventsList = ({
   )
 }
 
+const NewEventDialog = ({ 
+  isOpen, 
+  onClose 
+}: { 
+  isOpen: boolean
+  onClose: () => void 
+}) => {
+  const [newEvent, setNewEvent] = useState({
+    title: '',
+    type: 'bid' as CalendarEvent['type'],
+    date: '',
+    time: '',
+    location: '',
+    description: '',
+    assignedTo: ''
+  })
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    // Here you would typically make an API call to create the event
+    console.log('Creating new event:', newEvent)
+    onClose()
+    // Reset form
+    setNewEvent({
+      title: '',
+      type: 'bid',
+      date: '',
+      time: '',
+      location: '',
+      description: '',
+      assignedTo: ''
+    })
+  }
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>New Calendar Event</DialogTitle>
+          <DialogDescription>
+            Schedule a new bid appointment, subcontractor meeting, or daily task.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="title">Event Title</Label>
+            <Input
+              id="title"
+              value={newEvent.title}
+              onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
+              placeholder="Enter event title"
+              required
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="type">Event Type</Label>
+            <Select value={newEvent.type} onValueChange={(value: CalendarEvent['type']) => setNewEvent({ ...newEvent, type: value })}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select event type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="bid">Bid Appointment</SelectItem>
+                <SelectItem value="subcontracting">Subcontractor Meeting</SelectItem>
+                <SelectItem value="daily">Daily Task</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="date">Date</Label>
+              <Input
+                id="date"
+                type="date"
+                value={newEvent.date}
+                onChange={(e) => setNewEvent({ ...newEvent, date: e.target.value })}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="time">Time</Label>
+              <Input
+                id="time"
+                type="time"
+                value={newEvent.time}
+                onChange={(e) => setNewEvent({ ...newEvent, time: e.target.value })}
+              />
+            </div>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="location">Location</Label>
+            <Input
+              id="location"
+              value={newEvent.location}
+              onChange={(e) => setNewEvent({ ...newEvent, location: e.target.value })}
+              placeholder="Enter location or address"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="assignedTo">Assigned To</Label>
+            <Select value={newEvent.assignedTo} onValueChange={(value) => setNewEvent({ ...newEvent, assignedTo: value })}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select team member" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="John Smith">John Smith</SelectItem>
+                <SelectItem value="Mike Johnson">Mike Johnson</SelectItem>
+                <SelectItem value="Sarah Davis">Sarah Davis</SelectItem>
+                <SelectItem value="Tom Wilson">Tom Wilson</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="description">Description</Label>
+            <Textarea
+              id="description"
+              value={newEvent.description}
+              onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
+              placeholder="Add event details..."
+              rows={3}
+            />
+          </div>
+          
+          <div className="flex justify-end gap-3">
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit">
+              Create Event
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export default function Calendars() {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [activeTab, setActiveTab] = useState('calendar')
+  const [showNewEventDialog, setShowNewEventDialog] = useState(false)
 
   // This will be replaced with actual API calls
   const events = mockEvents
@@ -245,13 +462,21 @@ export default function Calendars() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Calendars</h1>
-          <p className="text-gray-600">Manage your bids, subcontractor meetings, and daily schedules</p>
+          <h1 className="text-3xl font-bold">Business Calendars</h1>
+          <p className="text-gray-600">Coordinate bids, subcontractor meetings, and daily operations</p>
         </div>
-        <Button className="flex items-center gap-2">
-          <Plus className="w-4 h-4" />
-          New Event
-        </Button>
+        <div className="flex items-center gap-3">
+          <div className="text-sm text-gray-500">
+            {events.length} events this month
+          </div>
+          <Button 
+            onClick={() => setShowNewEventDialog(true)}
+            className="flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            New Event
+          </Button>
+        </div>
       </div>
 
       {/* Calendar Controls */}
@@ -271,15 +496,15 @@ export default function Calendars() {
         <div className="flex items-center gap-2">
           <Badge variant="secondary" className="bg-blue-100 text-blue-800">
             <CalendarDays className="w-3 h-3 mr-1" />
-            Bid Calendar
+            {events.filter(e => e.type === 'bid').length} Bids
           </Badge>
           <Badge variant="secondary" className="bg-orange-100 text-orange-800">
             <Users className="w-3 h-3 mr-1" />
-            Subcontracting
+            {events.filter(e => e.type === 'subcontracting').length} Subcontractor
           </Badge>
           <Badge variant="secondary" className="bg-green-100 text-green-800">
             <Clock className="w-3 h-3 mr-1" />
-            Daily Schedule
+            {events.filter(e => e.type === 'daily').length} Daily Tasks
           </Badge>
         </div>
       </div>
@@ -362,6 +587,11 @@ export default function Calendars() {
           </Card>
         </TabsContent>
       </Tabs>
+      
+      <NewEventDialog 
+        isOpen={showNewEventDialog}
+        onClose={() => setShowNewEventDialog(false)}
+      />
     </div>
   )
 }
