@@ -20,8 +20,69 @@ const BusinessInsight = lazy(() => import('@/pages/BusinessInsight'))
 const Settings = lazy(() => import('@/pages/Settings'))
 const Calendars = lazy(() => import('@/pages/Calendars'))
 
+// Loading skeleton component
+const PageSkeleton = () => (
+  <div className="space-y-6">
+    <div className="flex items-center justify-between">
+      <div className="space-y-2">
+        <Skeleton className="h-8 w-64" />
+        <Skeleton className="h-4 w-96" />
+      </div>
+      <Skeleton className="h-10 w-32" />
+    </div>
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
+          <Skeleton className="h-4 w-24 mb-2" />
+          <Skeleton className="h-8 w-16" />
+        </div>
+      ))}
+    </div>
+    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-10 w-80" />
+          <Skeleton className="h-10 w-32" />
+        </div>
+        <div className="space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="flex space-x-4 py-3">
+              <Skeleton className="h-4 flex-1" />
+              <Skeleton className="h-4 flex-1" />
+              <Skeleton className="h-4 flex-1" />
+              <Skeleton className="h-4 w-20" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  </div>
+)
+
 export default function AppShell() {
   const currentPath = window.location.pathname
+  
+  // IMMEDIATE CALENDAR CHECK - before any other processing
+  if (currentPath.includes('/calendars')) {
+    console.log('CALENDAR DETECTED IMMEDIATELY:', currentPath)
+    return (
+      <SidebarProvider>
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 overflow-x-hidden">
+          <Header />
+          <div className="flex">
+            <Sidebar />
+            <main className="flex-1 overflow-x-hidden">
+              <div className="p-6 lg:p-8 max-w-full">
+                <Suspense fallback={<PageSkeleton />}>
+                  <Calendars />
+                </Suspense>
+              </div>
+            </main>
+          </div>
+        </div>
+      </SidebarProvider>
+    )
+  }
   
   // Extract division and section from URL path: /:division/:section
   const pathSegments = currentPath.split('/').filter(Boolean)
@@ -34,64 +95,13 @@ export default function AppShell() {
     division,
     section
   })
-  
-  // Special debug for calendar route
-  if (currentPath.includes('/calendars')) {
-    console.log('CALENDAR PATH DETECTED:', currentPath)
-  }
 
 
 
-  // Loading skeleton component
-  const PageSkeleton = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="space-y-2">
-          <Skeleton className="h-8 w-64" />
-          <Skeleton className="h-4 w-96" />
-        </div>
-        <Skeleton className="h-10 w-32" />
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
-            <Skeleton className="h-4 w-24 mb-2" />
-            <Skeleton className="h-8 w-16" />
-          </div>
-        ))}
-      </div>
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <Skeleton className="h-10 w-80" />
-            <Skeleton className="h-10 w-32" />
-          </div>
-          <div className="space-y-3">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="flex space-x-4 py-3">
-                <Skeleton className="h-4 flex-1" />
-                <Skeleton className="h-4 flex-1" />
-                <Skeleton className="h-4 flex-1" />
-                <Skeleton className="h-4 w-20" />
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  )
+
 
   // Render the appropriate component based on the route with suspense
   const renderContent = () => {
-    // PRIORITY: Handle calendar route first to prevent conflicts
-    if (currentPath.includes('/calendars')) {
-      console.log('CALENDAR ROUTE INTERCEPTED EARLY - Loading Calendars component')
-      return (
-        <Suspense fallback={<PageSkeleton />}>
-          <Calendars />
-        </Suspense>
-      )
-    }
     
     // Handle settings route
     if (currentPath === '/settings') {
