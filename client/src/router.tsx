@@ -8,6 +8,7 @@ import Customers from '@/pages/Customers'
 import Jobs from '@/pages/Jobs'
 import Estimates from '@/pages/Estimates'
 import Settings from '@/pages/Settings'
+import Calendars from '@/pages/Calendars'
 import NotFound from '@/pages/not-found'
 import AppShell from '@/components/layout/AppShell'
 import PlansPage from '@/features/plans/PlansPage'
@@ -51,6 +52,21 @@ const signUpRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/signup',
   component: SignUp
+})
+
+// Dedicated Calendar route - separate from AppShell to avoid conflicts
+const calendarRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/calendars',
+  component: () => {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+        <div className="p-6 lg:p-8">
+          <Calendars />
+        </div>
+      </div>
+    )
+  }
 })
 
 // Index route - redirect to /mfnc/customers
@@ -205,6 +221,7 @@ const routeTree = rootRoute.addChildren([
   signInRoute,
   loginRoute,
   signUpRoute,
+  calendarRoute,
   indexRoute,
   shellRoute,
   editCustomerRoute,

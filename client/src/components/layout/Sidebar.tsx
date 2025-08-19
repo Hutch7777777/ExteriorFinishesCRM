@@ -103,7 +103,7 @@ export function Sidebar() {
               isCollapsed={isCollapsed}
             />
             <NavLink
-              href={`/${currentDivision}/calendars`}
+              href={`/calendars`}
               icon={<Calendar className="w-5 h-5" />}
               label="Calendars"
               isActive={currentPath.includes('/calendars')}
