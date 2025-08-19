@@ -965,6 +965,8 @@ export const createAppRouter = () => {
         profitMarginPercentage: z.string().default('20'),
         linesJson: z.any().optional(),
         notes: z.string().optional(),
+        estimatorId: z.string().uuid().optional(),
+        importData: z.string().optional(),
       });
       
       const input = inputSchema.parse(req.body?.input || {});
@@ -999,6 +1001,8 @@ export const createAppRouter = () => {
         profitMarginPercentage: input.profitMarginPercentage,
         linesJson: input.linesJson,
         notes: input.notes,
+        estimatorId: input.estimatorId,
+        importData: input.importData,
         estimatedBy: user.id,
       };
       

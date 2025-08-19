@@ -133,6 +133,8 @@ export const estimates = pgTable("estimates", {
   profitMarginPercentage: numeric("profit_margin_percentage").default("20"),
   linesJson: jsonb("lines_json"), // Detailed line items
   notes: text("notes"),
+  estimatorId: uuid("estimator_id").references(() => users.id), // Assigned estimator
+  importData: text("import_data"), // Data imported from external sources
   estimatedBy: uuid("estimated_by").notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

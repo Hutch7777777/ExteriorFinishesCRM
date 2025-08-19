@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -11,17 +11,14 @@ import { Label } from '@/components/ui/label'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
-import { DollarSign, Calculator, Clock, Package, Settings } from 'lucide-react'
+import { Calculator, Upload, UserCheck } from 'lucide-react'
 
 const estimateFormSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   description: z.string().optional(),
   status: z.enum(['draft', 'pending', 'approved', 'rejected']).default('draft'),
-  laborHours: z.string().default('0'),
-  materialCosts: z.string().default('0'),
-  equipmentCosts: z.string().default('0'),
-  overheadPercentage: z.string().default('15'),
-  profitMarginPercentage: z.string().default('20'),
+  estimatorId: z.string().min(1, 'Estimator is required'),
+  importData: z.string().optional(),
   notes: z.string().optional(),
 })
 
@@ -39,49 +36,39 @@ export function NewEstimateDialog({ open, onOpenChange, leadId, leadName }: NewE
   const queryClient = useQueryClient()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  // Fetch users for estimator assignment
+  const { data: users = [] } = useQuery({
+    queryKey: ['/api/trpc/users.list'],
+  })
+
   const form = useForm<EstimateFormData>({
     resolver: zodResolver(estimateFormSchema),
     defaultValues: {
       title: `Estimate for ${leadName}`,
       description: '',
       status: 'draft',
-      laborHours: '0',
-      materialCosts: '0',
-      equipmentCosts: '0',
-      overheadPercentage: '15',
-      profitMarginPercentage: '20',
+      estimatorId: '',
+      importData: '',
       notes: '',
     },
   })
 
   const createEstimateMutation = useMutation({
     mutationFn: async (data: EstimateFormData) => {
-      // Convert string values to appropriate types
-      const laborHours = parseFloat(data.laborHours) || 0
-      const materialCosts = Math.round((parseFloat(data.materialCosts) || 0) * 100) // Convert to cents
-      const equipmentCosts = Math.round((parseFloat(data.equipmentCosts) || 0) * 100) // Convert to cents
-      const overheadPercentage = parseFloat(data.overheadPercentage) || 15
-      const profitMarginPercentage = parseFloat(data.profitMarginPercentage) || 20
-
-      // Calculate total cost
-      const baseCosts = materialCosts + equipmentCosts + Math.round(laborHours * 7500) // $75/hour in cents
-      const overheadAmount = Math.round(baseCosts * (overheadPercentage / 100))
-      const subtotalWithOverhead = baseCosts + overheadAmount
-      const profitAmount = Math.round(subtotalWithOverhead * (profitMarginPercentage / 100))
-      const totalCents = subtotalWithOverhead + profitAmount
-
       const estimateData = {
         leadId,
         title: data.title,
         description: data.description || '',
         status: data.status,
-        totalCents,
-        laborHours: laborHours.toString(),
-        materialCosts,
-        equipmentCosts,
-        overheadPercentage: overheadPercentage.toString(),
-        profitMarginPercentage: profitMarginPercentage.toString(),
+        totalCents: 0, // Start at 0 - will be updated after import/estimation
+        laborHours: '0',
+        materialCosts: 0,
+        equipmentCosts: 0,
+        overheadPercentage: '15',
+        profitMarginPercentage: '20',
         notes: data.notes || '',
+        estimatorId: data.estimatorId,
+        importData: data.importData || '',
         // The estimatedBy field will be set on the server side from the authenticated user
       }
 
@@ -127,21 +114,6 @@ export function NewEstimateDialog({ open, onOpenChange, leadId, leadName }: NewE
       setIsSubmitting(false)
     }
   }
-
-  // Calculate totals in real-time
-  const watchedValues = form.watch()
-  const laborHours = parseFloat(watchedValues.laborHours) || 0
-  const materialCosts = parseFloat(watchedValues.materialCosts) || 0
-  const equipmentCosts = parseFloat(watchedValues.equipmentCosts) || 0
-  const overheadPercentage = parseFloat(watchedValues.overheadPercentage) || 15
-  const profitMarginPercentage = parseFloat(watchedValues.profitMarginPercentage) || 20
-
-  const laborCost = laborHours * 75 // $75/hour
-  const baseCosts = materialCosts + equipmentCosts + laborCost
-  const overheadAmount = baseCosts * (overheadPercentage / 100)
-  const subtotalWithOverhead = baseCosts + overheadAmount
-  const profitAmount = subtotalWithOverhead * (profitMarginPercentage / 100)
-  const totalCost = subtotalWithOverhead + profitAmount
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -216,127 +188,66 @@ export function NewEstimateDialog({ open, onOpenChange, leadId, leadName }: NewE
               />
             </div>
 
-            {/* Cost Breakdown */}
+            {/* Estimator Assignment */}
             <div className="space-y-4">
               <h3 className="text-lg font-semibold flex items-center gap-2">
-                <DollarSign className="w-5 h-5" />
-                Cost Breakdown
+                <UserCheck className="w-5 h-5" />
+                Assign Estimator
               </h3>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="laborHours"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center gap-2">
-                        <Clock className="w-4 h-4" />
-                        Labor Hours
-                      </FormLabel>
+              <FormField
+                control={form.control}
+                name="estimatorId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Estimator</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <Input type="number" step="0.5" placeholder="0" {...field} />
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select an estimator" />
+                        </SelectTrigger>
                       </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="space-y-1">
-                  <Label className="text-sm font-medium">Labor Cost</Label>
-                  <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded text-sm">
-                    ${laborCost.toFixed(2)} (@ $75/hr)
-                  </div>
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="materialCosts"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center gap-2">
-                        <Package className="w-4 h-4" />
-                        Material Costs ($)
-                      </FormLabel>
-                      <FormControl>
-                        <Input type="number" step="0.01" placeholder="0.00" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="equipmentCosts"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center gap-2">
-                        <Settings className="w-4 h-4" />
-                        Equipment Costs ($)
-                      </FormLabel>
-                      <FormControl>
-                        <Input type="number" step="0.01" placeholder="0.00" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="overheadPercentage"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Overhead (%)</FormLabel>
-                      <FormControl>
-                        <Input type="number" step="0.1" placeholder="15" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="profitMarginPercentage"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Profit Margin (%)</FormLabel>
-                      <FormControl>
-                        <Input type="number" step="0.1" placeholder="20" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+                      <SelectContent>
+                        {(users as any[]).map((user: any) => (
+                          <SelectItem key={user.id} value={user.id}>
+                            {user.name} ({user.email})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
 
-            {/* Cost Summary */}
-            <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-lg space-y-2">
-              <h3 className="text-lg font-semibold">Cost Summary</h3>
-              <div className="space-y-1 text-sm">
-                <div className="flex justify-between">
-                  <span>Base Costs:</span>
-                  <span>${baseCosts.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Overhead ({overheadPercentage}%):</span>
-                  <span>${overheadAmount.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Subtotal:</span>
-                  <span>${subtotalWithOverhead.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Profit ({profitMarginPercentage}%):</span>
-                  <span>${profitAmount.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-lg font-semibold border-t pt-2">
-                  <span>Total:</span>
-                  <span>${totalCost.toFixed(2)}</span>
-                </div>
-              </div>
+            {/* Import Information */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <Upload className="w-5 h-5" />
+                Import Information
+              </h3>
+              
+              <FormField
+                control={form.control}
+                name="importData"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Import Data</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        placeholder="Paste or type information to import (measurements, materials, specifications, etc.)" 
+                        rows={6}
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                    <div className="text-xs text-muted-foreground">
+                      You can paste data from spreadsheets, measurements from plans, or any other relevant information here.
+                    </div>
+                  </FormItem>
+                )}
+              />
             </div>
 
             {/* Notes */}
