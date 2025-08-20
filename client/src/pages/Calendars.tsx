@@ -547,11 +547,13 @@ const EventDetailsDialog = ({
   isOpen, 
   onClose,
   onEdit,
+  onDelete,
   event
 }: { 
   isOpen: boolean
   onClose: () => void
   onEdit: () => void
+  onDelete: () => void
   event: CalendarEvent | null
 }) => {
   if (!event) return null
@@ -680,12 +682,20 @@ const EventDetailsDialog = ({
         </div>
 
         <div className="flex justify-between">
-          <Button 
-            variant="outline" 
-            onClick={onEdit}
-          >
-            Edit Event
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={onEdit}
+            >
+              Edit Event
+            </Button>
+            <Button 
+              variant="destructive"
+              onClick={onDelete}
+            >
+              Delete Event
+            </Button>
+          </div>
           <Button onClick={onClose}>Close</Button>
         </div>
       </DialogContent>
@@ -782,6 +792,16 @@ export default function Calendars() {
   const handleEditEvent = () => {
     setShowEventDetailsDialog(false)
     setShowEditEventDialog(true)
+  }
+
+  const handleDeleteEvent = () => {
+    if (!selectedEvent) return
+    
+    if (confirm(`Are you sure you want to delete "${selectedEvent.title}"? This action cannot be undone.`)) {
+      setAllEvents(prev => prev.filter(event => event.id !== selectedEvent.id))
+      setShowEventDetailsDialog(false)
+      setSelectedEvent(null)
+    }
   }
 
   const handleBackToMain = () => {
@@ -909,6 +929,7 @@ export default function Calendars() {
         isOpen={showEventDetailsDialog}
         onClose={() => setShowEventDetailsDialog(false)}
         onEdit={handleEditEvent}
+        onDelete={handleDeleteEvent}
         event={selectedEvent}
       />
       
