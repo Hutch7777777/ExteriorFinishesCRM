@@ -24,7 +24,8 @@ import {
   Save,
   Copy,
   RefreshCw,
-  UploadCloud
+  UploadCloud,
+  UserPlus
 } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -302,6 +303,53 @@ export default function Estimates() {
   }, [typedEstimateDetails]);
   
 
+
+  const createCustomerMutation = useMutation({
+    mutationFn: async (data: { leadData: any; divisionKey: string }) => {
+      const { leadData, divisionKey } = data;
+      const customerData = {
+        divisionKey: divisionKey,
+        name: leadData.name,
+        email: leadData.email,
+        phone: leadData.phone,
+        addressJson: {
+          address: leadData.address,
+          city: leadData.city,
+          state: leadData.state,
+          zipCode: leadData.zipCode
+        },
+        notes: `Converted from lead: ${leadData.notes || ''}`.trim()
+      };
+
+      const res = await fetch('/api/trpc/customers.create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ input: customerData })
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error?.message || 'Failed to create customer');
+      }
+
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Success',
+        description: 'Customer created successfully',
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/trpc/customers.list'] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
 
   const createEstimateMutation = useMutation({
     mutationFn: async (data: { leadId: string; title: string; description?: string }) => {
@@ -1159,15 +1207,48 @@ export default function Estimates() {
                   )}
                 </div>
                 <div className="mt-4 pt-4 border-t">
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm">
+                  <div className="flex gap-2 flex-wrap">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // TODO: Implement edit functionality
+                      }}
+                    >
                       <Edit className="w-4 h-4 mr-1" />
                       Edit
                     </Button>
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // TODO: Implement export functionality
+                      }}
+                    >
                       <Download className="w-4 h-4 mr-1" />
                       Export
                     </Button>
+                    {estimate.lead && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Use division parameter from URL, default to 'mfnc'
+                          createCustomerMutation.mutate({ 
+                            leadData: estimate.lead,
+                            divisionKey: division || 'mfnc'
+                          });
+                        }}
+                        disabled={createCustomerMutation.isPending}
+                        className="bg-green-50 hover:bg-green-100 border-green-200 text-green-800"
+                      >
+                        <UserPlus className="w-4 h-4 mr-1" />
+                        {createCustomerMutation.isPending ? 'Creating...' : 'Make Customer'}
+                      </Button>
+                    )}
                   </div>
                 </div>
               </CardContent>
