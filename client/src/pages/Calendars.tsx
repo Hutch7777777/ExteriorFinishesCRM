@@ -160,8 +160,17 @@ const getEventTypeIcon = (eventType: CalendarEvent['type']) => {
 const formatTimeDisplay = (timeString: string): string => {
   if (!timeString) return ''
   
-  const [hours, minutes] = timeString.split(':')
+  // Handle both "HH:MM" and "H:MM" formats
+  const timeParts = timeString.split(':')
+  if (timeParts.length !== 2) return timeString // Return original if invalid format
+  
+  const [hours, minutes] = timeParts
   const hour24 = parseInt(hours)
+  
+  // Validate hour and minute values
+  if (isNaN(hour24) || hour24 < 0 || hour24 > 23) return timeString
+  if (isNaN(parseInt(minutes)) || parseInt(minutes) < 0 || parseInt(minutes) > 59) return timeString
+  
   const hour12 = hour24 === 0 ? 12 : hour24 > 12 ? hour24 - 12 : hour24
   const period = hour24 >= 12 ? 'PM' : 'AM'
   
@@ -833,8 +842,8 @@ const EventDetailsDialog = ({
                 <Label className="text-sm font-medium text-gray-600">Time</Label>
                 <p className="text-sm flex items-center gap-1">
                   <Clock className="w-4 h-4" />
-                  {event.time}
-                  {event.endTime && ` - ${event.endTime}`}
+                  {formatTimeDisplay(event.time)}
+                  {event.endTime && ` - ${formatTimeDisplay(event.endTime)}`}
                 </p>
               </div>
             )}
