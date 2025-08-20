@@ -181,13 +181,19 @@ const CalendarGrid = ({
         return isSameDay(event.date, date)
       }
       
-      // For multi-day events, check if the date falls within the range
+      // For multi-day events, check if the date falls within the range (inclusive)
       const startDate = new Date(event.date)
       const endDate = new Date(event.endDate)
       
-      return isSameDay(event.date, date) || 
-             isSameDay(endDate, date) || 
-             (isAfter(date, startDate) && isBefore(date, endDate))
+      // Set times to start/end of day for accurate comparison
+      const dateToCheck = new Date(date)
+      dateToCheck.setHours(12, 0, 0, 0) // Midday for comparison
+      
+      startDate.setHours(0, 0, 0, 0) // Start of start day
+      endDate.setHours(23, 59, 59, 999) // End of end day
+      
+      // Check if date falls within the range (inclusive of start and end dates)
+      return dateToCheck >= startDate && dateToCheck <= endDate
     })
   }
 
@@ -881,22 +887,28 @@ export default function Calendars() {
     type: CalendarEvent['type']
     calendarType: CalendarEvent['calendarType']
     date: string
+    endDate?: string
     time: string
+    endTime?: string
     location: string
     description: string
     assignedTo: string
+    isMultiDay: boolean
   }) => {
     const newEvent: CalendarEvent = {
       id: Date.now().toString(), // Simple ID generation
       title: eventData.title,
       date: new Date(eventData.date),
+      endDate: eventData.endDate ? new Date(eventData.endDate) : undefined,
       type: eventData.type,
       calendarType: eventData.calendarType,
       status: 'scheduled',
       description: eventData.description,
       time: eventData.time,
+      endTime: eventData.endTime,
       location: eventData.location,
-      assignedTo: eventData.assignedTo
+      assignedTo: eventData.assignedTo,
+      isMultiDay: eventData.isMultiDay
     }
     
     setAllEvents(prev => [...prev, newEvent])
@@ -908,10 +920,13 @@ export default function Calendars() {
     type: CalendarEvent['type']
     calendarType: CalendarEvent['calendarType']
     date: string
+    endDate?: string
     time: string
+    endTime?: string
     location: string
     description: string
     assignedTo: string
+    isMultiDay: boolean
   }) => {
     if (!selectedEvent) return
     
@@ -919,12 +934,15 @@ export default function Calendars() {
       ...selectedEvent,
       title: eventData.title,
       date: new Date(eventData.date),
+      endDate: eventData.endDate ? new Date(eventData.endDate) : undefined,
       type: eventData.type,
       calendarType: eventData.calendarType,
       description: eventData.description,
       time: eventData.time,
+      endTime: eventData.endTime,
       location: eventData.location,
-      assignedTo: eventData.assignedTo
+      assignedTo: eventData.assignedTo,
+      isMultiDay: eventData.isMultiDay
     }
     
     setAllEvents(prev => prev.map(event => 
