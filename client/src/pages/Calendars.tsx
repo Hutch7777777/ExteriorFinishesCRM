@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -319,12 +319,17 @@ const EventsList = ({
 
 const NewEventDialog = ({ 
   isOpen, 
+  open,
   onClose,
-  onAddEvent
+  onAddEvent,
+  onSave,
+  selectedDate,
+  initialData
 }: { 
-  isOpen: boolean
+  isOpen?: boolean
+  open?: boolean
   onClose: () => void
-  onAddEvent: (eventData: {
+  onAddEvent?: (eventData: {
     title: string
     type: CalendarEvent['type']
     calendarType: CalendarEvent['calendarType']
@@ -334,17 +339,53 @@ const NewEventDialog = ({
     description: string
     assignedTo: string
   }) => void
+  onSave?: (eventData: {
+    title: string
+    type: CalendarEvent['type']
+    calendarType: CalendarEvent['calendarType']
+    date: string
+    time: string
+    location: string
+    description: string
+    assignedTo: string
+  }) => void
+  selectedDate?: Date | null
+  initialData?: CalendarEvent | null
 }) => {
+  const dialogOpen = isOpen || open || false
+  const isEditMode = !!initialData
+  
   const [newEvent, setNewEvent] = useState({
-    title: '',
-    type: 'bid' as CalendarEvent['type'],
-    calendarType: 'bids' as CalendarEvent['calendarType'],
-    date: '',
-    time: '',
-    location: '',
-    description: '',
-    assignedTo: ''
+    title: initialData?.title || '',
+    type: initialData?.type || 'bid' as CalendarEvent['type'],
+    calendarType: initialData?.calendarType || 'bids' as CalendarEvent['calendarType'],
+    date: initialData?.date ? format(initialData.date, 'yyyy-MM-dd') : (selectedDate ? format(selectedDate, 'yyyy-MM-dd') : ''),
+    time: initialData?.time || '',
+    location: initialData?.location || '',
+    description: initialData?.description || '',
+    assignedTo: initialData?.assignedTo || ''
   })
+
+  // Reset form when dialog opens/closes or initialData changes
+  useEffect(() => {
+    if (dialogOpen && initialData) {
+      setNewEvent({
+        title: initialData.title || '',
+        type: initialData.type || 'bid',
+        calendarType: initialData.calendarType || 'bids',
+        date: format(initialData.date, 'yyyy-MM-dd'),
+        time: initialData.time || '',
+        location: initialData.location || '',
+        description: initialData.description || '',
+        assignedTo: initialData.assignedTo || ''
+      })
+    } else if (dialogOpen && selectedDate) {
+      setNewEvent(prev => ({
+        ...prev,
+        date: format(selectedDate, 'yyyy-MM-dd')
+      }))
+    }
+  }, [dialogOpen, initialData, selectedDate])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -355,30 +396,39 @@ const NewEventDialog = ({
       return
     }
     
-    // Add the event to the appropriate calendar
-    onAddEvent(newEvent)
+    // Call appropriate handler based on mode
+    if (isEditMode && onSave) {
+      onSave(newEvent)
+    } else if (onAddEvent) {
+      onAddEvent(newEvent)
+    }
     
     // Close dialog and reset form
     onClose()
-    setNewEvent({
-      title: '',
-      type: 'bid',
-      calendarType: 'bids',
-      date: '',
-      time: '',
-      location: '',
-      description: '',
-      assignedTo: ''
-    })
+    if (!isEditMode) {
+      setNewEvent({
+        title: '',
+        type: 'bid',
+        calendarType: 'bids',
+        date: '',
+        time: '',
+        location: '',
+        description: '',
+        assignedTo: ''
+      })
+    }
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={dialogOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>New Calendar Event</DialogTitle>
+          <DialogTitle>{isEditMode ? 'Edit Event' : 'New Calendar Event'}</DialogTitle>
           <DialogDescription>
-            Schedule a new bid appointment, subcontractor meeting, or daily task.
+            {isEditMode 
+              ? 'Update the event details below.'
+              : 'Schedule a new bid appointment, subcontractor meeting, or daily task.'
+            }
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -483,7 +533,7 @@ const NewEventDialog = ({
               Cancel
             </Button>
             <Button type="submit">
-              Create Event
+              {isEditMode ? 'Update Event' : 'Create Event'}
             </Button>
           </div>
         </form>
@@ -496,10 +546,12 @@ const NewEventDialog = ({
 const EventDetailsDialog = ({ 
   isOpen, 
   onClose,
+  onEdit,
   event
 }: { 
   isOpen: boolean
   onClose: () => void
+  onEdit: () => void
   event: CalendarEvent | null
 }) => {
   if (!event) return null
@@ -627,7 +679,13 @@ const EventDetailsDialog = ({
           )}
         </div>
 
-        <div className="flex justify-end">
+        <div className="flex justify-between">
+          <Button 
+            variant="outline" 
+            onClick={onEdit}
+          >
+            Edit Event
+          </Button>
           <Button onClick={onClose}>Close</Button>
         </div>
       </DialogContent>
@@ -651,6 +709,7 @@ export default function Calendars() {
   const [activeCalendar, setActiveCalendar] = useState('overview')
   const [showNewEventDialog, setShowNewEventDialog] = useState(false)
   const [showEventDetailsDialog, setShowEventDetailsDialog] = useState(false)
+  const [showEditEventDialog, setShowEditEventDialog] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null)
   const [allEvents, setAllEvents] = useState<CalendarEvent[]>(mockEvents)
 
@@ -688,6 +747,41 @@ export default function Calendars() {
     }
     
     setAllEvents(prev => [...prev, newEvent])
+  }
+
+  // Function to update existing event
+  const handleUpdateEvent = (eventData: {
+    title: string
+    type: CalendarEvent['type']
+    calendarType: CalendarEvent['calendarType']
+    date: string
+    time: string
+    location: string
+    description: string
+    assignedTo: string
+  }) => {
+    if (!selectedEvent) return
+    
+    const updatedEvent: CalendarEvent = {
+      ...selectedEvent,
+      title: eventData.title,
+      date: new Date(eventData.date),
+      type: eventData.type,
+      calendarType: eventData.calendarType,
+      description: eventData.description,
+      time: eventData.time,
+      location: eventData.location,
+      assignedTo: eventData.assignedTo
+    }
+    
+    setAllEvents(prev => prev.map(event => 
+      event.id === selectedEvent.id ? updatedEvent : event
+    ))
+  }
+
+  const handleEditEvent = () => {
+    setShowEventDetailsDialog(false)
+    setShowEditEventDialog(true)
   }
 
   const handleBackToMain = () => {
@@ -814,7 +908,16 @@ export default function Calendars() {
       <EventDetailsDialog 
         isOpen={showEventDetailsDialog}
         onClose={() => setShowEventDetailsDialog(false)}
+        onEdit={handleEditEvent}
         event={selectedEvent}
+      />
+      
+      <NewEventDialog 
+        open={showEditEventDialog}
+        onClose={() => setShowEditEventDialog(false)}
+        onSave={handleUpdateEvent}
+        selectedDate={selectedEvent?.date}
+        initialData={selectedEvent}
       />
     </div>
   )
