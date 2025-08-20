@@ -56,7 +56,7 @@ export default function FieldManagement() {
   const [showPhotoDialog, setShowPhotoDialog] = useState(false);
   const [showIssueDialog, setShowIssueDialog] = useState(false);
   const [showMaterialDialog, setShowMaterialDialog] = useState(false);
-  const [showEmergencyDialog, setShowEmergencyDialog] = useState(false);
+
   const [photoCapture, setPhotoCapture] = useState<File | null>(null);
   const [issueForm, setIssueForm] = useState({
     title: '',
@@ -238,9 +238,7 @@ export default function FieldManagement() {
     setShowMaterialDialog(true);
   };
 
-  const handleEmergencyContact = () => {
-    setShowEmergencyDialog(true);
-  };
+
 
   const submitPhoto = async () => {
     if (!photoCapture || !selectedJob) {
@@ -694,14 +692,7 @@ export default function FieldManagement() {
                     <Truck className="w-4 h-4 mr-2" />
                     Request Materials
                   </Button>
-                  <Button 
-                    variant="outline" 
-                    className="w-full justify-start"
-                    onClick={handleEmergencyContact}
-                  >
-                    <Bell className="w-4 h-4 mr-2" />
-                    Emergency Contact
-                  </Button>
+
                 </CardContent>
               </Card>
 
@@ -1369,97 +1360,7 @@ export default function FieldManagement() {
         </DialogContent>
       </Dialog>
 
-      {/* Emergency Contact Dialog */}
-      <Dialog open={showEmergencyDialog} onOpenChange={setShowEmergencyDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Emergency Contacts</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-3">
-              <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
-                    <Phone className="w-4 h-4 text-red-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-red-900">Emergency Services</p>
-                    <p className="text-sm text-red-700">Fire, Police, Medical</p>
-                  </div>
-                </div>
-                <Button 
-                  className="w-full bg-red-600 hover:bg-red-700"
-                  onClick={() => window.location.href = 'tel:911'}
-                >
-                  Call 911
-                </Button>
-              </div>
-              
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                    <Users className="w-4 h-4 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-blue-900">Office Manager</p>
-                    <p className="text-sm text-blue-700">Sarah Johnson</p>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    className="flex-1"
-                    onClick={() => window.location.href = 'tel:555-0123'}
-                  >
-                    Call
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    className="flex-1"
-                    onClick={() => window.location.href = 'sms:555-0123'}
-                  >
-                    Text
-                  </Button>
-                </div>
-              </div>
-              
-              <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
-                    <Wrench className="w-4 h-4 text-orange-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-orange-900">Field Supervisor</p>
-                    <p className="text-sm text-orange-700">Mike Wilson</p>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    className="flex-1"
-                    onClick={() => window.location.href = 'tel:555-0456'}
-                  >
-                    Call
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    className="flex-1"
-                    onClick={() => window.location.href = 'sms:555-0456'}
-                  >
-                    Text
-                  </Button>
-                </div>
-              </div>
-            </div>
-            
-            <div className="flex justify-end">
-              <Button variant="outline" onClick={() => setShowEmergencyDialog(false)}>
-                Close
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+
     </div>
   );
 }
