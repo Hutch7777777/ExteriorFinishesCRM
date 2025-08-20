@@ -590,44 +590,82 @@ const NewEventDialog = ({
             )}
           </div>
 
-          {/* Time inputs with presets */}
+          {/* Time selection with Calendly-style picker */}
           {!newEvent.isMultiDay && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="time">Start Time</Label>
+                  <Label>Start Time</Label>
                   <div className="space-y-2">
                     <Input
-                      id="time"
                       type="time"
                       value={newEvent.time}
                       onChange={(e) => setNewEvent({ ...newEvent, time: e.target.value })}
+                      className="text-center"
                     />
-                    <div className="flex flex-wrap gap-1">
-                      {['7:00', '8:00', '9:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'].map((time) => (
-                        <Button
-                          key={time}
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="text-xs px-2 py-1 h-6"
-                          onClick={() => setNewEvent({ ...newEvent, time })}
-                        >
-                          {time === '12:00' ? '12:00 PM' : parseInt(time.split(':')[0]) > 12 ? `${parseInt(time.split(':')[0]) - 12}:00 PM` : `${time} AM`}
-                        </Button>
-                      ))}
+                    <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-2 border rounded-md bg-gray-50">
+                      {[
+                        '7:00 AM', '8:00 AM', '9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM',
+                        '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM', '5:00 PM'
+                      ].map((timeLabel) => {
+                        const timeValue = timeLabel.includes('AM') 
+                          ? (timeLabel === '12:00 PM' ? '12:00' : timeLabel.split(' ')[0])
+                          : timeLabel === '12:00 PM' 
+                            ? '12:00' 
+                            : `${parseInt(timeLabel.split(':')[0]) + 12}:00`
+                        
+                        return (
+                          <Button
+                            key={timeLabel}
+                            type="button"
+                            variant={newEvent.time === timeValue ? "default" : "outline"}
+                            size="sm"
+                            className="text-xs py-2 h-8 justify-center"
+                            onClick={() => setNewEvent({ ...newEvent, time: timeValue })}
+                          >
+                            {timeLabel}
+                          </Button>
+                        )
+                      })}
                     </div>
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="endTime">End Time (Optional)</Label>
-                  <Input
-                    id="endTime"
-                    type="time"
-                    value={newEvent.endTime}
-                    onChange={(e) => setNewEvent({ ...newEvent, endTime: e.target.value })}
-                    min={newEvent.time}
-                  />
+                  <Label>End Time (Optional)</Label>
+                  <div className="space-y-2">
+                    <Input
+                      type="time"
+                      value={newEvent.endTime}
+                      onChange={(e) => setNewEvent({ ...newEvent, endTime: e.target.value })}
+                      min={newEvent.time}
+                      className="text-center"
+                    />
+                    <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-2 border rounded-md bg-gray-50">
+                      {[
+                        '8:00 AM', '9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '1:00 PM',
+                        '2:00 PM', '3:00 PM', '4:00 PM', '5:00 PM', '6:00 PM'
+                      ].map((timeLabel) => {
+                        const timeValue = timeLabel.includes('AM') 
+                          ? (timeLabel === '12:00 PM' ? '12:00' : timeLabel.split(' ')[0])
+                          : timeLabel === '12:00 PM' 
+                            ? '12:00' 
+                            : `${parseInt(timeLabel.split(':')[0]) + 12}:00`
+                        
+                        return (
+                          <Button
+                            key={timeLabel}
+                            type="button"
+                            variant={newEvent.endTime === timeValue ? "default" : "outline"}
+                            size="sm"
+                            className="text-xs py-2 h-8 justify-center"
+                            onClick={() => setNewEvent({ ...newEvent, endTime: timeValue })}
+                          >
+                            {timeLabel}
+                          </Button>
+                        )
+                      })}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
