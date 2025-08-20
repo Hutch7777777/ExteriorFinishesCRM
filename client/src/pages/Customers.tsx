@@ -31,6 +31,7 @@ interface Customer {
   email: string | null
   phone: string | null
   notes: string | null
+  fieldSupervisorId: string | null
   divisionId: string
   createdAt: string
 }

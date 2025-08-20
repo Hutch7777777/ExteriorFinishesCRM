@@ -67,10 +67,12 @@ export const customers = pgTable("customers", {
   phone: varchar("phone", { length: 20 }),
   addressJson: jsonb("address_json"),
   notes: text("notes"),
+  fieldSupervisorId: uuid("field_supervisor_id").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("idx_customers_division_id").on(table.divisionId),
   index("idx_customers_email").on(table.email),
+  index("idx_customers_field_supervisor_id").on(table.fieldSupervisorId),
 ]);
 
 // Jobs table

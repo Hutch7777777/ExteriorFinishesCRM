@@ -143,6 +143,7 @@ export const createAppRouter = () => {
         phone: z.string().optional(),
         addressJson: z.any().optional(),
         notes: z.string().optional(),
+        fieldSupervisorId: z.string().uuid().optional(),
       });
       
       const input = inputSchema.parse(req.body?.input || {});
@@ -164,6 +165,7 @@ export const createAppRouter = () => {
         phone: input.phone || null,
         addressJson: input.addressJson || null,
         notes: input.notes || null,
+        fieldSupervisorId: input.fieldSupervisorId || null,
         divisionId: division.id,
       };
       
@@ -212,6 +214,7 @@ export const createAppRouter = () => {
         phone: z.string().optional(),
         addressJson: z.any().optional(),
         notes: z.string().optional(),
+        fieldSupervisorId: z.string().uuid().optional(),
       });
       
       const input = inputSchema.parse(req.body?.input || {});
@@ -239,6 +242,7 @@ export const createAppRouter = () => {
         ...(input.phone !== undefined && { phone: input.phone }),
         ...(input.addressJson !== undefined && { addressJson: input.addressJson }),
         ...(input.notes !== undefined && { notes: input.notes }),
+        ...(input.fieldSupervisorId !== undefined && { fieldSupervisorId: input.fieldSupervisorId }),
       };
       
       const result = await storage.updateCustomer(input.id, updateData);

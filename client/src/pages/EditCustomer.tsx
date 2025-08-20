@@ -7,6 +7,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
 import { trpcClient } from '@/lib/trpc'
 import { ArrowLeft, Trash2 } from 'lucide-react'
@@ -19,6 +20,7 @@ const updateCustomerSchema = z.object({
   email: z.string().email('Invalid email').optional().or(z.literal('')),
   phone: z.string().optional(),
   notes: z.string().optional(),
+  fieldSupervisorId: z.string().optional(),
 })
 
 type UpdateCustomerData = z.infer<typeof updateCustomerSchema>
@@ -29,8 +31,16 @@ interface Customer {
   email: string | null
   phone: string | null
   notes: string | null
+  fieldSupervisorId: string | null
   divisionId: string
   createdAt: string
+}
+
+interface User {
+  id: string
+  name: string
+  email: string
+  role: string
 }
 
 export default function EditCustomer() {
@@ -53,6 +63,13 @@ export default function EditCustomer() {
     enabled: !!customerId,
   })
 
+  // Fetch users for field supervisor selection
+  const { data: users = [] } = useQuery<User[]>({
+    queryKey: ['users.list', division],
+    queryFn: () => trpcClient.users.list({ divisionKey: division as 'mfnc' | 'sfnc' | 'rr' }),
+    enabled: !!division,
+  })
+
   // Set form values when customer data loads
   React.useEffect(() => {
     if (customer) {
@@ -61,6 +78,7 @@ export default function EditCustomer() {
         email: customer.email || '',
         phone: customer.phone || '',
         notes: customer.notes || '',
+        fieldSupervisorId: customer.fieldSupervisorId || '',
       })
     }
   }, [customer, form])
@@ -74,6 +92,7 @@ export default function EditCustomer() {
         email: data.email || undefined,
         phone: data.phone || undefined,
         notes: data.notes || undefined,
+        fieldSupervisorId: data.fieldSupervisorId || undefined,
       })
     },
     onSuccess: () => {
@@ -218,6 +237,25 @@ export default function EditCustomer() {
                 type="tel"
                 {...form.register('phone')}
               />
+            </div>
+            <div>
+              <Label htmlFor="fieldSupervisorId">Field Supervisor</Label>
+              <Select 
+                value={form.watch('fieldSupervisorId')} 
+                onValueChange={(value) => form.setValue('fieldSupervisorId', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select field supervisor" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">No supervisor assigned</SelectItem>
+                  {users.map((user) => (
+                    <SelectItem key={user.id} value={user.id}>
+                      {user.name} ({user.email})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label htmlFor="notes">Notes</Label>
