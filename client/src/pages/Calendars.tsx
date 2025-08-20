@@ -26,7 +26,7 @@ interface CalendarEvent {
 }
 
 // Sample events for demonstration - these would come from your backend API
-const mockEvents: CalendarEvent[] = [
+let mockEvents: CalendarEvent[] = [
   {
     id: '1',
     title: 'Residential Siding Bid',
@@ -306,10 +306,21 @@ const EventsList = ({
 
 const NewEventDialog = ({ 
   isOpen, 
-  onClose 
+  onClose,
+  onAddEvent
 }: { 
   isOpen: boolean
-  onClose: () => void 
+  onClose: () => void
+  onAddEvent: (eventData: {
+    title: string
+    type: CalendarEvent['type']
+    calendarType: CalendarEvent['calendarType']
+    date: string
+    time: string
+    location: string
+    description: string
+    assignedTo: string
+  }) => void
 }) => {
   const [newEvent, setNewEvent] = useState({
     title: '',
@@ -324,10 +335,18 @@ const NewEventDialog = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    // Here you would typically make an API call to create the event
-    console.log('Creating new event:', newEvent)
+    
+    // Validate required fields
+    if (!newEvent.title || !newEvent.date || !newEvent.calendarType) {
+      alert('Please fill in all required fields')
+      return
+    }
+    
+    // Add the event to the appropriate calendar
+    onAddEvent(newEvent)
+    
+    // Close dialog and reset form
     onClose()
-    // Reset form
     setNewEvent({
       title: '',
       type: 'bid',
@@ -475,15 +494,43 @@ export default function Calendars() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [activeCalendar, setActiveCalendar] = useState('overview')
   const [showNewEventDialog, setShowNewEventDialog] = useState(false)
+  const [allEvents, setAllEvents] = useState<CalendarEvent[]>(mockEvents)
 
   // Filter events based on active calendar
   const getEventsForCalendar = (calendarId: string) => {
-    if (calendarId === 'overview') return mockEvents
-    return mockEvents.filter(e => e.calendarType === calendarId)
+    if (calendarId === 'overview') return allEvents
+    return allEvents.filter(e => e.calendarType === calendarId)
   }
 
   const events = getEventsForCalendar(activeCalendar)
   const currentCalendar = calendarTypes.find(c => c.id === activeCalendar)
+
+  // Function to add new event
+  const handleAddEvent = (eventData: {
+    title: string
+    type: CalendarEvent['type']
+    calendarType: CalendarEvent['calendarType']
+    date: string
+    time: string
+    location: string
+    description: string
+    assignedTo: string
+  }) => {
+    const newEvent: CalendarEvent = {
+      id: Date.now().toString(), // Simple ID generation
+      title: eventData.title,
+      date: new Date(eventData.date),
+      type: eventData.type,
+      calendarType: eventData.calendarType,
+      status: 'scheduled',
+      description: eventData.description,
+      time: eventData.time,
+      location: eventData.location,
+      assignedTo: eventData.assignedTo
+    }
+    
+    setAllEvents(prev => [...prev, newEvent])
+  }
 
   const handleBackToMain = () => {
     window.location.href = '/mfnc/lead-management'
@@ -597,6 +644,7 @@ export default function Calendars() {
       <NewEventDialog 
         isOpen={showNewEventDialog}
         onClose={() => setShowNewEventDialog(false)}
+        onAddEvent={handleAddEvent}
       />
     </div>
   )
