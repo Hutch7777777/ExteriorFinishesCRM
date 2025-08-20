@@ -125,11 +125,13 @@ let mockEvents: CalendarEvent[] = [
 const CalendarGrid = ({ 
   events, 
   currentDate, 
-  onDateClick 
+  onDateClick,
+  onEventClick
 }: { 
   events: CalendarEvent[]
   currentDate: Date
-  onDateClick: (date: Date) => void 
+  onDateClick: (date: Date) => void
+  onEventClick: (event: CalendarEvent) => void
 }) => {
   const monthStart = startOfMonth(currentDate)
   const monthEnd = endOfMonth(currentDate)
@@ -188,7 +190,11 @@ const CalendarGrid = ({
               {dayEvents.slice(0, 2).map(event => (
                 <div
                   key={event.id}
-                  className={`text-xs p-1 rounded border ${getEventTypeColor(event.type)}`}
+                  onClick={(e) => {
+                    e.stopPropagation() // Prevent day click
+                    onEventClick(event)
+                  }}
+                  className={`text-xs p-1 rounded border cursor-pointer hover:shadow-sm transition-shadow ${getEventTypeColor(event.type)}`}
                   title={`${event.title} - ${event.time || 'All day'}`}
                 >
                   <div className="truncate font-medium">{event.title}</div>
@@ -479,6 +485,149 @@ const NewEventDialog = ({
   )
 }
 
+// Event Details Dialog Component
+const EventDetailsDialog = ({ 
+  isOpen, 
+  onClose,
+  event
+}: { 
+  isOpen: boolean
+  onClose: () => void
+  event: CalendarEvent | null
+}) => {
+  if (!event) return null
+
+  const getEventTypeDisplay = (type: CalendarEvent['type']) => {
+    switch (type) {
+      case 'bid': return 'Bid Appointment'
+      case 'subcontracting': return 'Subcontractor Meeting'
+      case 'daily': return 'Daily Operations'
+      case 'inspection': return 'Site Inspection'
+      case 'delivery': return 'Material Delivery'
+      default: return type
+    }
+  }
+
+  const getCalendarTypeDisplay = (calendarType: CalendarEvent['calendarType']) => {
+    switch (calendarType) {
+      case 'bids': return 'Bid Appointments'
+      case 'subcontractors': return 'Subcontractor Meetings'
+      case 'daily': return 'Daily Operations'
+      case 'inspections': return 'Site Inspections'
+      case 'deliveries': return 'Material Deliveries'
+      default: return calendarType
+    }
+  }
+
+  const getStatusBadgeColor = (status?: string) => {
+    switch (status) {
+      case 'confirmed': return 'bg-green-100 text-green-800'
+      case 'scheduled': return 'bg-blue-100 text-blue-800'
+      case 'pending': return 'bg-yellow-100 text-yellow-800'
+      case 'completed': return 'bg-gray-100 text-gray-800'
+      default: return 'bg-gray-100 text-gray-800'
+    }
+  }
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            {getEventTypeIcon(event.type)}
+            {event.title}
+          </DialogTitle>
+          <DialogDescription>
+            Event details for {format(event.date, 'MMMM d, yyyy')}
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="space-y-4">
+          {/* Event Type and Calendar */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label className="text-sm font-medium text-gray-600">Event Type</Label>
+              <p className="text-sm">{getEventTypeDisplay(event.type)}</p>
+            </div>
+            <div>
+              <Label className="text-sm font-medium text-gray-600">Calendar</Label>
+              <p className="text-sm">{getCalendarTypeDisplay(event.calendarType)}</p>
+            </div>
+          </div>
+
+          {/* Date and Time */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label className="text-sm font-medium text-gray-600">Date</Label>
+              <p className="text-sm flex items-center gap-1">
+                <CalendarDays className="w-4 h-4" />
+                {format(event.date, 'EEEE, MMMM d, yyyy')}
+              </p>
+            </div>
+            {event.time && (
+              <div>
+                <Label className="text-sm font-medium text-gray-600">Time</Label>
+                <p className="text-sm flex items-center gap-1">
+                  <Clock className="w-4 h-4" />
+                  {event.time}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Location and Assigned To */}
+          {(event.location || event.assignedTo) && (
+            <div className="grid grid-cols-2 gap-4">
+              {event.location && (
+                <div>
+                  <Label className="text-sm font-medium text-gray-600">Location</Label>
+                  <p className="text-sm flex items-center gap-1">
+                    <MapPin className="w-4 h-4" />
+                    {event.location}
+                  </p>
+                </div>
+              )}
+              {event.assignedTo && (
+                <div>
+                  <Label className="text-sm font-medium text-gray-600">Assigned To</Label>
+                  <p className="text-sm flex items-center gap-1">
+                    <User className="w-4 h-4" />
+                    {event.assignedTo}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Status */}
+          {event.status && (
+            <div>
+              <Label className="text-sm font-medium text-gray-600">Status</Label>
+              <div className="mt-1">
+                <Badge variant="secondary" className={getStatusBadgeColor(event.status)}>
+                  {event.status}
+                </Badge>
+              </div>
+            </div>
+          )}
+
+          {/* Description */}
+          {event.description && (
+            <div>
+              <Label className="text-sm font-medium text-gray-600">Description</Label>
+              <p className="text-sm bg-gray-50 p-3 rounded-md">{event.description}</p>
+            </div>
+          )}
+        </div>
+
+        <div className="flex justify-end">
+          <Button onClick={onClose}>Close</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 // Calendar types with separate data
 const calendarTypes = [
   { id: 'overview', name: 'Calendar Overview', description: 'View all your scheduled events across bid appointments, subcontractor meetings, and daily tasks' },
@@ -494,6 +643,8 @@ export default function Calendars() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [activeCalendar, setActiveCalendar] = useState('overview')
   const [showNewEventDialog, setShowNewEventDialog] = useState(false)
+  const [showEventDetailsDialog, setShowEventDetailsDialog] = useState(false)
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null)
   const [allEvents, setAllEvents] = useState<CalendarEvent[]>(mockEvents)
 
   // Filter events based on active calendar
@@ -546,6 +697,11 @@ export default function Calendars() {
 
   const handleDateClick = (date: Date) => {
     setSelectedDate(date)
+  }
+
+  const handleEventClick = (event: CalendarEvent) => {
+    setSelectedEvent(event)
+    setShowEventDetailsDialog(true)
   }
 
   return (
@@ -637,6 +793,7 @@ export default function Calendars() {
             events={events}
             currentDate={currentDate}
             onDateClick={handleDateClick}
+            onEventClick={handleEventClick}
           />
         </CardContent>
       </Card>
@@ -645,6 +802,12 @@ export default function Calendars() {
         isOpen={showNewEventDialog}
         onClose={() => setShowNewEventDialog(false)}
         onAddEvent={handleAddEvent}
+      />
+      
+      <EventDetailsDialog 
+        isOpen={showEventDetailsDialog}
+        onClose={() => setShowEventDetailsDialog(false)}
+        event={selectedEvent}
       />
     </div>
   )
