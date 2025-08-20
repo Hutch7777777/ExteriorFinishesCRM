@@ -156,6 +156,18 @@ const getEventTypeIcon = (eventType: CalendarEvent['type']) => {
   }
 }
 
+// Helper function to format time display with AM/PM
+const formatTimeDisplay = (timeString: string): string => {
+  if (!timeString) return ''
+  
+  const [hours, minutes] = timeString.split(':')
+  const hour24 = parseInt(hours)
+  const hour12 = hour24 === 0 ? 12 : hour24 > 12 ? hour24 - 12 : hour24
+  const period = hour24 >= 12 ? 'PM' : 'AM'
+  
+  return `${hour12}:${minutes} ${period}`
+}
+
 const CalendarGrid = ({ 
   events, 
   currentDate, 
@@ -246,7 +258,7 @@ const CalendarGrid = ({
                 // Check if this is a multi-day event and what day of the event this is
                 const isMultiDay = event.isMultiDay && event.endDate
                 const isStartDay = isSameDay(event.date, day)
-                const isEndDay = isMultiDay && isSameDay(new Date(event.endDate), day)
+                const isEndDay = isMultiDay && event.endDate && isSameDay(new Date(event.endDate), day)
                 const isContinuation = isMultiDay && !isStartDay && !isEndDay
                 
                 return (
@@ -267,13 +279,13 @@ const CalendarGrid = ({
                     } ${
                       dayEvents.length > 4 ? 'mb-0' : ''
                     }`}
-                    title={`${event.title} - ${event.time || 'All day'}${isMultiDay ? ` (${format(event.date, 'MMM d')} - ${format(new Date(event.endDate), 'MMM d')})` : ''}`}
+                    title={`${event.title} - ${event.time ? formatTimeDisplay(event.time) : 'All day'}${isMultiDay && event.endDate ? ` (${format(event.date, 'MMM d')} - ${format(new Date(event.endDate), 'MMM d')})` : ''}`}
                   >
                     <div className={`font-medium ${dayEvents.length > 6 ? 'truncate' : ''}`}>
                       {isContinuation ? `↔ ${event.title}` : event.title}
                     </div>
                     {event.time && isStartDay && dayEvents.length <= 4 && (
-                      <div className="truncate">{event.time}</div>
+                      <div className="truncate">{formatTimeDisplay(event.time)}</div>
                     )}
                     {isMultiDay && isStartDay && dayEvents.length <= 4 && (
                       <div className="text-xs opacity-75">Multi-day →</div>
@@ -346,7 +358,7 @@ const EventsList = ({
                       {event.time && (
                         <span className="flex items-center gap-1">
                           <Clock className="w-3 h-3" />
-                          {event.time}
+                          {formatTimeDisplay(event.time)}
                         </span>
                       )}
                       {event.location && (
