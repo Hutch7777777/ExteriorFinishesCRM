@@ -78,7 +78,7 @@ export default function EditCustomer() {
         email: customer.email || '',
         phone: customer.phone || '',
         notes: customer.notes || '',
-        fieldSupervisorId: customer.fieldSupervisorId || '',
+        fieldSupervisorId: customer.fieldSupervisorId || 'none',
       })
     }
   }, [customer, form])
@@ -92,7 +92,7 @@ export default function EditCustomer() {
         email: data.email || undefined,
         phone: data.phone || undefined,
         notes: data.notes || undefined,
-        fieldSupervisorId: data.fieldSupervisorId || undefined,
+        fieldSupervisorId: data.fieldSupervisorId === 'none' ? null : data.fieldSupervisorId || undefined,
       })
     },
     onSuccess: () => {
@@ -241,14 +241,14 @@ export default function EditCustomer() {
             <div>
               <Label htmlFor="fieldSupervisorId">Field Supervisor</Label>
               <Select 
-                value={form.watch('fieldSupervisorId')} 
-                onValueChange={(value) => form.setValue('fieldSupervisorId', value)}
+                value={form.watch('fieldSupervisorId') || 'none'} 
+                onValueChange={(value) => form.setValue('fieldSupervisorId', value === 'none' ? '' : value)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select field supervisor" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No supervisor assigned</SelectItem>
+                  <SelectItem value="none">No supervisor assigned</SelectItem>
                   {users.map((user) => (
                     <SelectItem key={user.id} value={user.id}>
                       {user.name} ({user.email})
