@@ -708,17 +708,38 @@ const NewEventDialog = ({
           
           <div className="space-y-2">
             <Label htmlFor="assignedTo">Assigned To</Label>
-            <Select value={newEvent.assignedTo} onValueChange={(value) => setNewEvent({ ...newEvent, assignedTo: value })}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select team member" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="John Smith">John Smith</SelectItem>
-                <SelectItem value="Mike Johnson">Mike Johnson</SelectItem>
-                <SelectItem value="Sarah Davis">Sarah Davis</SelectItem>
-                <SelectItem value="Tom Wilson">Tom Wilson</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-2">
+                {['John Smith', 'Mike Johnson', 'Sarah Davis', 'Tom Wilson', 'Lisa Brown'].map((member) => (
+                  <div key={member} className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id={`member-${member}`}
+                      checked={newEvent.assignedTo?.includes(member) || false}
+                      onChange={(e) => {
+                        const currentAssigned = newEvent.assignedTo ? newEvent.assignedTo.split(', ') : []
+                        if (e.target.checked) {
+                          const newAssigned = [...currentAssigned, member]
+                          setNewEvent({ ...newEvent, assignedTo: newAssigned.join(', ') })
+                        } else {
+                          const newAssigned = currentAssigned.filter(m => m !== member)
+                          setNewEvent({ ...newEvent, assignedTo: newAssigned.join(', ') })
+                        }
+                      }}
+                      className="rounded border-gray-300"
+                    />
+                    <label htmlFor={`member-${member}`} className="text-sm font-medium">
+                      {member}
+                    </label>
+                  </div>
+                ))}
+              </div>
+              {newEvent.assignedTo && (
+                <div className="text-xs text-gray-600">
+                  Selected: {newEvent.assignedTo}
+                </div>
+              )}
+            </div>
           </div>
           
           <div className="space-y-2">
