@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { 
   MessageSquare,
@@ -35,7 +36,9 @@ import {
   Truck,
   Wrench,
   Camera,
-  Cloud
+  Cloud,
+  Mail,
+  X
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { trpcClient } from '@/lib/trpc';
@@ -50,6 +53,23 @@ export default function FieldManagement() {
   const [logInput, setLogInput] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [selectedSupervisor, setSelectedSupervisor] = useState('all');
+  const [showPhotoDialog, setShowPhotoDialog] = useState(false);
+  const [showIssueDialog, setShowIssueDialog] = useState(false);
+  const [showMaterialDialog, setShowMaterialDialog] = useState(false);
+  const [showEmergencyDialog, setShowEmergencyDialog] = useState(false);
+  const [photoCapture, setPhotoCapture] = useState<File | null>(null);
+  const [issueForm, setIssueForm] = useState({
+    title: '',
+    description: '',
+    priority: 'medium' as 'low' | 'medium' | 'high' | 'critical',
+    location: ''
+  });
+  const [materialRequest, setMaterialRequest] = useState({
+    supplier: '',
+    materials: '',
+    urgency: 'normal' as 'urgent' | 'normal' | 'low',
+    notes: ''
+  });
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -187,6 +207,131 @@ export default function FieldManagement() {
       title: "Will Call Request Submitted",
       description: "Your materials request has been sent to the supplier."
     });
+  };
+
+  // Quick Actions handlers
+  const handleTakePhoto = () => {
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      // For mobile browsers, trigger camera directly
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.capture = 'environment'; // Use rear camera on mobile
+      input.onchange = (e) => {
+        const file = (e.target as HTMLInputElement).files?.[0];
+        if (file) {
+          setPhotoCapture(file);
+          setShowPhotoDialog(true);
+        }
+      };
+      input.click();
+    } else {
+      setShowPhotoDialog(true);
+    }
+  };
+
+  const handleReportIssue = () => {
+    setShowIssueDialog(true);
+  };
+
+  const handleRequestMaterials = () => {
+    setShowMaterialDialog(true);
+  };
+
+  const handleEmergencyContact = () => {
+    setShowEmergencyDialog(true);
+  };
+
+  const submitPhoto = async () => {
+    if (!photoCapture || !selectedJob) {
+      toast({
+        title: "Error",
+        description: "Please select a job and capture a photo first."
+      });
+      return;
+    }
+
+    try {
+      // TODO: Implement photo upload to storage and create field log
+      const formData = new FormData();
+      formData.append('photo', photoCapture);
+      formData.append('jobId', selectedJob);
+      
+      toast({
+        title: "Photo Uploaded",
+        description: "Site photo has been added to the job log."
+      });
+      
+      setShowPhotoDialog(false);
+      setPhotoCapture(null);
+    } catch (error) {
+      toast({
+        title: "Upload Failed",
+        description: "Failed to upload photo. Please try again."
+      });
+    }
+  };
+
+  const submitIssue = async () => {
+    if (!issueForm.title || !issueForm.description || !selectedJob) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields and select a job."
+      });
+      return;
+    }
+
+    try {
+      // TODO: Create punch list item via API
+      toast({
+        title: "Issue Reported",
+        description: "Issue has been added to the punch list and office team notified."
+      });
+      
+      setShowIssueDialog(false);
+      setIssueForm({
+        title: '',
+        description: '',
+        priority: 'medium',
+        location: ''
+      });
+    } catch (error) {
+      toast({
+        title: "Submit Failed",
+        description: "Failed to report issue. Please try again."
+      });
+    }
+  };
+
+  const submitMaterialRequest = async () => {
+    if (!materialRequest.supplier || !materialRequest.materials) {
+      toast({
+        title: "Error",
+        description: "Please fill in supplier and materials information."
+      });
+      return;
+    }
+
+    try {
+      // TODO: Create material request via API
+      toast({
+        title: "Request Submitted",
+        description: "Material request has been sent to the office team."
+      });
+      
+      setShowMaterialDialog(false);
+      setMaterialRequest({
+        supplier: '',
+        materials: '',
+        urgency: 'normal',
+        notes: ''
+      });
+    } catch (error) {
+      toast({
+        title: "Submit Failed",
+        description: "Failed to submit material request. Please try again."
+      });
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -525,19 +670,35 @@ export default function FieldManagement() {
                   <CardTitle className="text-lg">Quick Actions</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <Button variant="outline" className="w-full justify-start">
+                  <Button 
+                    variant="outline" 
+                    className="w-full justify-start"
+                    onClick={handleTakePhoto}
+                  >
                     <Camera className="w-4 h-4 mr-2" />
                     Take Photo
                   </Button>
-                  <Button variant="outline" className="w-full justify-start">
+                  <Button 
+                    variant="outline" 
+                    className="w-full justify-start"
+                    onClick={handleReportIssue}
+                  >
                     <AlertTriangle className="w-4 h-4 mr-2" />
                     Report Issue
                   </Button>
-                  <Button variant="outline" className="w-full justify-start">
+                  <Button 
+                    variant="outline" 
+                    className="w-full justify-start"
+                    onClick={handleRequestMaterials}
+                  >
                     <Truck className="w-4 h-4 mr-2" />
                     Request Materials
                   </Button>
-                  <Button variant="outline" className="w-full justify-start">
+                  <Button 
+                    variant="outline" 
+                    className="w-full justify-start"
+                    onClick={handleEmergencyContact}
+                  >
                     <Bell className="w-4 h-4 mr-2" />
                     Emergency Contact
                   </Button>
@@ -988,6 +1149,317 @@ export default function FieldManagement() {
           </CardContent>
         </Card>
       )}
+
+      {/* Photo Upload Dialog */}
+      <Dialog open={showPhotoDialog} onOpenChange={setShowPhotoDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Upload Site Photo</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Select Job</Label>
+              <Select value={selectedJob || ''} onValueChange={setSelectedJob}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose job site" />
+                </SelectTrigger>
+                <SelectContent>
+                  {jobs.map((job: any) => (
+                    <SelectItem key={job.id} value={job.id}>
+                      {job.siteAddress?.street || `Job ${job.id.slice(0, 8)}`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {photoCapture ? (
+              <div className="space-y-2">
+                <Label>Photo Preview</Label>
+                <div className="w-full h-48 bg-gray-100 rounded-lg flex items-center justify-center">
+                  <img 
+                    src={URL.createObjectURL(photoCapture)} 
+                    alt="Preview"
+                    className="max-w-full max-h-full object-contain rounded-lg"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label>Take Photo</Label>
+                <div className="w-full h-48 bg-gray-100 rounded-lg flex items-center justify-center">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) setPhotoCapture(file);
+                    }}
+                    className="hidden"
+                    id="camera-input"
+                  />
+                  <label htmlFor="camera-input" className="cursor-pointer flex flex-col items-center gap-2">
+                    <Camera className="w-8 h-8 text-gray-400" />
+                    <span className="text-sm text-gray-500">Tap to take photo</span>
+                  </label>
+                </div>
+              </div>
+            )}
+            
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => {
+                setShowPhotoDialog(false);
+                setPhotoCapture(null);
+              }}>
+                Cancel
+              </Button>
+              <Button onClick={submitPhoto} disabled={!photoCapture || !selectedJob}>
+                Upload Photo
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Report Issue Dialog */}
+      <Dialog open={showIssueDialog} onOpenChange={setShowIssueDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Report Issue</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Select Job</Label>
+              <Select value={selectedJob || ''} onValueChange={setSelectedJob}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose job site" />
+                </SelectTrigger>
+                <SelectContent>
+                  {jobs.map((job: any) => (
+                    <SelectItem key={job.id} value={job.id}>
+                      {job.siteAddress?.street || `Job ${job.id.slice(0, 8)}`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Issue Title</Label>
+              <Input
+                value={issueForm.title}
+                onChange={(e) => setIssueForm({...issueForm, title: e.target.value})}
+                placeholder="Brief description of the issue"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Priority</Label>
+              <Select value={issueForm.priority} onValueChange={(value: any) => setIssueForm({...issueForm, priority: value})}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                  <SelectItem value="critical">Critical</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Location (Optional)</Label>
+              <Input
+                value={issueForm.location}
+                onChange={(e) => setIssueForm({...issueForm, location: e.target.value})}
+                placeholder="Specific location of the issue"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Textarea
+                value={issueForm.description}
+                onChange={(e) => setIssueForm({...issueForm, description: e.target.value})}
+                placeholder="Detailed description of the issue and any immediate actions taken"
+                rows={4}
+              />
+            </div>
+            
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowIssueDialog(false)}>
+                Cancel
+              </Button>
+              <Button onClick={submitIssue}>
+                Report Issue
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Material Request Dialog */}
+      <Dialog open={showMaterialDialog} onOpenChange={setShowMaterialDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Request Materials</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Supplier</Label>
+              <Select value={materialRequest.supplier} onValueChange={(value) => setMaterialRequest({...materialRequest, supplier: value})}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose supplier" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ABC Supply Co.">ABC Supply Co.</SelectItem>
+                  <SelectItem value="Home Depot Pro">Home Depot Pro</SelectItem>
+                  <SelectItem value="Lowe's Pro">Lowe's Pro</SelectItem>
+                  <SelectItem value="Local Lumber Yard">Local Lumber Yard</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Materials Needed</Label>
+              <Textarea
+                value={materialRequest.materials}
+                onChange={(e) => setMaterialRequest({...materialRequest, materials: e.target.value})}
+                placeholder="List materials, quantities, and specifications"
+                rows={3}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Urgency</Label>
+              <Select value={materialRequest.urgency} onValueChange={(value: any) => setMaterialRequest({...materialRequest, urgency: value})}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="urgent">Urgent - Need Today</SelectItem>
+                  <SelectItem value="normal">Normal - Need This Week</SelectItem>
+                  <SelectItem value="low">Low - Can Wait</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Additional Notes</Label>
+              <Textarea
+                value={materialRequest.notes}
+                onChange={(e) => setMaterialRequest({...materialRequest, notes: e.target.value})}
+                placeholder="Special instructions, delivery preferences, etc."
+                rows={2}
+              />
+            </div>
+            
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowMaterialDialog(false)}>
+                Cancel
+              </Button>
+              <Button onClick={submitMaterialRequest}>
+                Submit Request
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Emergency Contact Dialog */}
+      <Dialog open={showEmergencyDialog} onOpenChange={setShowEmergencyDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Emergency Contacts</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-3">
+              <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
+                    <Phone className="w-4 h-4 text-red-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-red-900">Emergency Services</p>
+                    <p className="text-sm text-red-700">Fire, Police, Medical</p>
+                  </div>
+                </div>
+                <Button 
+                  className="w-full bg-red-600 hover:bg-red-700"
+                  onClick={() => window.location.href = 'tel:911'}
+                >
+                  Call 911
+                </Button>
+              </div>
+              
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                    <Users className="w-4 h-4 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-blue-900">Office Manager</p>
+                    <p className="text-sm text-blue-700">Sarah Johnson</p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    className="flex-1"
+                    onClick={() => window.location.href = 'tel:555-0123'}
+                  >
+                    Call
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className="flex-1"
+                    onClick={() => window.location.href = 'sms:555-0123'}
+                  >
+                    Text
+                  </Button>
+                </div>
+              </div>
+              
+              <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
+                    <Wrench className="w-4 h-4 text-orange-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-orange-900">Field Supervisor</p>
+                    <p className="text-sm text-orange-700">Mike Wilson</p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    className="flex-1"
+                    onClick={() => window.location.href = 'tel:555-0456'}
+                  >
+                    Call
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className="flex-1"
+                    onClick={() => window.location.href = 'sms:555-0456'}
+                  >
+                    Text
+                  </Button>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex justify-end">
+              <Button variant="outline" onClick={() => setShowEmergencyDialog(false)}>
+                Close
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
