@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams } from 'wouter'
+import confetti from 'canvas-confetti'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
@@ -336,6 +337,14 @@ export default function Estimates() {
       return res.json();
     },
     onSuccess: () => {
+      // Trigger confetti explosion
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#4A6FA5', '#2C3E50', '#10B981', '#F59E0B']
+      });
+      
       toast({
         title: 'Success',
         description: 'Customer created successfully',
