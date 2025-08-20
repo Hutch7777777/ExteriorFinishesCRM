@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams } from 'wouter'
 import { Button } from '@/components/ui/button'
@@ -123,16 +123,16 @@ export default function Estimates() {
   const { toast } = useToast()
   const queryClient = useQueryClient()
 
-  // Sample takeoff data - replace with API integration
+  // Initialize takeoff data
   const [takeoffData, setTakeoffData] = useState<TakeoffData>({
     projectInfo: {
-      projectName: 'Johnson Residence Siding',
-      customer: 'Robert Johnson',
-      address: '123 Oak Street, Seattle, WA 98101',
-      estimatedBy: 'Mike Thompson',
-      date: '2025-01-11',
-      sqft: 2850,
-      stories: 2
+      projectName: '',
+      customer: '',
+      address: '',
+      estimatedBy: '',
+      date: new Date().toISOString().split('T')[0],
+      sqft: 0,
+      stories: 1
     },
     materials: [
       {
@@ -265,9 +265,41 @@ export default function Estimates() {
     queryKey: ['/api/trpc/leads.list'],
   })
 
+  // Fetch specific estimate details when viewing an estimate
+  const { data: estimateDetails, isLoading: estimateDetailsLoading } = useQuery({
+    queryKey: ['/api/trpc/estimates.getById', activeEstimate],
+    queryFn: () => fetch(`/api/trpc/estimates.getById?id=${activeEstimate}`, {
+      credentials: 'include'
+    }).then(res => res.json()),
+    enabled: !!activeEstimate,
+  })
+
   // Extract data from the TanStack Query response structure
   const typedEstimates = Array.isArray(estimates?.result?.json) ? estimates.result.json as any[] : []
   const typedLeads = Array.isArray(leads?.result?.json) ? leads.result.json as any[] : []
+  const typedEstimateDetails = estimateDetails?.result?.json || null
+
+  // Update takeoff data when estimate details are loaded
+  useEffect(() => {
+    if (typedEstimateDetails && typedEstimateDetails.lead) {
+      const lead = typedEstimateDetails.lead;
+      const fullAddress = [lead.address, lead.city, lead.state, lead.zipCode].filter(Boolean).join(', ');
+      
+      setTakeoffData(prev => ({
+        ...prev,
+        projectInfo: {
+          ...prev.projectInfo,
+          projectName: typedEstimateDetails.title || '',
+          customer: lead.name || '',
+          address: fullAddress || '',
+          estimatedBy: 'Mike Thompson', // TODO: Get from estimatedBy user
+          date: new Date(typedEstimateDetails.createdAt).toISOString().split('T')[0],
+          sqft: 0, // TODO: Extract from estimate data if available
+          stories: 1, // TODO: Extract from estimate data if available
+        }
+      }));
+    }
+  }, [typedEstimateDetails]);
   
 
 

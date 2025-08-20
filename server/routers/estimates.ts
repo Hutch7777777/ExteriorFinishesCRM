@@ -75,6 +75,33 @@ export const addEstimatesRoutes = (router: Router) => {
     }
   });
 
+  // Get single estimate with lead details (via GET query params)
+  router.get('/estimates.getById', async (req, res) => {
+    try {
+      const ctx = await createContext(req, res);
+      requireAuthed(ctx);
+      
+      const { id } = req.query;
+      if (!id || typeof id !== 'string') {
+        return res.status(400).json({ error: { message: 'id is required' } });
+      }
+
+      const estimate = await storage.getEstimateWithLead(id);
+      if (!estimate) {
+        return res.status(404).json({ error: { message: 'Estimate not found' } });
+      }
+
+      res.json({ result: superjson.serialize(estimate) });
+    } catch (error) {
+      if (error instanceof TRPCError) {
+        res.status(error.statusCode).json({ error: { message: error.message, code: error.code } });
+      } else {
+        console.error('Estimates getById error:', error);
+        res.status(500).json({ error: { message: 'Internal server error' } });
+      }
+    }
+  });
+
   // Create estimate
   router.post('/estimates.create', async (req, res) => {
     console.log('🚀 Starting estimate creation...');

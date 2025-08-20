@@ -95,7 +95,8 @@ export interface IStorage {
 
   // Estimate operations
   getEstimates(divisionId?: string): Promise<EstimateWithRelations[]>;
-  getEstimate(id: string): Promise<EstimateWithRelations | undefined>;
+  getEstimate(id: string): Promise<Estimate | undefined>;
+  getEstimateWithLead(id: string): Promise<EstimateWithRelations | undefined>;
   getEstimatesByLeadId(leadId: string): Promise<Estimate[]>;
   createEstimate(estimate: InsertEstimate): Promise<Estimate>;
   updateEstimate(id: string, estimate: Partial<InsertEstimate>): Promise<Estimate>;
@@ -514,6 +515,55 @@ export class DatabaseStorage implements IStorage {
       .where(eq(estimates.id, id));
     
     return estimate;
+  }
+
+  async getEstimateWithLead(id: string): Promise<EstimateWithRelations | undefined> {
+    const result = await db.select({
+      id: estimates.id,
+      leadId: estimates.leadId,
+      title: estimates.title,
+      description: estimates.description,
+      status: estimates.status,
+      totalCents: estimates.totalCents,
+      laborHours: estimates.laborHours,
+      materialCosts: estimates.materialCosts,
+      equipmentCosts: estimates.equipmentCosts,
+      overheadPercentage: estimates.overheadPercentage,
+      profitMarginPercentage: estimates.profitMarginPercentage,
+      notes: estimates.notes,
+      estimatedBy: estimates.estimatedBy,
+      createdAt: estimates.createdAt,
+      updatedAt: estimates.updatedAt,
+      lead: {
+        id: leads.id,
+        name: leads.name,
+        email: leads.email,
+        phone: leads.phone,
+        projectType: leads.projectType,
+        address: leads.address,
+        city: leads.city,
+        state: leads.state,
+        zipCode: leads.zipCode,
+        source: leads.source,
+        status: leads.status,
+        estimatedValue: leads.estimatedValue,
+        priority: leads.priority,
+        notes: leads.notes,
+        divisionId: leads.divisionId,
+        assignedTo: leads.assignedTo,
+        createdAt: leads.createdAt,
+        updatedAt: leads.updatedAt,
+      }
+    })
+      .from(estimates)
+      .leftJoin(leads, eq(estimates.leadId, leads.id))
+      .where(eq(estimates.id, id));
+
+    if (result.length === 0) {
+      return undefined;
+    }
+
+    return result[0] as EstimateWithRelations;
   }
 
   async getEstimatesByLeadId(leadId: string): Promise<Estimate[]> {
