@@ -16,13 +16,16 @@ interface CalendarEvent {
   id: string
   title: string
   date: Date
+  endDate?: Date  // For multi-day events
   type: 'bid' | 'subcontracting' | 'daily' | 'inspection' | 'delivery'
   calendarType: 'bids' | 'subcontractors' | 'daily' | 'inspections' | 'deliveries'
   status?: string
   description?: string
   time?: string
+  endTime?: string  // For events with duration
   location?: string
   assignedTo?: string
+  isMultiDay?: boolean
 }
 
 // Sample events for demonstration - these would come from your backend API
@@ -334,20 +337,26 @@ const NewEventDialog = ({
     type: CalendarEvent['type']
     calendarType: CalendarEvent['calendarType']
     date: string
+    endDate?: string
     time: string
+    endTime?: string
     location: string
     description: string
     assignedTo: string
+    isMultiDay: boolean
   }) => void
   onSave?: (eventData: {
     title: string
     type: CalendarEvent['type']
     calendarType: CalendarEvent['calendarType']
     date: string
+    endDate?: string
     time: string
+    endTime?: string
     location: string
     description: string
     assignedTo: string
+    isMultiDay: boolean
   }) => void
   selectedDate?: Date | null
   initialData?: CalendarEvent | null
@@ -360,10 +369,13 @@ const NewEventDialog = ({
     type: initialData?.type || 'bid' as CalendarEvent['type'],
     calendarType: initialData?.calendarType || 'bids' as CalendarEvent['calendarType'],
     date: initialData?.date ? format(initialData.date, 'yyyy-MM-dd') : (selectedDate ? format(selectedDate, 'yyyy-MM-dd') : ''),
+    endDate: initialData?.endDate ? format(initialData.endDate, 'yyyy-MM-dd') : '',
     time: initialData?.time || '',
+    endTime: initialData?.endTime || '',
     location: initialData?.location || '',
     description: initialData?.description || '',
-    assignedTo: initialData?.assignedTo || ''
+    assignedTo: initialData?.assignedTo || '',
+    isMultiDay: initialData?.isMultiDay || false
   })
 
   // Reset form when dialog opens/closes or initialData changes
@@ -374,10 +386,13 @@ const NewEventDialog = ({
         type: initialData.type || 'bid',
         calendarType: initialData.calendarType || 'bids',
         date: format(initialData.date, 'yyyy-MM-dd'),
+        endDate: initialData.endDate ? format(initialData.endDate, 'yyyy-MM-dd') : '',
         time: initialData.time || '',
+        endTime: initialData.endTime || '',
         location: initialData.location || '',
         description: initialData.description || '',
-        assignedTo: initialData.assignedTo || ''
+        assignedTo: initialData.assignedTo || '',
+        isMultiDay: initialData.isMultiDay || false
       })
     } else if (dialogOpen && selectedDate) {
       setNewEvent(prev => ({
@@ -396,6 +411,12 @@ const NewEventDialog = ({
       return
     }
     
+    // Validate multi-day event dates
+    if (newEvent.isMultiDay && (!newEvent.endDate || new Date(newEvent.endDate) < new Date(newEvent.date))) {
+      alert('End date must be after start date for multi-day events')
+      return
+    }
+    
     // Call appropriate handler based on mode
     if (isEditMode && onSave) {
       onSave(newEvent)
@@ -411,10 +432,13 @@ const NewEventDialog = ({
         type: 'bid',
         calendarType: 'bids',
         date: '',
+        endDate: '',
         time: '',
+        endTime: '',
         location: '',
         description: '',
-        assignedTo: ''
+        assignedTo: '',
+        isMultiDay: false
       })
     }
   }
@@ -470,9 +494,22 @@ const NewEventDialog = ({
             </Select>
           </div>
           
+          {/* Multi-day toggle */}
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              id="isMultiDay"
+              checked={newEvent.isMultiDay}
+              onChange={(e) => setNewEvent({ ...newEvent, isMultiDay: e.target.checked, endDate: e.target.checked ? newEvent.date : '' })}
+              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+            />
+            <Label htmlFor="isMultiDay" className="text-sm font-medium">Multi-day event</Label>
+          </div>
+
+          {/* Date inputs */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="date">Date</Label>
+              <Label htmlFor="date">{newEvent.isMultiDay ? 'Start Date' : 'Date'}</Label>
               <Input
                 id="date"
                 type="date"
@@ -481,16 +518,63 @@ const NewEventDialog = ({
                 required
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="time">Time</Label>
-              <Input
-                id="time"
-                type="time"
-                value={newEvent.time}
-                onChange={(e) => setNewEvent({ ...newEvent, time: e.target.value })}
-              />
-            </div>
+            {newEvent.isMultiDay && (
+              <div className="space-y-2">
+                <Label htmlFor="endDate">End Date</Label>
+                <Input
+                  id="endDate"
+                  type="date"
+                  value={newEvent.endDate}
+                  onChange={(e) => setNewEvent({ ...newEvent, endDate: e.target.value })}
+                  min={newEvent.date}
+                  required={newEvent.isMultiDay}
+                />
+              </div>
+            )}
           </div>
+
+          {/* Time inputs with presets */}
+          {!newEvent.isMultiDay && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="time">Start Time</Label>
+                  <div className="space-y-2">
+                    <Input
+                      id="time"
+                      type="time"
+                      value={newEvent.time}
+                      onChange={(e) => setNewEvent({ ...newEvent, time: e.target.value })}
+                    />
+                    <div className="flex flex-wrap gap-1">
+                      {['7:00', '8:00', '9:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'].map((time) => (
+                        <Button
+                          key={time}
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="text-xs px-2 py-1 h-6"
+                          onClick={() => setNewEvent({ ...newEvent, time })}
+                        >
+                          {time === '12:00' ? '12:00 PM' : parseInt(time.split(':')[0]) > 12 ? `${parseInt(time.split(':')[0]) - 12}:00 PM` : `${time} AM`}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="endTime">End Time (Optional)</Label>
+                  <Input
+                    id="endTime"
+                    type="time"
+                    value={newEvent.endTime}
+                    onChange={(e) => setNewEvent({ ...newEvent, endTime: e.target.value })}
+                    min={newEvent.time}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
           
           <div className="space-y-2">
             <Label htmlFor="location">Location</Label>
