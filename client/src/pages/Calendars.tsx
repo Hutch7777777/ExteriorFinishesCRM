@@ -211,10 +211,10 @@ const CalendarGrid = ({
   }
 
   return (
-    <div className="grid grid-cols-7 gap-px bg-gray-200 rounded-lg overflow-hidden">
+    <div className="grid grid-cols-7 gap-px bg-gray-200 rounded-lg overflow-hidden auto-rows-auto">
       {/* Header row */}
       {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-        <div key={day} className="bg-gray-50 p-2 text-center text-sm font-medium text-gray-700">
+        <div key={day} className="bg-gray-50 p-2 text-center text-sm font-medium text-gray-700 h-10 flex items-center justify-center">
           {day}
         </div>
       ))}
@@ -230,17 +230,19 @@ const CalendarGrid = ({
             key={day.toString()}
             onClick={() => onDateClick(day)}
             className={`
-              min-h-[120px] bg-white p-1 cursor-pointer hover:bg-gray-50 transition-colors
+              min-h-[120px] bg-white p-1 cursor-pointer hover:bg-gray-50 transition-colors flex flex-col
               ${!isCurrentMonth ? 'text-gray-400 bg-gray-50' : ''}
               ${isToday ? 'bg-blue-50 ring-2 ring-blue-200' : ''}
+              ${dayEvents.length > 3 ? 'min-h-[160px]' : ''}
+              ${dayEvents.length > 5 ? 'min-h-[200px]' : ''}
             `}
           >
-            <div className={`text-sm font-medium mb-1 ${isToday ? 'text-blue-600' : ''}`}>
+            <div className={`text-sm font-medium mb-1 flex-shrink-0 ${isToday ? 'text-blue-600' : ''}`}>
               {format(day, 'd')}
             </div>
             
-            <div className="space-y-1">
-              {dayEvents.slice(0, 2).map(event => {
+            <div className="flex-1 space-y-0.5 overflow-hidden">
+              {dayEvents.map(event => {
                 // Check if this is a multi-day event and what day of the event this is
                 const isMultiDay = event.isMultiDay && event.endDate
                 const isStartDay = isSameDay(event.date, day)
@@ -262,27 +264,26 @@ const CalendarGrid = ({
                       isEndDay && isMultiDay ? 'rounded-r' : ''
                     } ${
                       isContinuation ? 'rounded-none border-l-0 border-r-0' : ''
+                    } ${
+                      dayEvents.length > 4 ? 'mb-0' : ''
                     }`}
                     title={`${event.title} - ${event.time || 'All day'}${isMultiDay ? ` (${format(event.date, 'MMM d')} - ${format(new Date(event.endDate), 'MMM d')})` : ''}`}
                   >
-                    <div className="truncate font-medium">
+                    <div className={`font-medium ${dayEvents.length > 6 ? 'truncate' : ''}`}>
                       {isContinuation ? `↔ ${event.title}` : event.title}
                     </div>
-                    {event.time && isStartDay && <div className="truncate">{event.time}</div>}
-                    {isMultiDay && isStartDay && (
+                    {event.time && isStartDay && dayEvents.length <= 4 && (
+                      <div className="truncate">{event.time}</div>
+                    )}
+                    {isMultiDay && isStartDay && dayEvents.length <= 4 && (
                       <div className="text-xs opacity-75">Multi-day →</div>
                     )}
-                    {isMultiDay && isEndDay && (
+                    {isMultiDay && isEndDay && dayEvents.length <= 4 && (
                       <div className="text-xs opacity-75">← Ends</div>
                     )}
                   </div>
                 )
               })}
-              {dayEvents.length > 2 && (
-                <div className="text-xs text-gray-500">
-                  +{dayEvents.length - 2} more
-                </div>
-              )}
             </div>
           </div>
         )
