@@ -939,9 +939,9 @@ const EventDetailsDialog = ({
 
 // Calendar types with separate data
 const calendarTypes = [
-  { id: 'overview', name: 'Calendar Overview', description: 'View all your scheduled events across bid appointments, subcontractor meetings, and daily tasks' },
+  { id: 'overview', name: 'Calendar Overview', description: 'View all your scheduled events across bid appointments, subcontractor schedules, and daily tasks' },
   { id: 'bids', name: 'Bid Appointments', description: 'Schedule and track bid appointments with customers' },
-  { id: 'subcontractors', name: 'Subcontractor Meetings', description: 'Coordinate meetings and schedules with subcontractors' },
+  { id: 'subcontractors', name: 'Subcontractor Schedule', description: 'Coordinate meetings and schedules with subcontractors' },
   { id: 'daily', name: 'Daily Operations', description: 'Manage daily tasks and operational activities' },
   { id: 'inspections', name: 'Site Inspections', description: 'Schedule and track site inspections and follow-ups' },
   { id: 'deliveries', name: 'Material Deliveries', description: 'Track material deliveries and logistics' }
