@@ -122,6 +122,24 @@ let mockEvents: CalendarEvent[] = [
   }
 ]
 
+// Shared utility functions
+const getEventTypeIcon = (eventType: CalendarEvent['type']) => {
+  switch (eventType) {
+    case 'bid':
+      return <CalendarDays className="w-4 h-4" />
+    case 'subcontracting':
+      return <Users className="w-4 h-4" />
+    case 'daily':
+      return <Clock className="w-4 h-4" />
+    case 'inspection':
+      return <Hammer className="w-4 h-4" />
+    case 'delivery':
+      return <MapPin className="w-4 h-4" />
+    default:
+      return <Calendar className="w-4 h-4" />
+  }
+}
+
 const CalendarGrid = ({ 
   events, 
   currentDate, 
@@ -223,18 +241,7 @@ const EventsList = ({
 }) => {
   const filteredEvents = type ? events.filter(e => e.type === type) : events
   
-  const getEventTypeIcon = (eventType: CalendarEvent['type']) => {
-    switch (eventType) {
-      case 'bid':
-        return <CalendarDays className="w-4 h-4" />
-      case 'subcontracting':
-        return <Users className="w-4 h-4" />
-      case 'daily':
-        return <Clock className="w-4 h-4" />
-      default:
-        return <Calendar className="w-4 h-4" />
-    }
-  }
+
 
   const getStatusBadge = (status?: string) => {
     if (!status) return null
