@@ -590,83 +590,87 @@ const NewEventDialog = ({
             )}
           </div>
 
-          {/* Time selection with Calendly-style picker */}
+          {/* Time selection with dropdown-style picker */}
           {!newEvent.isMultiDay && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Start Time</Label>
-                  <div className="space-y-2">
-                    <Input
-                      type="time"
-                      value={newEvent.time}
-                      onChange={(e) => setNewEvent({ ...newEvent, time: e.target.value })}
-                      className="text-center"
-                    />
-                    <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-2 border rounded-md bg-gray-50">
-                      {[
-                        '7:00 AM', '8:00 AM', '9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM',
-                        '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM', '5:00 PM'
-                      ].map((timeLabel) => {
-                        const timeValue = timeLabel.includes('AM') 
-                          ? (timeLabel === '12:00 PM' ? '12:00' : timeLabel.split(' ')[0])
-                          : timeLabel === '12:00 PM' 
-                            ? '12:00' 
-                            : `${parseInt(timeLabel.split(':')[0]) + 12}:00`
-                        
-                        return (
-                          <Button
-                            key={timeLabel}
-                            type="button"
-                            variant={newEvent.time === timeValue ? "default" : "outline"}
-                            size="sm"
-                            className="text-xs py-2 h-8 justify-center"
-                            onClick={() => setNewEvent({ ...newEvent, time: timeValue })}
-                          >
-                            {timeLabel}
-                          </Button>
-                        )
-                      })}
-                    </div>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>End Time (Optional)</Label>
-                  <div className="space-y-2">
-                    <Input
-                      type="time"
-                      value={newEvent.endTime}
-                      onChange={(e) => setNewEvent({ ...newEvent, endTime: e.target.value })}
-                      min={newEvent.time}
-                      className="text-center"
-                    />
-                    <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-2 border rounded-md bg-gray-50">
-                      {[
-                        '8:00 AM', '9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '1:00 PM',
-                        '2:00 PM', '3:00 PM', '4:00 PM', '5:00 PM', '6:00 PM'
-                      ].map((timeLabel) => {
-                        const timeValue = timeLabel.includes('AM') 
-                          ? (timeLabel === '12:00 PM' ? '12:00' : timeLabel.split(' ')[0])
-                          : timeLabel === '12:00 PM' 
-                            ? '12:00' 
-                            : `${parseInt(timeLabel.split(':')[0]) + 12}:00`
-                        
-                        return (
-                          <Button
-                            key={timeLabel}
-                            type="button"
-                            variant={newEvent.endTime === timeValue ? "default" : "outline"}
-                            size="sm"
-                            className="text-xs py-2 h-8 justify-center"
-                            onClick={() => setNewEvent({ ...newEvent, endTime: timeValue })}
-                          >
-                            {timeLabel}
-                          </Button>
-                        )
-                      })}
-                    </div>
-                  </div>
-                </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Start Time</Label>
+                <Select 
+                  value={newEvent.time} 
+                  onValueChange={(value) => setNewEvent({ ...newEvent, time: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select start time" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-60">
+                    {[
+                      '6:00 AM', '6:30 AM', '7:00 AM', '7:30 AM', '8:00 AM', '8:30 AM',
+                      '9:00 AM', '9:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM',
+                      '12:00 PM', '12:30 PM', '1:00 PM', '1:30 PM', '2:00 PM', '2:30 PM',
+                      '3:00 PM', '3:30 PM', '4:00 PM', '4:30 PM', '5:00 PM', '5:30 PM',
+                      '6:00 PM', '6:30 PM', '7:00 PM', '7:30 PM', '8:00 PM'
+                    ].map((timeLabel) => {
+                      // Convert display time to 24-hour format for value
+                      const [time, period] = timeLabel.split(' ')
+                      const [hours, minutes] = time.split(':')
+                      let hour24 = parseInt(hours)
+                      
+                      if (period === 'PM' && hour24 !== 12) {
+                        hour24 += 12
+                      } else if (period === 'AM' && hour24 === 12) {
+                        hour24 = 0
+                      }
+                      
+                      const timeValue = `${hour24.toString().padStart(2, '0')}:${minutes}`
+                      
+                      return (
+                        <SelectItem key={timeLabel} value={timeValue}>
+                          {timeLabel}
+                        </SelectItem>
+                      )
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label>End Time (Optional)</Label>
+                <Select 
+                  value={newEvent.endTime} 
+                  onValueChange={(value) => setNewEvent({ ...newEvent, endTime: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select end time" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-60">
+                    {[
+                      '6:30 AM', '7:00 AM', '7:30 AM', '8:00 AM', '8:30 AM', '9:00 AM',
+                      '9:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM', '12:00 PM',
+                      '12:30 PM', '1:00 PM', '1:30 PM', '2:00 PM', '2:30 PM', '3:00 PM',
+                      '3:30 PM', '4:00 PM', '4:30 PM', '5:00 PM', '5:30 PM', '6:00 PM',
+                      '6:30 PM', '7:00 PM', '7:30 PM', '8:00 PM', '8:30 PM', '9:00 PM'
+                    ].map((timeLabel) => {
+                      // Convert display time to 24-hour format for value
+                      const [time, period] = timeLabel.split(' ')
+                      const [hours, minutes] = time.split(':')
+                      let hour24 = parseInt(hours)
+                      
+                      if (period === 'PM' && hour24 !== 12) {
+                        hour24 += 12
+                      } else if (period === 'AM' && hour24 === 12) {
+                        hour24 = 0
+                      }
+                      
+                      const timeValue = `${hour24.toString().padStart(2, '0')}:${minutes}`
+                      
+                      return (
+                        <SelectItem key={timeLabel} value={timeValue}>
+                          {timeLabel}
+                        </SelectItem>
+                      )
+                    })}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           )}
