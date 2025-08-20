@@ -31,7 +31,7 @@ interface Contact {
   id: string
   name: string
   company: string
-  type: 'vendor' | 'subcontractor' | 'supplier' | 'internal' | 'partner'
+  type: 'vendor' | 'subcontractor' | 'supplier' | 'internal' | 'internal_field' | 'partner'
   email: string
   phone: string
   address: string
@@ -225,6 +225,7 @@ export default function Contacts() {
       case 'subcontractor': return 'bg-green-100 text-green-800'
       case 'supplier': return 'bg-purple-100 text-purple-800'
       case 'internal': return 'bg-orange-100 text-orange-800'
+      case 'internal_field': return 'bg-yellow-100 text-yellow-800'
       case 'partner': return 'bg-pink-100 text-pink-800'
       default: return 'bg-gray-100 text-gray-800'
     }
@@ -236,6 +237,7 @@ export default function Contacts() {
       case 'subcontractor': return <Wrench className="w-4 h-4" />
       case 'supplier': return <Building2 className="w-4 h-4" />
       case 'internal': return <Users className="w-4 h-4" />
+      case 'internal_field': return <Wrench className="w-4 h-4" />
       case 'partner': return <Star className="w-4 h-4" />
       default: return <Building2 className="w-4 h-4" />
     }
@@ -296,7 +298,7 @@ export default function Contacts() {
       cell: ({ row }) => (
         <Badge className={getTypeColor(row.original.type)}>
           {getTypeIcon(row.original.type)}
-          {row.original.type.charAt(0).toUpperCase() + row.original.type.slice(1)}
+          {row.original.type === 'internal_field' ? 'Internal Field' : row.original.type.charAt(0).toUpperCase() + row.original.type.slice(1)}
         </Badge>
       ),
     },
@@ -402,6 +404,7 @@ export default function Contacts() {
     subcontractor: contactsArray.filter((c: Contact) => c.type === 'subcontractor').length,
     supplier: contactsArray.filter((c: Contact) => c.type === 'supplier').length,
     internal: contactsArray.filter((c: Contact) => c.type === 'internal').length,
+    internal_field: contactsArray.filter((c: Contact) => c.type === 'internal_field').length,
     partner: contactsArray.filter((c: Contact) => c.type === 'partner').length,
   }
 
@@ -419,7 +422,7 @@ export default function Contacts() {
 
       {/* Contact Type Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-6 w-fit">
+        <TabsList className="grid grid-cols-7 w-fit">
           <TabsTrigger value="all" className="flex items-center gap-2">
             All ({contactCounts.all})
           </TabsTrigger>
@@ -438,6 +441,10 @@ export default function Contacts() {
           <TabsTrigger value="internal" className="flex items-center gap-2">
             <Users className="w-4 h-4" />
             Team ({contactCounts.internal})
+          </TabsTrigger>
+          <TabsTrigger value="internal_field" className="flex items-center gap-2">
+            <Wrench className="w-4 h-4" />
+            Internal Field ({contactCounts.internal_field})
           </TabsTrigger>
           <TabsTrigger value="partner" className="flex items-center gap-2">
             <Star className="w-4 h-4" />
@@ -518,6 +525,7 @@ export default function Contacts() {
                     <SelectItem value="subcontractor">Subcontractor</SelectItem>
                     <SelectItem value="supplier">Supplier</SelectItem>
                     <SelectItem value="internal">Internal</SelectItem>
+                    <SelectItem value="internal_field">Internal Field</SelectItem>
                     <SelectItem value="partner">Partner</SelectItem>
                   </SelectContent>
                 </Select>

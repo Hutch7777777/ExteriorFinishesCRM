@@ -153,7 +153,7 @@ export const contacts = pgTable("contacts", {
   divisionId: uuid("division_id").notNull().references(() => divisions.id),
   name: varchar("name", { length: 200 }).notNull(),
   company: varchar("company", { length: 200 }).notNull(),
-  type: varchar("type", { length: 20 }).notNull(), // vendor, subcontractor, supplier, internal, partner
+  type: varchar("type", { length: 20 }).notNull(), // vendor, subcontractor, supplier, internal, internal_field, partner
   email: varchar("email", { length: 255 }),
   phone: varchar("phone", { length: 20 }),
   address: text("address"),
