@@ -482,7 +482,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Estimate operations
-  async getEstimates(leadId?: string, jobId?: string): Promise<Estimate[]> {
+  async getEstimates(leadId?: string, jobId?: string): Promise<any[]> {
     const conditions = [];
     
     if (leadId) {
@@ -493,9 +493,20 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(estimates.jobId, jobId));
     }
 
-    return await db.select().from(estimates)
+    const results = await db.select()
+      .from(estimates)
+      .leftJoin(leads, eq(estimates.leadId, leads.id))
+      .leftJoin(jobs, eq(estimates.jobId, jobs.id))
+      .leftJoin(customers, eq(jobs.customerId, customers.id))
       .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(desc(estimates.createdAt));
+
+    return results.map(row => ({
+      ...row.estimates,
+      lead: row.leads || undefined,
+      job: row.jobs || undefined,
+      customer: row.customers || undefined,
+    }));
   }
 
   async getEstimate(id: string): Promise<Estimate | undefined> {
