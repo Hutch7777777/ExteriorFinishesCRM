@@ -38,6 +38,7 @@ import {
   Cloud
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { trpcClient } from '@/lib/trpc';
 
 export default function FieldManagement() {
   const params = useParams();
@@ -48,6 +49,7 @@ export default function FieldManagement() {
   const [messageInput, setMessageInput] = useState('');
   const [logInput, setLogInput] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [selectedSupervisor, setSelectedSupervisor] = useState('all');
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -61,6 +63,13 @@ export default function FieldManagement() {
   // Fetch field team members
   const { data: teamMembers = [] } = useQuery({
     queryKey: [`/api/trpc/users.list/${division}`],
+    staleTime: 10 * 60 * 1000, // 10 minutes
+  });
+
+  // Fetch customers to get field supervisor assignments
+  const { data: customers = [] } = useQuery({
+    queryKey: [`/api/trpc/customers.list`, division],
+    queryFn: () => trpcClient.customers.list({ divisionKey: division as 'mfnc' | 'sfnc' | 'rr' }),
     staleTime: 10 * 60 * 1000, // 10 minutes
   });
 
@@ -200,6 +209,18 @@ export default function FieldManagement() {
     }
   };
 
+  // Filter customers by selected supervisor
+  const filteredCustomers = selectedSupervisor === 'all' 
+    ? customers 
+    : selectedSupervisor === 'unassigned'
+    ? customers.filter((customer: any) => !customer.fieldSupervisorId)
+    : customers.filter((customer: any) => customer.fieldSupervisorId === selectedSupervisor);
+
+  // Get unique field supervisors from customers
+  const activeSupervisors = teamMembers.filter((member: any) => 
+    customers.some((customer: any) => customer.fieldSupervisorId === member.id)
+  );
+
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       {/* Header */}
@@ -210,7 +231,24 @@ export default function FieldManagement() {
             Coordinate field operations, communication, and project tracking
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Filter className="w-4 h-4 text-slate-500" />
+            <Select value={selectedSupervisor} onValueChange={setSelectedSupervisor}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Filter by supervisor" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Supervisors</SelectItem>
+                <SelectItem value="unassigned">Unassigned</SelectItem>
+                {teamMembers.map((member: any) => (
+                  <SelectItem key={member.id} value={member.id}>
+                    {member.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
             <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
             Field Active
@@ -276,6 +314,58 @@ export default function FieldManagement() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Supervisor View Section */}
+      {selectedSupervisor !== 'all' && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="w-5 h-5" />
+              {selectedSupervisor === 'unassigned' 
+                ? 'Unassigned Customers' 
+                : `${teamMembers.find((m: any) => m.id === selectedSupervisor)?.name || 'Unknown'}'s Customers`}
+            </CardTitle>
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              {filteredCustomers.length} customer{filteredCustomers.length !== 1 ? 's' : ''} in this view
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredCustomers.map((customer: any) => (
+                <Card key={customer.id} className="border border-slate-200 dark:border-slate-700">
+                  <CardContent className="p-4">
+                    <div className="space-y-2">
+                      <h4 className="font-medium text-slate-900 dark:text-white">{customer.name}</h4>
+                      {customer.email && (
+                        <p className="text-sm text-slate-600 dark:text-slate-400 flex items-center gap-1">
+                          <Mail className="w-3 h-3" />
+                          {customer.email}
+                        </p>
+                      )}
+                      {customer.phone && (
+                        <p className="text-sm text-slate-600 dark:text-slate-400 flex items-center gap-1">
+                          <Phone className="w-3 h-3" />
+                          {customer.phone}
+                        </p>
+                      )}
+                      {customer.notes && (
+                        <p className="text-xs text-slate-500 dark:text-slate-500 line-clamp-2">
+                          {customer.notes}
+                        </p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+              {filteredCustomers.length === 0 && (
+                <div className="col-span-full text-center py-8 text-slate-500 dark:text-slate-400">
+                  No customers found for this supervisor
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Main Tabs Interface */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
