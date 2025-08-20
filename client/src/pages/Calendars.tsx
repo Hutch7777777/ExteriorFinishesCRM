@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { Calendar, CalendarDays, Hammer, Users, Clock, Plus, ChevronLeft, ChevronRight, MapPin, User, ArrowLeft, Home } from 'lucide-react'
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek } from 'date-fns'
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek, isWithinInterval, isAfter, isBefore } from 'date-fns'
 
 interface CalendarEvent {
   id: string
@@ -122,6 +122,19 @@ let mockEvents: CalendarEvent[] = [
     time: '11:00 AM',
     location: 'Industrial District',
     assignedTo: 'Tom Wilson'
+  },
+  {
+    id: '9',
+    title: 'Commercial Roofing Project',
+    date: new Date(2025, 7, 22),
+    endDate: new Date(2025, 7, 25),
+    type: 'daily',
+    calendarType: 'daily',
+    status: 'in-progress',
+    description: 'Multi-day roofing installation at downtown office complex',
+    location: 'Downtown Office Complex',
+    assignedTo: 'Mike Johnson',
+    isMultiDay: true
   }
 ]
 
@@ -162,7 +175,20 @@ const CalendarGrid = ({
   const days = eachDayOfInterval({ start: calendarStart, end: calendarEnd })
   
   const getEventsForDay = (date: Date) => {
-    return events.filter(event => isSameDay(event.date, date))
+    return events.filter(event => {
+      // For single-day events, check if it's the same day
+      if (!event.isMultiDay || !event.endDate) {
+        return isSameDay(event.date, date)
+      }
+      
+      // For multi-day events, check if the date falls within the range
+      const startDate = new Date(event.date)
+      const endDate = new Date(event.endDate)
+      
+      return isSameDay(event.date, date) || 
+             isSameDay(endDate, date) || 
+             (isAfter(date, startDate) && isBefore(date, endDate))
+    })
   }
 
   const getEventTypeColor = (type: CalendarEvent['type']) => {
@@ -208,20 +234,44 @@ const CalendarGrid = ({
             </div>
             
             <div className="space-y-1">
-              {dayEvents.slice(0, 2).map(event => (
-                <div
-                  key={event.id}
-                  onClick={(e) => {
-                    e.stopPropagation() // Prevent day click
-                    onEventClick(event)
-                  }}
-                  className={`text-xs p-1 rounded border cursor-pointer hover:shadow-sm transition-shadow ${getEventTypeColor(event.type)}`}
-                  title={`${event.title} - ${event.time || 'All day'}`}
-                >
-                  <div className="truncate font-medium">{event.title}</div>
-                  {event.time && <div className="truncate">{event.time}</div>}
-                </div>
-              ))}
+              {dayEvents.slice(0, 2).map(event => {
+                // Check if this is a multi-day event and what day of the event this is
+                const isMultiDay = event.isMultiDay && event.endDate
+                const isStartDay = isSameDay(event.date, day)
+                const isEndDay = isMultiDay && isSameDay(new Date(event.endDate), day)
+                const isContinuation = isMultiDay && !isStartDay && !isEndDay
+                
+                return (
+                  <div
+                    key={event.id}
+                    onClick={(e) => {
+                      e.stopPropagation() // Prevent day click
+                      onEventClick(event)
+                    }}
+                    className={`text-xs p-1 border cursor-pointer hover:shadow-sm transition-shadow ${getEventTypeColor(event.type)} ${
+                      isMultiDay ? 'relative' : 'rounded'
+                    } ${
+                      isStartDay && isMultiDay ? 'rounded-l' : ''
+                    } ${
+                      isEndDay && isMultiDay ? 'rounded-r' : ''
+                    } ${
+                      isContinuation ? 'rounded-none border-l-0 border-r-0' : ''
+                    }`}
+                    title={`${event.title} - ${event.time || 'All day'}${isMultiDay ? ` (${format(event.date, 'MMM d')} - ${format(new Date(event.endDate), 'MMM d')})` : ''}`}
+                  >
+                    <div className="truncate font-medium">
+                      {isContinuation ? `↔ ${event.title}` : event.title}
+                    </div>
+                    {event.time && isStartDay && <div className="truncate">{event.time}</div>}
+                    {isMultiDay && isStartDay && (
+                      <div className="text-xs opacity-75">Multi-day →</div>
+                    )}
+                    {isMultiDay && isEndDay && (
+                      <div className="text-xs opacity-75">← Ends</div>
+                    )}
+                  </div>
+                )
+              })}
               {dayEvents.length > 2 && (
                 <div className="text-xs text-gray-500">
                   +{dayEvents.length - 2} more
@@ -683,7 +733,10 @@ const EventDetailsDialog = ({
             {event.title}
           </DialogTitle>
           <DialogDescription>
-            Event details for {format(event.date, 'MMMM d, yyyy')}
+            Event details for {event.isMultiDay && event.endDate 
+              ? `${format(event.date, 'MMMM d')} - ${format(new Date(event.endDate), 'MMMM d, yyyy')}`
+              : format(event.date, 'MMMM d, yyyy')
+            }
           </DialogDescription>
         </DialogHeader>
         
@@ -703,18 +756,24 @@ const EventDetailsDialog = ({
           {/* Date and Time */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label className="text-sm font-medium text-gray-600">Date</Label>
+              <Label className="text-sm font-medium text-gray-600">
+                {event.isMultiDay ? 'Duration' : 'Date'}
+              </Label>
               <p className="text-sm flex items-center gap-1">
                 <CalendarDays className="w-4 h-4" />
-                {format(event.date, 'EEEE, MMMM d, yyyy')}
+                {event.isMultiDay && event.endDate 
+                  ? `${format(event.date, 'MMM d, yyyy')} - ${format(new Date(event.endDate), 'MMM d, yyyy')}`
+                  : format(event.date, 'EEEE, MMMM d, yyyy')
+                }
               </p>
             </div>
-            {event.time && (
+            {event.time && !event.isMultiDay && (
               <div>
                 <Label className="text-sm font-medium text-gray-600">Time</Label>
                 <p className="text-sm flex items-center gap-1">
                   <Clock className="w-4 h-4" />
                   {event.time}
+                  {event.endTime && ` - ${event.endTime}`}
                 </p>
               </div>
             )}
