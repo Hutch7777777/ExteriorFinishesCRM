@@ -252,6 +252,45 @@ export const createAppRouter = () => {
     }
   });
 
+  router.post('/customers.delete', async (req, res) => {
+    try {
+      const ctx = await createContext(req, res);
+      const user = requireRole('staff')(ctx);
+      
+      const inputSchema = z.object({
+        id: z.string().uuid(),
+      });
+      
+      const input = inputSchema.parse(req.body?.input || {});
+      
+      // Verify customer exists and user has access
+      const existing = await storage.getCustomer(input.id);
+      if (!existing) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Customer not found' });
+      }
+      
+      // Check division access
+      if (existing.divisionId) {
+        const division = await storage.getDivision(existing.divisionId);
+        if (division) {
+          const scopedDivisionId = await getDivisionScope(user, division.key);
+          if (scopedDivisionId !== division.id) {
+            throw new TRPCError({ code: 'FORBIDDEN', message: 'Access denied to this division' });
+          }
+        }
+      }
+      
+      await storage.deleteCustomer(input.id);
+      res.json({ result: superjson.serialize({ success: true }) });
+    } catch (error) {
+      if (error instanceof TRPCError) {
+        res.status(error.statusCode).json({ error: { message: error.message, code: error.code } });
+      } else {
+        res.status(500).json({ error: { message: 'Internal server error' } });
+      }
+    }
+  });
+
   // Leads endpoints
   router.get('/leads.list', async (req, res) => {
     try {

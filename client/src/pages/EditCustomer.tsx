@@ -3,12 +3,13 @@ import { useParams } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import { trpcClient } from '@/lib/trpc'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Trash2 } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -38,6 +39,7 @@ export default function EditCustomer() {
   const customerId = (params as any).id
   const { toast } = useToast()
   const queryClient = useQueryClient()
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
 
   const form = useForm<UpdateCustomerData>({
     resolver: zodResolver(updateCustomerSchema),
@@ -83,6 +85,40 @@ export default function EditCustomer() {
     onError: (error: Error) => {
       toast({
         title: 'Failed to update customer',
+        description: error.message,
+        variant: 'destructive'
+      })
+    }
+  })
+
+  // Delete customer mutation
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch('/api/trpc/customers.delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ input: { id: customerId } })
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error?.message || 'Failed to delete customer');
+      }
+
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customers.list'] })
+      toast({ 
+        title: 'Customer deleted successfully',
+        description: 'The customer has been permanently removed.'
+      })
+      window.location.href = `/${division}/customers`
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Failed to delete customer',
         description: error.message,
         variant: 'destructive'
       })
@@ -190,13 +226,47 @@ export default function EditCustomer() {
                 {...form.register('notes')}
               />
             </div>
-            <div className="flex items-center gap-4 pt-4">
-              <Button type="submit" disabled={updateMutation.isPending}>
-                {updateMutation.isPending ? 'Updating...' : 'Update Customer'}
-              </Button>
-              <Button type="button" variant="outline" onClick={handleBack}>
-                Cancel
-              </Button>
+            <div className="flex items-center justify-between pt-4">
+              <div className="flex items-center gap-4">
+                <Button type="submit" disabled={updateMutation.isPending}>
+                  {updateMutation.isPending ? 'Updating...' : 'Update Customer'}
+                </Button>
+                <Button type="button" variant="outline" onClick={handleBack}>
+                  Cancel
+                </Button>
+              </div>
+              
+              <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <AlertDialogTrigger asChild>
+                  <Button 
+                    type="button" 
+                    variant="destructive" 
+                    size="sm"
+                    disabled={deleteMutation.isPending}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    {deleteMutation.isPending ? 'Deleting...' : 'Delete Customer'}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Customer</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to delete "{customer?.name}"? This action cannot be undone and will permanently remove the customer and all associated data.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => deleteMutation.mutate()}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      disabled={deleteMutation.isPending}
+                    >
+                      {deleteMutation.isPending ? 'Deleting...' : 'Delete Customer'}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </form>
         </CardContent>
