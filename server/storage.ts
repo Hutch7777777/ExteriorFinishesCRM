@@ -523,6 +523,7 @@ export class DatabaseStorage implements IStorage {
       .from(estimates)
       .leftJoin(leads, eq(estimates.leadId, leads.id))
       .leftJoin(jobs, eq(estimates.jobId, jobs.id))
+      .leftJoin(contacts, eq(estimates.estimatorId, contacts.id))
       .where(eq(estimates.id, id));
 
     if (!result) {
@@ -533,6 +534,7 @@ export class DatabaseStorage implements IStorage {
       ...result.estimates,
       lead: result.leads || undefined,
       job: result.jobs || undefined,
+      estimator: result.contacts || undefined,
     } as EstimateWithRelations;
   }
 

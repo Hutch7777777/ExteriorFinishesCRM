@@ -421,6 +421,10 @@ export const estimateRelations = relations(estimates, ({ one }) => ({
     fields: [estimates.estimatedBy],
     references: [users.id],
   }),
+  estimator: one(contacts, {
+    fields: [estimates.estimatorId],
+    references: [contacts.id],
+  }),
 }));
 
 export const proposalRelations = relations(proposals, ({ one }) => ({
@@ -643,6 +647,8 @@ export type JobWithRelations = Job & {
 
 export type EstimateWithRelations = Estimate & {
   job?: JobWithRelations;
+  lead?: Lead;
+  estimator?: Contact;
 };
 
 export type LeadWithRelations = Lead & {

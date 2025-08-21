@@ -294,7 +294,7 @@ export default function Estimates() {
           projectName: typedEstimateDetails.title || '',
           customer: lead.name || '',
           address: fullAddress || '',
-          estimatedBy: 'Mike Thompson', // TODO: Get from estimatedBy user
+          estimatedBy: typedEstimateDetails.estimator?.name || 'Unassigned', // Use actual estimator name from contacts
           date: new Date(typedEstimateDetails.createdAt).toISOString().split('T')[0],
           sqft: 0, // TODO: Extract from estimate data if available
           stories: 1, // TODO: Extract from estimate data if available
