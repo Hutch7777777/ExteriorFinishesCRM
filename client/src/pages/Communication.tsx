@@ -60,7 +60,7 @@ export default function Communication() {
   })
 
   // Filter contacts to get internal team members and field team
-  const contacts = contactsResponse?.result?.json || []
+  const contacts = (contactsResponse as any)?.result?.json || []
   
   // Let's be more inclusive and show all internal contacts for now
   const filteredContacts = Array.isArray(contacts) ? contacts
