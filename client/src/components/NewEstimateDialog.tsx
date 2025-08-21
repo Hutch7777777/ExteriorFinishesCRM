@@ -36,10 +36,24 @@ export function NewEstimateDialog({ open, onOpenChange, leadId, leadName }: NewE
   const queryClient = useQueryClient()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // Fetch users for estimator assignment
-  const { data: users = [] } = useQuery({
-    queryKey: ['/api/trpc/users.list'],
+  // Fetch contacts for estimator assignment (filtering for estimators)
+  const { data: contacts = [] } = useQuery({
+    queryKey: ['/api/trpc/contacts.list'],
+    queryFn: async () => {
+      const res = await fetch('/api/trpc/contacts.list', {
+        credentials: 'include'
+      })
+      if (!res.ok) throw new Error('Failed to fetch contacts')
+      const data = await res.json()
+      return data.result?.json || []
+    }
   })
+
+  // Filter contacts to only show estimators
+  const estimators = contacts.filter((contact: any) => 
+    contact.specialty?.toLowerCase() === 'estimator' && 
+    contact.type === 'internal'
+  )
 
   const form = useForm<EstimateFormData>({
     resolver: zodResolver(estimateFormSchema),
@@ -208,11 +222,17 @@ export function NewEstimateDialog({ open, onOpenChange, leadId, leadName }: NewE
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {(users as any[]).map((user: any) => (
-                          <SelectItem key={user.id} value={user.id}>
-                            {user.name} ({user.email})
+                        {estimators.length > 0 ? (
+                          estimators.map((estimator: any) => (
+                            <SelectItem key={estimator.id} value={estimator.id}>
+                              {estimator.name} - {estimator.company}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="" disabled>
+                            No estimators found. Add estimators to your contacts with "Estimator" specialty.
                           </SelectItem>
-                        ))}
+                        )}
                       </SelectContent>
                     </Select>
                     <FormMessage />
