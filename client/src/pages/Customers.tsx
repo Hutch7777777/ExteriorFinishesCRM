@@ -11,7 +11,7 @@ import { DataTable } from '@/components/ui/data-table'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useToast } from '@/hooks/use-toast'
 import { trpcClient } from '@/lib/trpc'
-import { Plus, Edit, Users, Mail, Phone } from 'lucide-react'
+import { Plus, Edit, Users, Mail, Phone, DollarSign } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -21,6 +21,7 @@ const createCustomerSchema = z.object({
   email: z.string().email('Invalid email').optional().or(z.literal('')),
   phone: z.string().optional(),
   notes: z.string().optional(),
+  jobValue: z.string().optional(),
 })
 
 type CreateCustomerData = z.infer<typeof createCustomerSchema>
@@ -33,6 +34,7 @@ interface Customer {
   notes: string | null
   fieldSupervisorId: string | null
   divisionId: string
+  jobValueCents: number | null
   createdAt: string
 }
 
@@ -51,6 +53,7 @@ export default function Customers() {
       email: '',
       phone: '',
       notes: '',
+      jobValue: '',
     },
   })
 
@@ -62,7 +65,7 @@ export default function Customers() {
       q: searchQuery || undefined 
     }),
     staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
-    cacheTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
+    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
     retry: 1,
     refetchOnWindowFocus: false, // Don't refetch when window regains focus
   })
@@ -70,12 +73,14 @@ export default function Customers() {
   // Create customer mutation
   const createMutation = useMutation({
     mutationFn: async (data: CreateCustomerData) => {
+      const jobValueCents = data.jobValue ? Math.round(parseFloat(data.jobValue) * 100) : 0
       return trpcClient.customers.create({
         divisionKey: division as 'mfnc' | 'sfnc' | 'rr',
         name: data.name,
         email: data.email || undefined,
         phone: data.phone || undefined,
         notes: data.notes || undefined,
+        jobValueCents,
       })
     },
     onSuccess: () => {
@@ -133,6 +138,22 @@ export default function Customers() {
             <div className="flex items-center gap-2">
               <Phone className="w-4 h-4" />
               {row.original.phone}
+            </div>
+          ) : (
+            <span className="text-slate-400">—</span>
+          )}
+        </div>
+      ),
+    },
+    {
+      accessorKey: "jobValueCents",
+      header: "Job Value",
+      cell: ({ row }) => (
+        <div className="text-slate-600 dark:text-slate-400">
+          {row.original.jobValueCents ? (
+            <div className="flex items-center gap-2">
+              <DollarSign className="w-4 h-4" />
+              ${(row.original.jobValueCents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
           ) : (
             <span className="text-slate-400">—</span>
@@ -269,6 +290,20 @@ export default function Customers() {
                 type="tel"
                 placeholder="(555) 123-4567"
                 {...form.register('phone')}
+                className="border-slate-200 dark:border-slate-800"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="jobValue" className="text-slate-700 dark:text-slate-300">
+                Job Value
+              </Label>
+              <Input 
+                id="jobValue" 
+                type="number"
+                step="0.01"
+                placeholder="0.00"
+                {...form.register('jobValue')}
                 className="border-slate-200 dark:border-slate-800"
               />
             </div>

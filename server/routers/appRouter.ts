@@ -144,6 +144,7 @@ export const createAppRouter = () => {
         addressJson: z.any().optional(),
         notes: z.string().optional(),
         fieldSupervisorId: z.string().uuid().optional(),
+        jobValueCents: z.number().optional(),
       });
       
       const input = inputSchema.parse(req.body?.input || {});
@@ -166,6 +167,7 @@ export const createAppRouter = () => {
         addressJson: input.addressJson || null,
         notes: input.notes || null,
         fieldSupervisorId: input.fieldSupervisorId || null,
+        jobValueCents: input.jobValueCents || 0,
         divisionId: division.id,
       };
       
@@ -215,6 +217,7 @@ export const createAppRouter = () => {
         addressJson: z.any().optional(),
         notes: z.string().optional(),
         fieldSupervisorId: z.string().uuid().optional(),
+        jobValueCents: z.number().optional(),
       });
       
       const input = inputSchema.parse(req.body?.input || {});
@@ -243,6 +246,7 @@ export const createAppRouter = () => {
         ...(input.addressJson !== undefined && { addressJson: input.addressJson }),
         ...(input.notes !== undefined && { notes: input.notes }),
         ...(input.fieldSupervisorId !== undefined && { fieldSupervisorId: input.fieldSupervisorId }),
+        ...(input.jobValueCents !== undefined && { jobValueCents: input.jobValueCents }),
       };
       
       const result = await storage.updateCustomer(input.id, updateData);

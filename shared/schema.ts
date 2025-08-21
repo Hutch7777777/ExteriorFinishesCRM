@@ -68,6 +68,7 @@ export const customers = pgTable("customers", {
   addressJson: jsonb("address_json"),
   notes: text("notes"),
   fieldSupervisorId: uuid("field_supervisor_id").references(() => users.id),
+  jobValueCents: integer("job_value_cents").default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("idx_customers_division_id").on(table.divisionId),
