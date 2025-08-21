@@ -150,7 +150,7 @@ export default function Customers() {
       header: "Job Value",
       cell: ({ row }) => (
         <div className="text-slate-600 dark:text-slate-400">
-          {row.original.jobValueCents ? (
+          {row.original.jobValueCents && row.original.jobValueCents > 0 ? (
             <div className="flex items-center gap-2">
               <DollarSign className="w-4 h-4" />
               ${(row.original.jobValueCents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}

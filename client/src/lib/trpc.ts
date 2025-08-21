@@ -57,6 +57,7 @@ export class TRPCClient {
       phone?: string;
       addressJson?: any;
       notes?: string;
+      jobValueCents?: number;
     }) => this.makeRequest('customers.create', {
       method: 'POST',
       body: JSON.stringify({ input }),
