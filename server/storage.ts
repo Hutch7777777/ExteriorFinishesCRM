@@ -47,7 +47,7 @@ import {
   type InsertDocument,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, sql, count } from "drizzle-orm";
+import { eq, desc, and, sql, count, inArray } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (required for Replit Auth)
@@ -518,52 +518,22 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getEstimateWithLead(id: string): Promise<EstimateWithRelations | undefined> {
-    const result = await db.select({
-      id: estimates.id,
-      leadId: estimates.leadId,
-      title: estimates.title,
-      description: estimates.description,
-      status: estimates.status,
-      totalCents: estimates.totalCents,
-      laborHours: estimates.laborHours,
-      materialCosts: estimates.materialCosts,
-      equipmentCosts: estimates.equipmentCosts,
-      overheadPercentage: estimates.overheadPercentage,
-      profitMarginPercentage: estimates.profitMarginPercentage,
-      notes: estimates.notes,
-      estimatedBy: estimates.estimatedBy,
-      createdAt: estimates.createdAt,
-      updatedAt: estimates.updatedAt,
-      lead: {
-        id: leads.id,
-        name: leads.name,
-        email: leads.email,
-        phone: leads.phone,
-        projectType: leads.projectType,
-        address: leads.address,
-        city: leads.city,
-        state: leads.state,
-        zipCode: leads.zipCode,
-        source: leads.source,
-        status: leads.status,
-        estimatedValue: leads.estimatedValue,
-        priority: leads.priority,
-        notes: leads.notes,
-        divisionId: leads.divisionId,
-        assignedTo: leads.assignedTo,
-        createdAt: leads.createdAt,
-        updatedAt: leads.updatedAt,
-      }
-    })
+    const [result] = await db
+      .select()
       .from(estimates)
       .leftJoin(leads, eq(estimates.leadId, leads.id))
+      .leftJoin(jobs, eq(estimates.jobId, jobs.id))
       .where(eq(estimates.id, id));
 
-    if (result.length === 0) {
+    if (!result) {
       return undefined;
     }
 
-    return result[0] as EstimateWithRelations;
+    return {
+      ...result.estimates,
+      lead: result.leads || undefined,
+      job: result.jobs || undefined,
+    } as EstimateWithRelations;
   }
 
   async getEstimatesByLeadId(leadId: string): Promise<Estimate[]> {
@@ -577,6 +547,10 @@ export class DatabaseStorage implements IStorage {
       ...estimate,
       updatedAt: new Date()
     }).returning();
+    
+    // Sync customer job value after creating estimate
+    await this.syncCustomerJobValue(newEstimate);
+    
     return newEstimate;
   }
 
@@ -589,11 +563,84 @@ export class DatabaseStorage implements IStorage {
       })
       .where(eq(estimates.id, id))
       .returning();
+      
+    // Sync customer job value after updating estimate
+    await this.syncCustomerJobValue(updatedEstimate);
+    
     return updatedEstimate;
   }
 
   async deleteEstimate(id: string): Promise<void> {
     await db.delete(estimates).where(eq(estimates.id, id));
+  }
+
+  // Helper function to sync customer job value with highest estimate total
+  async syncCustomerJobValue(estimate: Estimate): Promise<void> {
+    let customerId: string | null = null;
+
+    // Find customer ID through lead or job relationship
+    if (estimate.leadId) {
+      const lead = await this.getLead(estimate.leadId);
+      if (lead?.customerId) {
+        customerId = lead.customerId;
+      }
+    } else if (estimate.jobId) {
+      const job = await this.getJob(estimate.jobId);
+      if (job?.customerId) {
+        customerId = job.customerId;
+      }
+    }
+
+    if (!customerId) {
+      return; // No customer to update
+    }
+
+    // Get all estimates for this customer (through leads and jobs)
+    const customerLeads = await db
+      .select({ id: leads.id })
+      .from(leads)
+      .where(eq(leads.customerId, customerId));
+
+    const customerJobs = await db
+      .select({ id: jobs.id })
+      .from(jobs)
+      .where(eq(jobs.customerId, customerId));
+
+    const leadIds = customerLeads.map(lead => lead.id);
+    const jobIds = customerJobs.map(job => job.id);
+
+    // Get highest estimate total for this customer
+    let maxTotalCents = 0;
+
+    if (leadIds.length > 0) {
+      const leadEstimates = await db
+        .select({ totalCents: estimates.totalCents })
+        .from(estimates)
+        .where(inArray(estimates.leadId, leadIds))
+        .orderBy(desc(estimates.totalCents));
+      
+      if (leadEstimates.length > 0 && leadEstimates[0].totalCents) {
+        maxTotalCents = Math.max(maxTotalCents, leadEstimates[0].totalCents);
+      }
+    }
+
+    if (jobIds.length > 0) {
+      const jobEstimates = await db
+        .select({ totalCents: estimates.totalCents })
+        .from(estimates)
+        .where(inArray(estimates.jobId, jobIds))
+        .orderBy(desc(estimates.totalCents));
+      
+      if (jobEstimates.length > 0 && jobEstimates[0].totalCents) {
+        maxTotalCents = Math.max(maxTotalCents, jobEstimates[0].totalCents);
+      }
+    }
+
+    // Update customer job value to match highest estimate
+    await db
+      .update(customers)
+      .set({ jobValueCents: maxTotalCents })
+      .where(eq(customers.id, customerId));
   }
 
   // Proposal operations

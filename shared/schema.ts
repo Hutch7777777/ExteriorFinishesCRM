@@ -96,6 +96,7 @@ export const jobs = pgTable("jobs", {
 export const leads = pgTable("leads", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   divisionId: uuid("division_id").notNull().references(() => divisions.id),
+  customerId: uuid("customer_id").references(() => customers.id), // Reference to customers
   name: varchar("name", { length: 200 }).notNull(), // Company/property name
   contact: varchar("contact", { length: 200 }).notNull(), // Contact person
   email: varchar("email", { length: 255 }),
@@ -114,6 +115,7 @@ export const leads = pgTable("leads", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
   index("idx_leads_division_id").on(table.divisionId),
+  index("idx_leads_customer_id").on(table.customerId),
   index("idx_leads_status").on(table.status),
   index("idx_leads_assigned_to").on(table.assignedTo),
   index("idx_leads_created_by").on(table.createdBy),
@@ -194,6 +196,7 @@ export const customerRelations = relations(customers, ({ one, many }) => ({
     references: [divisions.id],
   }),
   jobs: many(jobs),
+  leads: many(leads),
 }));
 
 
@@ -364,6 +367,10 @@ export const leadRelations = relations(leads, ({ one, many }) => ({
   division: one(divisions, {
     fields: [leads.divisionId],
     references: [divisions.id],
+  }),
+  customer: one(customers, {
+    fields: [leads.customerId],
+    references: [customers.id],
   }),
   createdByUser: one(users, {
     fields: [leads.createdBy],
