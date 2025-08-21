@@ -50,7 +50,8 @@ const editLeadSchema = z.object({
   email: z.string().email().optional().or(z.literal('')),
   phone: z.string().optional(),
   status: z.enum(['new', 'contacted', 'qualified', 'proposal', 'negotiation', 'won', 'lost']),
-  value: z.number().min(0, 'Value must be positive'),
+  value: z.string().min(1, 'Value is required'),
+  assignedTo: z.string().optional(),
   notes: z.string().optional(),
 })
 
@@ -73,6 +74,19 @@ export default function LeadDetail() {
   // Edit lead dialog state
   const [showEditDialog, setShowEditDialog] = useState(false)
   
+  // Fetch users for estimator assignment
+  const { data: users = [], isLoading: usersLoading } = useQuery({
+    queryKey: ['/api/trpc/users.list'],
+    queryFn: async () => {
+      const res = await fetch('/api/trpc/users.list', {
+        credentials: 'include'
+      })
+      if (!res.ok) throw new Error('Failed to fetch users')
+      const data = await res.json()
+      return data.result?.json || []
+    }
+  })
+  
   // Form for editing lead
   const editForm = useForm<EditLeadData>({
     resolver: zodResolver(editLeadSchema),
@@ -82,7 +96,8 @@ export default function LeadDetail() {
       email: '',
       phone: '',
       status: 'new',
-      value: 0,
+      value: '0.00',
+      assignedTo: '',
       notes: '',
     },
   })
@@ -131,7 +146,8 @@ export default function LeadDetail() {
         email: lead.email || '',
         phone: lead.phone || '',
         status: lead.status,
-        value: lead.value ? lead.value / 100 : 0, // Convert cents to dollars
+        value: lead.value ? (lead.value / 100).toFixed(2) : '0.00', // Convert cents to dollars with proper formatting
+        assignedTo: lead.assignedTo || '',
         notes: lead.notes || '',
       })
       setShowEditDialog(true)
@@ -142,7 +158,7 @@ export default function LeadDetail() {
   const handleEditSubmit = (data: EditLeadData) => {
     const updateData = {
       ...data,
-      value: Math.round(data.value * 100), // Convert dollars to cents
+      value: Math.round(parseFloat(data.value) * 100), // Convert dollars to cents
     }
     updateLeadMutation.mutate(updateData)
   }
@@ -1214,14 +1230,56 @@ export default function LeadDetail() {
                     <FormItem>
                       <FormLabel>Lead Value ($)</FormLabel>
                       <FormControl>
-                        <Input 
-                          type="number" 
-                          step="0.01"
-                          placeholder="0.00" 
-                          {...field}
-                          onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                        />
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500">$</span>
+                          <Input 
+                            type="text"
+                            placeholder="0.00"
+                            className="pl-8"
+                            {...field}
+                            onChange={(e) => {
+                              // Allow only numbers, decimal point, and commas
+                              let value = e.target.value.replace(/[^0-9.]/g, '')
+                              // Ensure only one decimal point
+                              const parts = value.split('.')
+                              if (parts.length > 2) {
+                                value = parts[0] + '.' + parts.slice(1).join('')
+                              }
+                              // Limit decimal places to 2
+                              if (parts[1] && parts[1].length > 2) {
+                                value = parts[0] + '.' + parts[1].slice(0, 2)
+                              }
+                              field.onChange(value)
+                            }}
+                          />
+                        </div>
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={editForm.control}
+                  name="assignedTo"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Assigned Estimator</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select estimator" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="">Unassigned</SelectItem>
+                          {users.map((user: any) => (
+                            <SelectItem key={user.id} value={user.id}>
+                              {user.name} ({user.email})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
