@@ -35,6 +35,26 @@ import {
 } from 'lucide-react'
 import { EnhancedObjectUploader } from '@/components/EnhancedObjectUploader'
 import { NewEstimateDialog } from '@/components/NewEstimateDialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
+import { Separator } from '@/components/ui/separator'
+import { toast } from '@/hooks/use-toast'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+
+// Form schema for editing leads
+const editLeadSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  contact: z.string().min(1, 'Contact is required'),
+  email: z.string().email().optional().or(z.literal('')),
+  phone: z.string().optional(),
+  status: z.enum(['new', 'contacted', 'qualified', 'proposal', 'negotiation', 'won', 'lost']),
+  value: z.number().min(0, 'Value must be positive'),
+  notes: z.string().optional(),
+})
+
+type EditLeadData = z.infer<typeof editLeadSchema>
 
 export default function LeadDetail() {
   const params = useParams({ strict: false })
@@ -49,6 +69,23 @@ export default function LeadDetail() {
   
   // Estimate dialog state
   const [showEstimateDialog, setShowEstimateDialog] = useState(false)
+  
+  // Edit lead dialog state
+  const [showEditDialog, setShowEditDialog] = useState(false)
+  
+  // Form for editing lead
+  const editForm = useForm<EditLeadData>({
+    resolver: zodResolver(editLeadSchema),
+    defaultValues: {
+      name: '',
+      contact: '',
+      email: '',
+      phone: '',
+      status: 'new',
+      value: 0,
+      notes: '',
+    },
+  })
 
   // Update lead mutation
   const updateLeadMutation = useMutation({
@@ -72,8 +109,43 @@ export default function LeadDetail() {
       queryClient.invalidateQueries({ queryKey: ['/api/trpc/leads.list'] })
       setEditingField(null)
       setEditValues({})
+      setShowEditDialog(false)
+      editForm.reset()
+      toast({ title: 'Lead updated successfully' })
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Failed to update lead',
+        description: error.message,
+        variant: 'destructive'
+      })
     }
   })
+  
+  // Function to open edit dialog and populate form
+  const openEditDialog = () => {
+    if (lead) {
+      editForm.reset({
+        name: lead.name || '',
+        contact: lead.contact || '',
+        email: lead.email || '',
+        phone: lead.phone || '',
+        status: lead.status,
+        value: lead.value ? lead.value / 100 : 0, // Convert cents to dollars
+        notes: lead.notes || '',
+      })
+      setShowEditDialog(true)
+    }
+  }
+  
+  // Handle edit form submission
+  const handleEditSubmit = (data: EditLeadData) => {
+    const updateData = {
+      ...data,
+      value: Math.round(data.value * 100), // Convert dollars to cents
+    }
+    updateLeadMutation.mutate(updateData)
+  }
 
   // Fetch documents for this lead
   const { data: documents = [], isLoading: documentsLoading } = useQuery({
@@ -360,7 +432,10 @@ export default function LeadDetail() {
             <DollarSign className="w-4 h-4" />
             New Estimate
           </Button>
-          <Button className="flex items-center gap-2">
+          <Button 
+            className="flex items-center gap-2"
+            onClick={openEditDialog}
+          >
             <Edit className="w-4 h-4" />
             Edit Lead
           </Button>
@@ -1038,6 +1113,159 @@ export default function LeadDetail() {
         leadId={leadId}
         leadName={lead.name}
       />
+
+      {/* Edit Lead Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Lead</DialogTitle>
+          </DialogHeader>
+          
+          <Form {...editForm}>
+            <form onSubmit={editForm.handleSubmit(handleEditSubmit)} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={editForm.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Lead Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter lead name" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={editForm.control}
+                  name="contact"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Contact Person</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter contact person" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={editForm.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
+                        <Input type="email" placeholder="Enter email address" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={editForm.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Phone</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter phone number" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={editForm.control}
+                  name="status"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Status</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select status" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="new">New</SelectItem>
+                          <SelectItem value="contacted">Contacted</SelectItem>
+                          <SelectItem value="qualified">Qualified</SelectItem>
+                          <SelectItem value="proposal">Proposal</SelectItem>
+                          <SelectItem value="negotiation">Negotiation</SelectItem>
+                          <SelectItem value="won">Won</SelectItem>
+                          <SelectItem value="lost">Lost</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={editForm.control}
+                  name="value"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Lead Value ($)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          step="0.01"
+                          placeholder="0.00" 
+                          {...field}
+                          onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              
+              <FormField
+                control={editForm.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Notes</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        placeholder="Enter any additional notes..."
+                        className="resize-none"
+                        rows={3}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <DialogFooter>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setShowEditDialog(false)}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={updateLeadMutation.isPending}
+                >
+                  {updateLeadMutation.isPending ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
