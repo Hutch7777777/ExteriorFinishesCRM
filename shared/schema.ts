@@ -35,6 +35,8 @@ export const leadStatusEnum = pgEnum('lead_status', ['new', 'contacted', 'qualif
 export const logTypeEnum = pgEnum('log_type', ['progress', 'issue', 'completion', 'weather', 'safety']);
 export const punchItemStatusEnum = pgEnum('punch_item_status', ['open', 'in_progress', 'completed', 'verified']);
 export const punchItemPriorityEnum = pgEnum('punch_item_priority', ['low', 'medium', 'high', 'critical']);
+export const customerTypeEnum = pgEnum('customer_type', ['residential', 'commercial', 'government', 'property_management']);
+export const acquisitionSourceEnum = pgEnum('acquisition_source', ['referral', 'website', 'marketing', 'cold_call', 'repeat_customer', 'trade_show', 'social_media', 'other']);
 
 // Users table
 export const users = pgTable("users", {
@@ -69,11 +71,39 @@ export const customers = pgTable("customers", {
   notes: text("notes"),
   fieldSupervisorId: uuid("field_supervisor_id").references(() => users.id),
   jobValueCents: integer("job_value_cents").default(0),
+  // Enhanced reporting fields
+  customerType: customerTypeEnum("customer_type").default('residential'),
+  acquisitionSource: acquisitionSourceEnum("acquisition_source").default('other'),
+  businessName: varchar("business_name", { length: 200 }), // For commercial customers
+  primaryContact: varchar("primary_contact", { length: 200 }), // Main contact person
+  secondaryContact: varchar("secondary_contact", { length: 200 }), // Backup contact
+  website: varchar("website", { length: 255 }),
+  taxId: varchar("tax_id", { length: 50 }), // For business customers
+  preferredCommunication: varchar("preferred_communication", { length: 50 }).default('email'), // email, phone, text
+  creditScore: integer("credit_score"), // For financial analysis
+  paymentTerms: varchar("payment_terms", { length: 100 }).default('net_30'), // Payment terms
+  discountRate: numeric("discount_rate", { precision: 5, scale: 2 }).default('0.00'), // Customer-specific discount
+  territory: varchar("territory", { length: 100 }), // Geographic territory
+  accountManager: uuid("account_manager_id").references(() => users.id), // Assigned account manager
+  lifetimeValueCents: integer("lifetime_value_cents").default(0), // Total customer value
+  averageProjectSize: integer("avg_project_size_cents").default(0), // Average project value
+  projectCount: integer("project_count").default(0), // Total projects completed
+  lastProjectDate: timestamp("last_project_date"), // Date of last project
+  satisfactionRating: numeric("satisfaction_rating", { precision: 3, scale: 2 }), // 1-5 rating
+  referralCount: integer("referral_count").default(0), // Number of referrals provided
+  isActive: boolean("is_active").default(true), // Active customer status
+  tags: text("tags").array(), // Custom tags for segmentation
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
   index("idx_customers_division_id").on(table.divisionId),
   index("idx_customers_email").on(table.email),
   index("idx_customers_field_supervisor_id").on(table.fieldSupervisorId),
+  index("idx_customers_customer_type").on(table.customerType),
+  index("idx_customers_acquisition_source").on(table.acquisitionSource),
+  index("idx_customers_account_manager").on(table.accountManager),
+  index("idx_customers_territory").on(table.territory),
+  index("idx_customers_is_active").on(table.isActive),
 ]);
 
 // Jobs table

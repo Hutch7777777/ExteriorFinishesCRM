@@ -11,7 +11,9 @@ import { DataTable } from '@/components/ui/data-table'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useToast } from '@/hooks/use-toast'
 import { trpcClient } from '@/lib/trpc'
-import { Plus, Edit, Users, Mail, Phone, DollarSign } from 'lucide-react'
+import { Plus, Edit, Users, Mail, Phone, DollarSign, Building, Globe, MapPin, MessageSquare } from 'lucide-react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -22,6 +24,14 @@ const createCustomerSchema = z.object({
   phone: z.string().optional(),
   notes: z.string().optional(),
   jobValue: z.string().optional(),
+  // Enhanced reporting fields
+  customerType: z.enum(['residential', 'commercial', 'government', 'property_management']).default('residential'),
+  acquisitionSource: z.enum(['referral', 'website', 'marketing', 'cold_call', 'repeat_customer', 'trade_show', 'social_media', 'other']).default('other'),
+  businessName: z.string().optional(),
+  primaryContact: z.string().optional(),
+  website: z.string().optional(),
+  territory: z.string().optional(),
+  preferredCommunication: z.enum(['email', 'phone', 'text']).default('email'),
 })
 
 type CreateCustomerData = z.infer<typeof createCustomerSchema>
@@ -54,6 +64,13 @@ export default function Customers() {
       phone: '',
       notes: '',
       jobValue: '',
+      customerType: 'residential',
+      acquisitionSource: 'other',
+      businessName: '',
+      primaryContact: '',
+      website: '',
+      territory: '',
+      preferredCommunication: 'email',
     },
   })
 
@@ -81,6 +98,14 @@ export default function Customers() {
         phone: data.phone || undefined,
         notes: data.notes || undefined,
         jobValueCents,
+        // Enhanced reporting fields
+        customerType: data.customerType,
+        acquisitionSource: data.acquisitionSource,
+        businessName: data.businessName || undefined,
+        primaryContact: data.primaryContact || undefined,
+        website: data.website || undefined,
+        territory: data.territory || undefined,
+        preferredCommunication: data.preferredCommunication,
       })
     },
     onSuccess: () => {
@@ -227,7 +252,7 @@ export default function Customers() {
 
       {/* Create Customer Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Users className="w-5 h-5" />
@@ -308,6 +333,104 @@ export default function Customers() {
               />
             </div>
             
+            {/* Customer Type */}
+            <div className="space-y-2">
+              <Label className="text-slate-700 dark:text-slate-300">
+                Customer Type
+              </Label>
+              <Select value={form.watch('customerType')} onValueChange={(value) => form.setValue('customerType', value as any)}>
+                <SelectTrigger className="border-slate-200 dark:border-slate-800">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="residential">Residential</SelectItem>
+                  <SelectItem value="commercial">Commercial</SelectItem>
+                  <SelectItem value="government">Government</SelectItem>
+                  <SelectItem value="property_management">Property Management</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Acquisition Source */}
+            <div className="space-y-2">
+              <Label className="text-slate-700 dark:text-slate-300">
+                How did they find us?
+              </Label>
+              <Select value={form.watch('acquisitionSource')} onValueChange={(value) => form.setValue('acquisitionSource', value as any)}>
+                <SelectTrigger className="border-slate-200 dark:border-slate-800">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="referral">Referral</SelectItem>
+                  <SelectItem value="website">Website</SelectItem>
+                  <SelectItem value="marketing">Marketing Campaign</SelectItem>
+                  <SelectItem value="cold_call">Cold Call</SelectItem>
+                  <SelectItem value="repeat_customer">Repeat Customer</SelectItem>
+                  <SelectItem value="trade_show">Trade Show</SelectItem>
+                  <SelectItem value="social_media">Social Media</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Business Name (conditional) */}
+            {form.watch('customerType') !== 'residential' && (
+              <div className="space-y-2">
+                <Label htmlFor="businessName" className="text-slate-700 dark:text-slate-300">
+                  Business Name
+                </Label>
+                <Input 
+                  id="businessName" 
+                  placeholder="Enter business name"
+                  {...form.register('businessName')}
+                  className="border-slate-200 dark:border-slate-800"
+                />
+              </div>
+            )}
+
+            {/* Primary Contact */}
+            <div className="space-y-2">
+              <Label htmlFor="primaryContact" className="text-slate-700 dark:text-slate-300">
+                Primary Contact Person
+              </Label>
+              <Input 
+                id="primaryContact" 
+                placeholder="Main contact person"
+                {...form.register('primaryContact')}
+                className="border-slate-200 dark:border-slate-800"
+              />
+            </div>
+
+            {/* Territory */}
+            <div className="space-y-2">
+              <Label htmlFor="territory" className="text-slate-700 dark:text-slate-300">
+                Territory/Area
+              </Label>
+              <Input 
+                id="territory" 
+                placeholder="Geographic area or territory"
+                {...form.register('territory')}
+                className="border-slate-200 dark:border-slate-800"
+              />
+            </div>
+
+            {/* Preferred Communication */}
+            <div className="space-y-2">
+              <Label className="text-slate-700 dark:text-slate-300">
+                Preferred Communication
+              </Label>
+              <Select value={form.watch('preferredCommunication')} onValueChange={(value) => form.setValue('preferredCommunication', value as any)}>
+                <SelectTrigger className="border-slate-200 dark:border-slate-800">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="email">Email</SelectItem>
+                  <SelectItem value="phone">Phone</SelectItem>
+                  <SelectItem value="text">Text Message</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="notes" className="text-slate-700 dark:text-slate-300">
                 Notes

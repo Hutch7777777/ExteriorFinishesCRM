@@ -13,7 +13,7 @@ export const createAnalyticsRoutes = (router: Router) => {
     const user = requireRole('staff')(ctx);
     
     const inputSchema = z.object({
-      divisionKey: z.enum(['mfnc', 'sfnc', 'rr', 'all']).optional(),
+      divisionKey: z.enum(['mfnc', 'sfnc', 'rr', 'all']).optional().default('all'),
       dateRange: z.enum(['7d', '30d', '90d', '1y']).default('30d'),
     });
     
