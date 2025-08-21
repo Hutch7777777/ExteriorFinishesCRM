@@ -61,12 +61,22 @@ export default function Communication() {
 
   // Filter contacts to get internal team members and field team
   const contacts = contactsResponse || []
-  const availableUsers = Array.isArray(contacts) ? contacts
-    .filter((contact: Contact) => 
-      contact.type === 'Internal' && 
-      (contact.specialty === 'Team Member' || contact.specialty === 'Field Team' || contact.specialty === 'Estimator')
-    )
-    .map((contact: Contact) => contact.name) : []
+  
+  const filteredContacts = Array.isArray(contacts) ? contacts
+    .filter((contact: Contact) => {
+      // Include internal contacts and internal field contacts
+      return (contact.type === 'internal' || contact.type === 'internal_field') && 
+        // Include various internal roles that can be messaged
+        (contact.specialty === 'Estimator' || 
+         contact.specialty === 'Supervisor' || 
+         contact.specialty === 'Sales' || 
+         contact.specialty === 'Owner' ||
+         contact.specialty === 'Project Manager' ||
+         contact.specialty === 'Field Team' ||
+         contact.specialty === 'Team Member')
+    }) : []
+  
+  const availableUsers = filteredContacts.map((contact: Contact) => contact.name)
 
   // Initialize channels and messages with mock data
   const [channels, setChannels] = useState<Channel[]>([
