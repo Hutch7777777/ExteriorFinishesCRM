@@ -158,7 +158,7 @@ export default function LeadDetail() {
   const handleEditSubmit = (data: EditLeadData) => {
     const updateData = {
       ...data,
-      value: Math.round(parseFloat(data.value) * 100), // Convert dollars to cents
+      value: parseFloat(data.value) || 0, // Server expects number, will convert to cents server-side
       assignedTo: data.assignedTo === 'unassigned' ? null : data.assignedTo, // Convert "unassigned" to null
     }
     updateLeadMutation.mutate(updateData)
