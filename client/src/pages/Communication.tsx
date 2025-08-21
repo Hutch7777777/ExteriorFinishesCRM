@@ -7,6 +7,10 @@ import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { useToast } from '@/hooks/use-toast'
 import { 
   MessageSquare, 
   Send, 
@@ -15,7 +19,9 @@ import {
   Paperclip,
   Users,
   Clock,
-  CheckCircle2
+  CheckCircle2,
+  Plus,
+  UserPlus
 } from 'lucide-react'
 
 interface Message {
@@ -39,9 +45,25 @@ interface Channel {
 export default function Communication() {
   const [selectedChannel, setSelectedChannel] = useState('general')
   const [messageInput, setMessageInput] = useState('')
+  const [channelDialogOpen, setChannelDialogOpen] = useState(false)
+  const [conversationDialogOpen, setConversationDialogOpen] = useState(false)
+  const [newChannelName, setNewChannelName] = useState('')
+  const [newChannelType, setNewChannelType] = useState('general')
+  const [selectedUser, setSelectedUser] = useState('')
+  const { toast } = useToast()
 
-  // Mock data for demonstration
-  const channels: Channel[] = [
+  // Available users for starting conversations
+  const availableUsers = [
+    'John Smith',
+    'Sarah Williams', 
+    'Mike Johnson',
+    'David Chen',
+    'Lisa Rodriguez',
+    'Anthony Hutchinson'
+  ]
+
+  // Initialize channels and messages with mock data
+  const [channels, setChannels] = useState<Channel[]>([
     {
       id: 'general',
       name: 'General',
@@ -87,9 +109,9 @@ export default function Communication() {
         read: false
       }
     }
-  ]
+  ])
 
-  const messages: Message[] = [
+  const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
       sender: 'John Smith',
@@ -130,7 +152,7 @@ export default function Communication() {
       type: 'text',
       read: false
     }
-  ]
+  ])
 
   const currentChannel = channels.find(c => c.id === selectedChannel)
 
@@ -145,9 +167,22 @@ export default function Communication() {
 
   const handleSendMessage = () => {
     if (messageInput.trim()) {
-      // In a real app, this would send the message to the backend
-      console.log('Sending message:', messageInput)
+      const newMessage: Message = {
+        id: Date.now().toString(),
+        sender: 'You', // In real app, get from current user
+        content: messageInput.trim(),
+        timestamp: new Date().toISOString(),
+        type: 'text',
+        read: true
+      }
+      
+      setMessages(prev => [...prev, newMessage])
       setMessageInput('')
+      
+      toast({
+        title: 'Message sent',
+        description: 'Your message has been sent to the channel.',
+      })
     }
   }
 
@@ -155,6 +190,63 @@ export default function Communication() {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSendMessage()
+    }
+  }
+
+  const handleCreateChannel = () => {
+    if (newChannelName.trim()) {
+      const newChannel: Channel = {
+        id: newChannelName.toLowerCase().replace(/\s+/g, '-'),
+        name: newChannelName,
+        type: newChannelType as 'general' | 'project',
+        participants: ['You'], // In real app, add selected participants
+        unreadCount: 0
+      }
+      
+      setChannels(prev => [...prev, newChannel])
+      setNewChannelName('')
+      setChannelDialogOpen(false)
+      
+      toast({
+        title: 'Channel created',
+        description: `#${newChannelName} has been created successfully.`,
+      })
+    }
+  }
+
+  const handleStartConversation = () => {
+    if (selectedUser) {
+      // Check if conversation already exists
+      const existingConversation = channels.find(
+        c => c.type === 'direct' && c.name === selectedUser
+      )
+      
+      if (existingConversation) {
+        setSelectedChannel(existingConversation.id)
+        toast({
+          title: 'Conversation opened',
+          description: `Switched to conversation with ${selectedUser}.`,
+        })
+      } else {
+        const newConversation: Channel = {
+          id: `direct-${selectedUser.toLowerCase().replace(/\s+/g, '-')}`,
+          name: selectedUser,
+          type: 'direct',
+          participants: ['You', selectedUser],
+          unreadCount: 0
+        }
+        
+        setChannels(prev => [...prev, newConversation])
+        setSelectedChannel(newConversation.id)
+        
+        toast({
+          title: 'Conversation started',
+          description: `Started a new conversation with ${selectedUser}.`,
+        })
+      }
+      
+      setSelectedUser('')
+      setConversationDialogOpen(false)
     }
   }
 
@@ -174,9 +266,58 @@ export default function Communication() {
         {/* Channel Categories */}
         <div className="space-y-4">
           <div>
-            <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
-              Channels
-            </h3>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                Channels
+              </h3>
+              <Dialog open={channelDialogOpen} onOpenChange={setChannelDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Create New Channel</DialogTitle>
+                    <DialogDescription>
+                      Create a new channel for team communication and collaboration.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="channel-name">Channel Name</Label>
+                      <Input
+                        id="channel-name"
+                        value={newChannelName}
+                        onChange={(e) => setNewChannelName(e.target.value)}
+                        placeholder="Enter channel name..."
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="channel-type">Channel Type</Label>
+                      <Select value={newChannelType} onValueChange={setNewChannelType}>
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder="Select channel type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="general">General Discussion</SelectItem>
+                          <SelectItem value="project">Project Channel</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setChannelDialogOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button onClick={handleCreateChannel} disabled={!newChannelName.trim()}>
+                      Create Channel
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
             <div className="space-y-1">
               {channels.filter(c => c.type !== 'direct').map((channel) => (
                 <button
@@ -203,9 +344,53 @@ export default function Communication() {
           </div>
 
           <div>
-            <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
-              Direct Messages
-            </h3>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                Direct Messages
+              </h3>
+              <Dialog open={conversationDialogOpen} onOpenChange={setConversationDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                    <UserPlus className="w-4 h-4" />
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Start Conversation</DialogTitle>
+                    <DialogDescription>
+                      Select a team member to start a direct conversation.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="select-user">Select User</Label>
+                      <Select value={selectedUser} onValueChange={setSelectedUser}>
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder="Choose a team member..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableUsers
+                            .filter(user => !channels.some(c => c.type === 'direct' && c.name === user))
+                            .map((user) => (
+                            <SelectItem key={user} value={user}>
+                              {user}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setConversationDialogOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button onClick={handleStartConversation} disabled={!selectedUser}>
+                      Start Conversation
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
             <div className="space-y-1">
               {channels.filter(c => c.type === 'direct').map((channel) => (
                 <button
