@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import type { Contact } from '@shared/schema'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -54,17 +55,18 @@ export default function Communication() {
   const { toast } = useToast()
 
   // Fetch internal contacts (team members and field team)
-  const { data: contacts = [], isLoading: contactsLoading } = useQuery({
+  const { data: contactsResponse, isLoading: contactsLoading } = useQuery({
     queryKey: ['/api/trpc/contacts.list'],
   })
 
   // Filter contacts to get internal team members and field team
-  const availableUsers = contacts
-    .filter((contact: any) => 
+  const contacts = contactsResponse || []
+  const availableUsers = Array.isArray(contacts) ? contacts
+    .filter((contact: Contact) => 
       contact.type === 'Internal' && 
       (contact.specialty === 'Team Member' || contact.specialty === 'Field Team' || contact.specialty === 'Estimator')
     )
-    .map((contact: any) => contact.name)
+    .map((contact: Contact) => contact.name) : []
 
   // Initialize channels and messages with mock data
   const [channels, setChannels] = useState<Channel[]>([
@@ -379,8 +381,8 @@ export default function Communication() {
                             <SelectItem value="empty" disabled>No team members available</SelectItem>
                           ) : (
                             availableUsers
-                              .filter(user => !channels.some(c => c.type === 'direct' && c.name === user))
-                              .map((user) => (
+                              .filter((user: string) => !channels.some(c => c.type === 'direct' && c.name === user))
+                              .map((user: string) => (
                                 <SelectItem key={user} value={user}>
                                   {user}
                                 </SelectItem>
