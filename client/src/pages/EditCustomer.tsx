@@ -21,6 +21,28 @@ const updateCustomerSchema = z.object({
   phone: z.string().optional(),
   notes: z.string().optional(),
   fieldSupervisorId: z.string().optional(),
+  // Enhanced reporting fields
+  customerType: z.enum(['residential', 'commercial', 'government', 'property_management']).optional(),
+  acquisitionSource: z.enum(['referral', 'website', 'marketing', 'cold_call', 'repeat_customer', 'trade_show', 'social_media', 'other']).optional(),
+  businessName: z.string().optional(),
+  primaryContact: z.string().optional(),
+  secondaryContact: z.string().optional(),
+  website: z.string().optional(),
+  taxId: z.string().optional(),
+  preferredCommunication: z.enum(['email', 'phone', 'text']).optional(),
+  creditScore: z.number().optional(),
+  paymentTerms: z.string().optional(),
+  discountRate: z.string().optional(),
+  territory: z.string().optional(),
+  accountManager: z.string().optional(),
+  lifetimeValueCents: z.number().optional(),
+  averageProjectSize: z.number().optional(),
+  projectCount: z.number().optional(),
+  lastProjectDate: z.string().optional(),
+  satisfactionRating: z.string().optional(),
+  referralCount: z.number().optional(),
+  isActive: z.boolean().optional(),
+  tags: z.array(z.string()).optional(),
 })
 
 type UpdateCustomerData = z.infer<typeof updateCustomerSchema>
@@ -34,6 +56,28 @@ interface Customer {
   fieldSupervisorId: string | null
   divisionId: string
   createdAt: string
+  // Enhanced reporting fields
+  customerType?: string
+  acquisitionSource?: string
+  businessName?: string | null
+  primaryContact?: string | null
+  secondaryContact?: string | null
+  website?: string | null
+  taxId?: string | null
+  preferredCommunication?: string
+  creditScore?: number | null
+  paymentTerms?: string
+  discountRate?: number
+  territory?: string | null
+  accountManager?: string | null
+  lifetimeValueCents?: number
+  averageProjectSize?: number
+  projectCount?: number
+  lastProjectDate?: string | null
+  satisfactionRating?: number | null
+  referralCount?: number
+  isActive?: boolean
+  tags?: string[]
 }
 
 interface User {
@@ -79,6 +123,28 @@ export default function EditCustomer() {
         phone: customer.phone || '',
         notes: customer.notes || '',
         fieldSupervisorId: customer.fieldSupervisorId || 'none',
+        // Enhanced reporting fields
+        customerType: customer.customerType || 'residential',
+        acquisitionSource: customer.acquisitionSource || 'other',
+        businessName: customer.businessName || '',
+        primaryContact: customer.primaryContact || '',
+        secondaryContact: customer.secondaryContact || '',
+        website: customer.website || '',
+        taxId: customer.taxId || '',
+        preferredCommunication: customer.preferredCommunication || 'email',
+        creditScore: customer.creditScore || undefined,
+        paymentTerms: customer.paymentTerms || 'net_30',
+        discountRate: customer.discountRate || '0.00',
+        territory: customer.territory || '',
+        accountManager: customer.accountManager || '',
+        lifetimeValueCents: customer.lifetimeValueCents || 0,
+        averageProjectSize: customer.averageProjectSize || 0,
+        projectCount: customer.projectCount || 0,
+        lastProjectDate: customer.lastProjectDate ? new Date(customer.lastProjectDate).toISOString().split('T')[0] : '',
+        satisfactionRating: customer.satisfactionRating || '',
+        referralCount: customer.referralCount || 0,
+        isActive: customer.isActive !== undefined ? customer.isActive : true,
+        tags: customer.tags || [],
       })
     }
   }, [customer, form])
@@ -93,6 +159,28 @@ export default function EditCustomer() {
         phone: data.phone || undefined,
         notes: data.notes || undefined,
         fieldSupervisorId: data.fieldSupervisorId === 'none' ? null : data.fieldSupervisorId || undefined,
+        // Enhanced reporting fields
+        customerType: data.customerType,
+        acquisitionSource: data.acquisitionSource,
+        businessName: data.businessName || undefined,
+        primaryContact: data.primaryContact || undefined,
+        secondaryContact: data.secondaryContact || undefined,
+        website: data.website || undefined,
+        taxId: data.taxId || undefined,
+        preferredCommunication: data.preferredCommunication,
+        creditScore: data.creditScore,
+        paymentTerms: data.paymentTerms,
+        discountRate: data.discountRate,
+        territory: data.territory || undefined,
+        accountManager: data.accountManager || undefined,
+        lifetimeValueCents: data.lifetimeValueCents,
+        averageProjectSize: data.averageProjectSize,
+        projectCount: data.projectCount,
+        lastProjectDate: data.lastProjectDate ? new Date(data.lastProjectDate) : undefined,
+        satisfactionRating: data.satisfactionRating,
+        referralCount: data.referralCount,
+        isActive: data.isActive,
+        tags: data.tags,
       })
     },
     onSuccess: () => {
@@ -257,6 +345,226 @@ export default function EditCustomer() {
                 </SelectContent>
               </Select>
             </div>
+            {/* Customer Type */}
+            <div>
+              <Label>Customer Type</Label>
+              <Select 
+                value={form.watch('customerType') || 'residential'} 
+                onValueChange={(value) => form.setValue('customerType', value as any)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="residential">Residential</SelectItem>
+                  <SelectItem value="commercial">Commercial</SelectItem>
+                  <SelectItem value="government">Government</SelectItem>
+                  <SelectItem value="property_management">Property Management</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Acquisition Source */}
+            <div>
+              <Label>How did they find us?</Label>
+              <Select 
+                value={form.watch('acquisitionSource') || 'other'} 
+                onValueChange={(value) => form.setValue('acquisitionSource', value as any)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="referral">Referral</SelectItem>
+                  <SelectItem value="website">Website</SelectItem>
+                  <SelectItem value="marketing">Marketing Campaign</SelectItem>
+                  <SelectItem value="cold_call">Cold Call</SelectItem>
+                  <SelectItem value="repeat_customer">Repeat Customer</SelectItem>
+                  <SelectItem value="trade_show">Trade Show</SelectItem>
+                  <SelectItem value="social_media">Social Media</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Business Name (conditional) */}
+            {form.watch('customerType') !== 'residential' && (
+              <div>
+                <Label htmlFor="businessName">Business Name</Label>
+                <Input 
+                  id="businessName" 
+                  {...form.register('businessName')}
+                />
+              </div>
+            )}
+
+            {/* Primary Contact */}
+            <div>
+              <Label htmlFor="primaryContact">Primary Contact Person</Label>
+              <Input 
+                id="primaryContact" 
+                {...form.register('primaryContact')}
+              />
+            </div>
+
+            {/* Secondary Contact */}
+            <div>
+              <Label htmlFor="secondaryContact">Secondary Contact</Label>
+              <Input 
+                id="secondaryContact" 
+                {...form.register('secondaryContact')}
+              />
+            </div>
+
+            {/* Website */}
+            <div>
+              <Label htmlFor="website">Website</Label>
+              <Input 
+                id="website" 
+                type="url"
+                placeholder="https://example.com"
+                {...form.register('website')}
+              />
+            </div>
+
+            {/* Territory */}
+            <div>
+              <Label htmlFor="territory">Territory/Area</Label>
+              <Input 
+                id="territory" 
+                {...form.register('territory')}
+              />
+            </div>
+
+            {/* Preferred Communication */}
+            <div>
+              <Label>Preferred Communication</Label>
+              <Select 
+                value={form.watch('preferredCommunication') || 'email'} 
+                onValueChange={(value) => form.setValue('preferredCommunication', value as any)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="email">Email</SelectItem>
+                  <SelectItem value="phone">Phone</SelectItem>
+                  <SelectItem value="text">Text Message</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Credit Score */}
+            <div>
+              <Label htmlFor="creditScore">Credit Score</Label>
+              <Input 
+                id="creditScore" 
+                type="number"
+                min="300"
+                max="850"
+                {...form.register('creditScore', { valueAsNumber: true })}
+              />
+            </div>
+
+            {/* Payment Terms */}
+            <div>
+              <Label htmlFor="paymentTerms">Payment Terms</Label>
+              <Input 
+                id="paymentTerms" 
+                placeholder="e.g., Net 30, COD"
+                {...form.register('paymentTerms')}
+              />
+            </div>
+
+            {/* Discount Rate */}
+            <div>
+              <Label htmlFor="discountRate">Discount Rate (%)</Label>
+              <Input 
+                id="discountRate" 
+                type="text"
+                placeholder="0.00"
+                {...form.register('discountRate')}
+              />
+            </div>
+
+            {/* Lifetime Value */}
+            <div>
+              <Label htmlFor="lifetimeValueCents">Lifetime Value ($)</Label>
+              <Input 
+                id="lifetimeValueCents" 
+                type="number"
+                min="0"
+                step="0.01"
+                {...form.register('lifetimeValueCents', { valueAsNumber: true })}
+              />
+            </div>
+
+            {/* Average Project Size */}
+            <div>
+              <Label htmlFor="averageProjectSize">Average Project Size ($)</Label>
+              <Input 
+                id="averageProjectSize" 
+                type="number"
+                min="0"
+                step="0.01"
+                {...form.register('averageProjectSize', { valueAsNumber: true })}
+              />
+            </div>
+
+            {/* Project Count */}
+            <div>
+              <Label htmlFor="projectCount">Total Projects</Label>
+              <Input 
+                id="projectCount" 
+                type="number"
+                min="0"
+                {...form.register('projectCount', { valueAsNumber: true })}
+              />
+            </div>
+
+            {/* Last Project Date */}
+            <div>
+              <Label htmlFor="lastProjectDate">Last Project Date</Label>
+              <Input 
+                id="lastProjectDate" 
+                type="date"
+                {...form.register('lastProjectDate')}
+              />
+            </div>
+
+            {/* Satisfaction Rating */}
+            <div>
+              <Label htmlFor="satisfactionRating">Satisfaction Rating (1-5)</Label>
+              <Input 
+                id="satisfactionRating" 
+                type="text"
+                placeholder="5.0"
+                {...form.register('satisfactionRating')}
+              />
+            </div>
+
+            {/* Referral Count */}
+            <div>
+              <Label htmlFor="referralCount">Referrals Made</Label>
+              <Input 
+                id="referralCount" 
+                type="number"
+                min="0"
+                {...form.register('referralCount', { valueAsNumber: true })}
+              />
+            </div>
+
+            {/* Is Active */}
+            <div className="flex items-center space-x-2">
+              <input 
+                type="checkbox" 
+                id="isActive"
+                {...form.register('isActive')}
+                className="rounded border-gray-300"
+              />
+              <Label htmlFor="isActive">Active Customer</Label>
+            </div>
+
             <div>
               <Label htmlFor="notes">Notes</Label>
               <Textarea 
