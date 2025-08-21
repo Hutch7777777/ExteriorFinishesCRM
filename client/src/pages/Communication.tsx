@@ -62,19 +62,14 @@ export default function Communication() {
   // Filter contacts to get internal team members and field team
   const contacts = contactsResponse || []
   
+  // Let's be more inclusive and show all internal contacts for now
   const filteredContacts = Array.isArray(contacts) ? contacts
     .filter((contact: Contact) => {
       // Include internal contacts and internal field contacts
-      return (contact.type === 'internal' || contact.type === 'internal_field') && 
-        // Include various internal roles that can be messaged
-        (contact.specialty === 'Estimator' || 
-         contact.specialty === 'Supervisor' || 
-         contact.specialty === 'Sales' || 
-         contact.specialty === 'Owner' ||
-         contact.specialty === 'Project Manager' ||
-         contact.specialty === 'Field Team' ||
-         contact.specialty === 'Team Member')
+      return contact.type === 'internal' || contact.type === 'internal_field'
     }) : []
+  
+  console.log('Available contacts for messaging:', filteredContacts.map(c => ({name: c.name, type: c.type, specialty: c.specialty})))
   
   const availableUsers = filteredContacts.map((contact: Contact) => contact.name)
 
