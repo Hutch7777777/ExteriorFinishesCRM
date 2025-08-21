@@ -147,7 +147,7 @@ export default function LeadDetail() {
         phone: lead.phone || '',
         status: lead.status,
         value: lead.value ? (lead.value / 100).toFixed(2) : '0.00', // Convert cents to dollars with proper formatting
-        assignedTo: lead.assignedTo || '',
+        assignedTo: lead.assignedTo || 'unassigned',
         notes: lead.notes || '',
       })
       setShowEditDialog(true)
@@ -159,6 +159,7 @@ export default function LeadDetail() {
     const updateData = {
       ...data,
       value: Math.round(parseFloat(data.value) * 100), // Convert dollars to cents
+      assignedTo: data.assignedTo === 'unassigned' ? null : data.assignedTo, // Convert "unassigned" to null
     }
     updateLeadMutation.mutate(updateData)
   }
@@ -1014,7 +1015,6 @@ export default function LeadDetail() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {console.log('DEBUG - Documents data:', { documents, documentsLoading, documentsLength: documents?.length })}
                 {documentsLoading ? (
                   <div className="flex items-center justify-center py-8">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
@@ -1272,7 +1272,7 @@ export default function LeadDetail() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="">Unassigned</SelectItem>
+                          <SelectItem value="unassigned">Unassigned</SelectItem>
                           {users.map((user: any) => (
                             <SelectItem key={user.id} value={user.id}>
                               {user.name} ({user.email})
