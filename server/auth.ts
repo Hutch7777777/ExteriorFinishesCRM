@@ -1,12 +1,15 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import type { Request, Response, NextFunction } from 'express';
+import * as crypto from 'crypto';
 import { storage } from './storage';
 import type { User } from '@shared/schema';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-fallback-secret-key';
 const JWT_EXPIRES_IN = '24h'; // Extended for better user experience
 
+// Encryption secret for encrypting/decrypting JWT tokens in cookies
+const ENCRYPTION_SECRET = process.env.COOKIE_ENCRYPTION_SECRET || 'your-fallback-encryption-secret-key'; // Must be 32 bytes for AES-256
 export interface AuthenticatedRequest extends Request {
   user?: User;
 }
@@ -55,9 +58,17 @@ export async function authenticateToken(
   res: Response,
   next: NextFunction
 ): Promise<void> {
-  const token = req.cookies?.access_token;
+  const encToken = req.cookies?.access_token;
 
-  if (!token) {
+  if (!encToken) {
+  let token: string;
+  try {
+    token = decryptToken(encToken);
+  } catch (err) {
+    res.status(401).json({ message: 'Invalid token format' });
+    return;
+  }
+
     res.status(401).json({ message: 'Access token required' });
     return;
   }
@@ -104,7 +115,8 @@ export function requireAdmin(
 
 // Set auth cookie
 export function setAuthCookie(res: Response, token: string): void {
-  res.cookie('access_token', token, {
+  const encryptedToken = encryptToken(token);
+  res.cookie('access_token', encryptedToken, {
     httpOnly: true,
     secure: false, // Set to true in production with HTTPS
     sameSite: 'lax',
