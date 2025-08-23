@@ -11,8 +11,10 @@ import {
   pgEnum,
   uuid,
   numeric,
+  decimal,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod";
 
 // Session storage table for Replit Auth (required)
 export const sessions = pgTable(
@@ -113,6 +115,9 @@ export const jobs = pgTable("jobs", {
   divisionId: uuid("division_id").notNull().references(() => divisions.id),
   status: jobStatusEnum("status").notNull().default('draft'),
   siteAddressJson: jsonb("site_address_json"),
+  dueDate: timestamp("due_date"),
+  value: decimal("value", { precision: 10, scale: 2 }),
+  projectType: varchar("project_type", { length: 100 }),
   createdBy: uuid("created_by").notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
@@ -537,6 +542,35 @@ export const planScaleRelations = relations(planScales, ({ one }) => ({
   }),
 }));
 
+// Activity Log table
+export const activityLogs = pgTable("activity_logs", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  action: varchar("action", { length: 50 }).notNull(), // create, update, delete, complete
+  entityType: varchar("entity_type", { length: 50 }).notNull(), // customer, job, lead, etc.
+  entityId: varchar("entity_id", { length: 255 }), // ID of the entity being acted upon
+  description: text("description").notNull(),
+  userId: uuid("user_id").references(() => users.id),
+  divisionId: uuid("division_id").references(() => divisions.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_activity_logs_action").on(table.action),
+  index("idx_activity_logs_entity_type").on(table.entityType),
+  index("idx_activity_logs_user_id").on(table.userId),
+  index("idx_activity_logs_division_id").on(table.divisionId),
+  index("idx_activity_logs_created_at").on(table.createdAt),
+]);
+
+export const activityLogRelations = relations(activityLogs, ({ one }) => ({
+  user: one(users, {
+    fields: [activityLogs.userId],
+    references: [users.id],
+  }),
+  division: one(divisions, {
+    fields: [activityLogs.divisionId],
+    references: [divisions.id],
+  }),
+}));
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ 
   id: true, 
@@ -591,6 +625,11 @@ export const insertPunchListItemSchema = createInsertSchema(punchListItems).omit
   id: true,
   createdAt: true,
   updatedAt: true
+});
+
+export const insertActivityLogSchema = createInsertSchema(activityLogs).omit({
+  id: true,
+  createdAt: true
 });
 
 export const insertPlanFileSchema = createInsertSchema(planFiles).omit({
@@ -655,6 +694,9 @@ export type InsertDocument = typeof insertDocumentSchema._type;
 
 export type Contact = typeof contacts.$inferSelect;
 export type InsertContact = typeof insertContactSchema._type;
+
+export type ActivityLog = typeof activityLogs.$inferSelect;
+export type InsertActivityLog = typeof insertActivityLogSchema._type;
 
 // Extended types with relations
 export type UserWithRelations = User & {

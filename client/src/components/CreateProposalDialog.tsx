@@ -187,9 +187,8 @@ export function CreateProposalDialog({ children }: CreateProposalDialogProps) {
 
   const createProposalMutation = useMutation({
     mutationFn: (data: ProposalFormData) => 
-      apiRequest('/api/trpc/proposals.create', {
-        method: 'POST',
-        body: { input: { ...data, divisionKey: division } },
+      apiRequest('POST', '/api/trpc/proposals.create', { 
+        input: { ...data, divisionKey: division } 
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['proposals'] })
