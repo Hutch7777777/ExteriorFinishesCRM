@@ -483,15 +483,27 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Estimate operations
-  async getEstimates(leadId?: string, jobId?: string): Promise<any[]> {
-    const conditions = [];
-    
-    if (leadId) {
-      conditions.push(eq(estimates.leadId, leadId));
-    }
-    
+  async getEstimates(leadIdOrDivisionId?: string, jobId?: string): Promise<any[]> {
+    // The REST route passes divisionId here; tRPC may pass leadId. Support both:
+    // - If a matching lead exists for the provided id, filter by that lead
+    // - Else treat it as a divisionId and filter where either lead.divisionId or job.divisionId matches
+    const filters: any[] = [];
+
     if (jobId) {
-      conditions.push(eq(estimates.jobId, jobId));
+      filters.push(eq(estimates.jobId, jobId));
+    }
+
+    let treatAsDivisionId = false;
+    if (leadIdOrDivisionId) {
+      filters.push(
+        // Match by lead id directly if provided id is a lead id
+        or(
+          eq(estimates.leadId, leadIdOrDivisionId as any),
+          // Or match division via joined lead or job
+          eq(leads.divisionId, leadIdOrDivisionId as any)
+        )
+      );
+      treatAsDivisionId = true;
     }
 
     const results = await db.select()
@@ -499,15 +511,26 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(leads, eq(estimates.leadId, leads.id))
       .leftJoin(jobs, eq(estimates.jobId, jobs.id))
       .leftJoin(customers, eq(jobs.customerId, customers.id))
-      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .where(filters.length > 0 ? and(...filters) : undefined)
       .orderBy(desc(estimates.createdAt));
 
-    return results.map(row => ({
-      ...row.estimates,
-      lead: row.leads || undefined,
-      job: row.jobs || undefined,
-      customer: row.customers || undefined,
-    }));
+    return results
+      .filter(row => {
+        if (!treatAsDivisionId || !leadIdOrDivisionId) return true;
+        // If caller intended a division filter, ensure either side matches division
+        const leadDivisionMatches = row.leads?.divisionId === leadIdOrDivisionId;
+        // jobs table has divisionId
+        const jobDivisionMatches = row.jobs?.divisionId === leadIdOrDivisionId;
+        // If the id actually was a lead id, the first or() already captured; keep it too
+        const leadIdMatches = row.estimates.leadId === leadIdOrDivisionId;
+        return leadDivisionMatches || jobDivisionMatches || leadIdMatches;
+      })
+      .map(row => ({
+        ...row.estimates,
+        lead: row.leads || undefined,
+        job: row.jobs || undefined,
+        customer: row.customers || undefined,
+      }));
   }
 
   async getEstimate(id: string): Promise<Estimate | undefined> {

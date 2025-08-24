@@ -45,14 +45,11 @@ export default function JobForm({ onSuccess, initialData, jobId }: JobFormProps)
   const form = useForm<InsertJob>({
     resolver: zodResolver(insertJobSchema),
     defaultValues: {
-      title: '',
-      description: '',
       projectType: '',
-      status: 'planning',
+      status: 'draft',
       customerId: '',
       divisionId: '',
       value: '',
-      startDate: undefined,
       dueDate: undefined,
       ...initialData,
     },
@@ -101,20 +98,6 @@ export default function JobForm({ onSuccess, initialData, jobId }: JobFormProps)
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="title"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Job Title *</FormLabel>
-                <FormControl>
-                  <Input {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
           <FormField
             control={form.control}
             name="projectType"
@@ -192,10 +175,12 @@ export default function JobForm({ onSuccess, initialData, jobId }: JobFormProps)
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
+                    <SelectItem value="draft">Draft</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="closed">Closed</SelectItem>
                     <SelectItem value="planning">Planning</SelectItem>
                     <SelectItem value="in_progress">In Progress</SelectItem>
                     <SelectItem value="completed">Completed</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -224,25 +209,6 @@ export default function JobForm({ onSuccess, initialData, jobId }: JobFormProps)
 
           <FormField
             control={form.control}
-            name="startDate"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Start Date</FormLabel>
-                <FormControl>
-                  <Input 
-                    type="date" 
-                    {...field} 
-                    value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
-                    onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : undefined)}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
             name="dueDate"
             render={({ field }) => (
               <FormItem>
@@ -261,19 +227,7 @@ export default function JobForm({ onSuccess, initialData, jobId }: JobFormProps)
           />
         </div>
 
-        <FormField
-          control={form.control}
-          name="description"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Description</FormLabel>
-              <FormControl>
-                <Textarea {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        
 
         <div className="flex justify-end gap-3">
           <Button type="button" variant="outline" onClick={onSuccess}>

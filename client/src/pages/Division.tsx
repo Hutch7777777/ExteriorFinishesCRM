@@ -266,7 +266,7 @@ export default function Division() {
                     <Card key={job.id} className="hover:shadow-md transition-shadow">
                       <CardContent className="p-4">
                         <div className="flex items-start justify-between mb-2">
-                          <h3 className="font-semibold text-slate-900">{job.title}</h3>
+                          <h3 className="font-semibold text-slate-900">{job.projectType || 'Job'}</h3>
                           <Badge className={getStatusColor(job.status)}>
                             {formatStatus(job.status)}
                           </Badge>
@@ -323,7 +323,7 @@ export default function Division() {
                           <p className="text-sm text-slate-600 mb-1">{estimate.customer.name}</p>
                         )}
                         <p className="text-sm font-medium text-green-600">
-                          ${Number(estimate.amount).toLocaleString()}
+                          ${Number((Number(estimate.totalCents) || 0) / 100).toLocaleString()}
                         </p>
                       </CardContent>
                     </Card>

@@ -1,7 +1,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { insertEstimateSchema, type InsertEstimate, type Division, type Customer, type Job } from "@shared/schema";
+import { insertEstimateSchema, type InsertEstimate, type Job } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -34,14 +34,6 @@ export default function EstimateForm({ onSuccess, initialData, estimateId }: Est
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: divisions = [] } = useQuery<Division[]>({
-    queryKey: ['/api/divisions'],
-  });
-
-  const { data: customers = [] } = useQuery<Customer[]>({
-    queryKey: ['/api/customers'],
-  });
-
   const { data: jobs = [] } = useQuery<Job[]>({
     queryKey: ['/api/jobs'],
   });
@@ -51,12 +43,8 @@ export default function EstimateForm({ onSuccess, initialData, estimateId }: Est
     defaultValues: {
       title: '',
       description: '',
-      amount: '',
       status: 'draft',
-      customerId: '',
-      divisionId: '',
       jobId: '',
-      validUntil: undefined,
       ...initialData,
     },
   });
@@ -139,56 +127,6 @@ export default function EstimateForm({ onSuccess, initialData, estimateId }: Est
 
           <FormField
             control={form.control}
-            name="customerId"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Customer *</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a customer" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {customers.map((customer) => (
-                      <SelectItem key={customer.id} value={customer.id}>
-                        {customer.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="divisionId"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Division *</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a division" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {divisions.map((division) => (
-                      <SelectItem key={division.id} value={division.id}>
-                        {division.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
             name="jobId"
             render={({ field }) => (
               <FormItem>
@@ -203,7 +141,7 @@ export default function EstimateForm({ onSuccess, initialData, estimateId }: Est
                     <SelectItem value="">No related job</SelectItem>
                     {jobs.map((job) => (
                       <SelectItem key={job.id} value={job.id}>
-                        {job.title}
+                        {job.projectType || `Job ${job.id.slice(0, 8)}`}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -237,24 +175,7 @@ export default function EstimateForm({ onSuccess, initialData, estimateId }: Est
             )}
           />
 
-          <FormField
-            control={form.control}
-            name="validUntil"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Valid Until</FormLabel>
-                <FormControl>
-                  <Input 
-                    type="date" 
-                    {...field} 
-                    value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
-                    onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : undefined)}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          
         </div>
 
         <FormField
