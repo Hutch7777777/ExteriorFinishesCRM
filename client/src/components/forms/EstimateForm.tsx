@@ -1,4 +1,5 @@
 import { useForm } from "react-hook-form";
+import { useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type Job, type Lead } from "@shared/schema";
@@ -97,6 +98,24 @@ export default function EstimateForm({ onSuccess, leadId, initialData, estimateI
     enabled: !!leadId,
   });
 
+  useEffect(() => {
+    if (!leadId) {
+      toast({
+        title: "Missing lead",
+        description: "A valid lead is required to create an estimate.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (lead === null) {
+      toast({
+        title: "Lead not found",
+        description: "Unable to load lead details. Please verify the link or try again.",
+        variant: "destructive",
+      });
+    }
+  }, [leadId, lead, toast]);
+
   const form = useForm<EstimateFormInput>({
     resolver: zodResolver(EstimateSchema),
     defaultValues: {
@@ -160,6 +179,14 @@ export default function EstimateForm({ onSuccess, leadId, initialData, estimateI
   });
 
   const onSubmit = (data: EstimateInsert) => {
+    if (!data.leadId || lead === null) {
+      toast({
+        title: "Missing or invalid lead",
+        description: "A valid lead is required to create an estimate.",
+        variant: "destructive",
+      });
+      return;
+    }
     mutation.mutate(data);
   };
 
@@ -173,6 +200,9 @@ export default function EstimateForm({ onSuccess, leadId, initialData, estimateI
             {lead.contact && <div>Contact: {lead.contact}</div>}
             {lead.email && <div>Email: {lead.email}</div>}
             {lead.phone && <div>Phone: {lead.phone}</div>}
+            {(lead as any).projectType && <div>Project: {(lead as any).projectType}</div>}
+            {(lead as any).timeline && <div>Timeline: {(lead as any).timeline}</div>}
+            {(lead as any).budget && <div>Budget: {(lead as any).budget}</div>}
           </div>
         )}
 
