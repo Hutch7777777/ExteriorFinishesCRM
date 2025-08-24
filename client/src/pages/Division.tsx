@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useParams } from "wouter";
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
+import { fromCents } from "@/lib/utils";
 import CustomerForm from "@/components/forms/CustomerForm";
 import JobForm from "@/components/forms/JobForm";
 import EstimateForm from "@/components/forms/EstimateForm";
@@ -266,7 +267,7 @@ export default function Division() {
                     <Card key={job.id} className="hover:shadow-md transition-shadow">
                       <CardContent className="p-4">
                         <div className="flex items-start justify-between mb-2">
-                          <h3 className="font-semibold text-slate-900">{job.title}</h3>
+                          <h3 className="font-semibold text-slate-900">{job.projectType || 'Job'}</h3>
                           <Badge className={getStatusColor(job.status)}>
                             {formatStatus(job.status)}
                           </Badge>
@@ -323,7 +324,7 @@ export default function Division() {
                           <p className="text-sm text-slate-600 mb-1">{estimate.customer.name}</p>
                         )}
                         <p className="text-sm font-medium text-green-600">
-                          ${Number(estimate.amount).toLocaleString()}
+                          ${fromCents(estimate.totalCents).toLocaleString()}
                         </p>
                       </CardContent>
                     </Card>

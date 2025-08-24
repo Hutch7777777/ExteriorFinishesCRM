@@ -1,7 +1,8 @@
 import { useForm } from "react-hook-form";
+import { useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { insertEstimateSchema, type InsertEstimate, type Division, type Customer, type Job } from "@shared/schema";
+import { type Job, type Lead } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -23,52 +24,133 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { z } from "zod";
 
 interface EstimateFormProps {
   onSuccess?: () => void;
-  initialData?: Partial<InsertEstimate>;
+  leadId: string;
+  initialData?: Partial<any>;
   estimateId?: string;
 }
 
-export default function EstimateForm({ onSuccess, initialData, estimateId }: EstimateFormProps) {
+function centsToDollars(value: number | string | undefined): string {
+  if (value === undefined || value === null) return '';
+  const n = typeof value === 'string' ? parseInt(value, 10) : value;
+  if (!Number.isFinite(n as number)) return '';
+  return ((n as number) / 100).toFixed(2);
+}
+
+export const EstimateSchema = z.object({
+  leadId: z.string().uuid(),
+  jobId: z.string().uuid().optional(),
+  title: z.string().min(1, 'Title is required'),
+  description: z.string().optional(),
+  status: z.enum(['DRAFT', 'SENT', 'APPROVED', 'REJECTED']),
+  totalDollars: z
+    .string()
+    .trim()
+    .refine(v => v !== '' && !isNaN(Number(v)), 'Enter a valid amount'),
+  laborHours: z.number().int().nonnegative().optional(),
+  linesJson: z
+    .array(
+      z.object({
+        label: z.string().min(1),
+        qty: z.number().positive(),
+        unit: z.string().min(1),
+        unitCents: z.number().int().nonnegative(),
+      })
+    )
+    .default([]),
+}).transform(v => {
+  const totalCents = Math.round(Number(v.totalDollars) * 100);
+  const status = v.status.toLowerCase() as 'draft' | 'sent' | 'approved' | 'rejected';
+  return {
+    leadId: v.leadId,
+    jobId: v.jobId,
+    title: v.title,
+    description: v.description,
+    status,
+    totalCents,
+    laborHours: v.laborHours,
+    linesJson: v.linesJson,
+  };
+});
+
+export type EstimateFormInput = z.input<typeof EstimateSchema>;
+export type EstimateInsert = z.output<typeof EstimateSchema>;
+
+export default function EstimateForm({ onSuccess, leadId, initialData, estimateId }: EstimateFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-
-  const { data: divisions = [] } = useQuery<Division[]>({
-    queryKey: ['/api/divisions'],
-  });
-
-  const { data: customers = [] } = useQuery<Customer[]>({
-    queryKey: ['/api/customers'],
-  });
 
   const { data: jobs = [] } = useQuery<Job[]>({
     queryKey: ['/api/jobs'],
   });
 
-  const form = useForm<InsertEstimate>({
-    resolver: zodResolver(insertEstimateSchema),
+  const { data: lead } = useQuery<Lead | null>({
+    queryKey: ['/api/trpc/leads.get', leadId],
+    queryFn: async () => {
+      const res = await fetch(`/api/trpc/leads.get?id=${leadId}`, { credentials: 'include' });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return (data?.result?.json as Lead) ?? null;
+    },
+    enabled: !!leadId,
+  });
+
+  useEffect(() => {
+    if (!leadId) {
+      toast({
+        title: "Missing lead",
+        description: "A valid lead is required to create an estimate.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (lead === null) {
+      toast({
+        title: "Lead not found",
+        description: "Unable to load lead details. Please verify the link or try again.",
+        variant: "destructive",
+      });
+    }
+  }, [leadId, lead, toast]);
+
+  const form = useForm<EstimateFormInput>({
+    resolver: zodResolver(EstimateSchema),
     defaultValues: {
-      title: '',
-      description: '',
-      amount: '',
-      status: 'draft',
-      customerId: '',
-      divisionId: '',
-      jobId: '',
-      validUntil: undefined,
-      ...initialData,
+      leadId,
+      jobId: (initialData as any)?.jobId,
+      title: (initialData as any)?.title ?? '',
+      description: (initialData as any)?.description ?? '',
+      status: ((initialData as any)?.status ? String((initialData as any).status).toUpperCase() : 'DRAFT') as any,
+      totalDollars: centsToDollars((initialData as any)?.totalCents),
+      laborHours: (initialData as any)?.laborHours !== undefined ? Number((initialData as any).laborHours) : undefined,
+      linesJson: (initialData as any)?.linesJson ?? [],
     },
   });
 
   const mutation = useMutation({
-    mutationFn: async (data: InsertEstimate) => {
-      const url = estimateId ? `/api/estimates/${estimateId}` : '/api/estimates';
-      const method = estimateId ? 'PUT' : 'POST';
-      return await apiRequest(method, url, data);
+    mutationFn: async (data: EstimateInsert) => {
+      if (estimateId) {
+        return await apiRequest('PUT', `/api/estimates/${estimateId}`, data);
+      }
+      const res = await fetch('/api/trpc/estimates.create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ input: data }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err?.error?.message || 'Failed to create estimate');
+      }
+      return res;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/estimates'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/trpc/estimates.list'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/trpc/estimates.getByLeadId', leadId] });
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] });
       toast({
         title: "Success",
@@ -96,14 +178,49 @@ export default function EstimateForm({ onSuccess, initialData, estimateId }: Est
     },
   });
 
-  const onSubmit = (data: InsertEstimate) => {
+  const onSubmit = (data: EstimateInsert) => {
+    if (!data.leadId || lead === null) {
+      toast({
+        title: "Missing or invalid lead",
+        description: "A valid lead is required to create an estimate.",
+        variant: "destructive",
+      });
+      return;
+    }
     mutation.mutate(data);
   };
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        {lead && (
+          <div className="rounded-md border p-4 bg-slate-50 text-sm text-slate-700">
+            <div className="font-medium">Lead</div>
+            <div className="mt-1">{lead.name}</div>
+            {lead.contact && <div>Contact: {lead.contact}</div>}
+            {lead.email && <div>Email: {lead.email}</div>}
+            {lead.phone && <div>Phone: {lead.phone}</div>}
+            {(lead as any).projectType && <div>Project: {(lead as any).projectType}</div>}
+            {(lead as any).timeline && <div>Timeline: {(lead as any).timeline}</div>}
+            {(lead as any).budget && <div>Budget: {(lead as any).budget}</div>}
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="leadId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Lead *</FormLabel>
+                <FormControl>
+                  <Input {...field} disabled />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
           <FormField
             control={form.control}
             name="title"
@@ -120,10 +237,10 @@ export default function EstimateForm({ onSuccess, initialData, estimateId }: Est
 
           <FormField
             control={form.control}
-            name="amount"
+            name="totalDollars"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Amount *</FormLabel>
+                <FormLabel>Total (USD) *</FormLabel>
                 <FormControl>
                   <Input 
                     type="number" 
@@ -139,61 +256,11 @@ export default function EstimateForm({ onSuccess, initialData, estimateId }: Est
 
           <FormField
             control={form.control}
-            name="customerId"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Customer *</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a customer" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {customers.map((customer) => (
-                      <SelectItem key={customer.id} value={customer.id}>
-                        {customer.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="divisionId"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Division *</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a division" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {divisions.map((division) => (
-                      <SelectItem key={division.id} value={division.id}>
-                        {division.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
             name="jobId"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Related Job (Optional)</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} defaultValue={field.value as any}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Select a job" />
@@ -203,7 +270,7 @@ export default function EstimateForm({ onSuccess, initialData, estimateId }: Est
                     <SelectItem value="">No related job</SelectItem>
                     {jobs.map((job) => (
                       <SelectItem key={job.id} value={job.id}>
-                        {job.title}
+                        {job.projectType || `Job ${job.id.slice(0, 8)}`}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -219,17 +286,17 @@ export default function EstimateForm({ onSuccess, initialData, estimateId }: Est
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Status</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} defaultValue={field.value as any}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="draft">Draft</SelectItem>
-                    <SelectItem value="sent">Sent</SelectItem>
-                    <SelectItem value="approved">Approved</SelectItem>
-                    <SelectItem value="rejected">Rejected</SelectItem>
+                    <SelectItem value="DRAFT">Draft</SelectItem>
+                    <SelectItem value="SENT">Sent</SelectItem>
+                    <SelectItem value="APPROVED">Approved</SelectItem>
+                    <SelectItem value="REJECTED">Rejected</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -239,22 +306,18 @@ export default function EstimateForm({ onSuccess, initialData, estimateId }: Est
 
           <FormField
             control={form.control}
-            name="validUntil"
+            name="laborHours"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Valid Until</FormLabel>
+                <FormLabel>Labor Hours</FormLabel>
                 <FormControl>
-                  <Input 
-                    type="date" 
-                    {...field} 
-                    value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
-                    onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : undefined)}
-                  />
+                  <Input type="number" step="1" min="0" placeholder="0" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
+        
         </div>
 
         <FormField
@@ -265,6 +328,32 @@ export default function EstimateForm({ onSuccess, initialData, estimateId }: Est
               <FormLabel>Description</FormLabel>
               <FormControl>
                 <Textarea {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="linesJson"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Line Items (JSON)</FormLabel>
+              <FormControl>
+                <Textarea
+                  rows={6}
+                  value={JSON.stringify(field.value ?? [], null, 2)}
+                  onChange={(e) => {
+                    try {
+                      const parsed = JSON.parse(e.target.value);
+                      field.onChange(parsed);
+                    } catch {
+                      // ignore invalid JSON until submit
+                    }
+                  }}
+                  placeholder='[{"label":"Labor","qty":10,"unit":"hr","unitCents":5000}]'
+                />
               </FormControl>
               <FormMessage />
             </FormItem>

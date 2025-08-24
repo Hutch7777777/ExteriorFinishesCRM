@@ -11,3 +11,5 @@ export function formatCurrency(amount: number): string {
     currency: 'USD',
   }).format(amount)
 }
+
+export const fromCents = (c?: number | null) => (c ?? 0) / 100;
