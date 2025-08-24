@@ -5,7 +5,6 @@ import { type Job, type Lead } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { z } from "zod";
 import { 
   Form, 
   FormControl, 
@@ -24,19 +23,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { z } from "zod";
 
 interface EstimateFormProps {
   onSuccess?: () => void;
   leadId: string;
   initialData?: Partial<any>;
   estimateId?: string;
-}
-
-function dollarsToCents(value: string | number | undefined): number {
-  if (value === undefined || value === null) return 0;
-  const num = typeof value === 'number' ? value : parseFloat(value.replace(/[^0-9.-]/g, ''));
-  if (Number.isNaN(num)) return 0;
-  return Math.round(num * 100);
 }
 
 function centsToDollars(value: number | string | undefined): string {
@@ -46,32 +39,44 @@ function centsToDollars(value: number | string | undefined): string {
   return ((n as number) / 100).toFixed(2);
 }
 
-const estimateFormSchema = z.object({
-  leadId: z.string().uuid({ message: 'Lead is required' }),
-  jobId: z.string().uuid().optional().or(z.literal('')).transform(v => (v ? v : undefined)),
+export const EstimateSchema = z.object({
+  leadId: z.string().uuid(),
+  jobId: z.string().uuid().optional(),
   title: z.string().min(1, 'Title is required'),
   description: z.string().optional(),
-  status: z.enum(['draft', 'sent', 'approved', 'rejected']).default('draft'),
-  amountDollars: z.string().optional().default('0').transform(v => dollarsToCents(v)),
-  laborHours: z.string().optional().default('0'),
-  linesJsonText: z.string().optional().transform((txt) => {
-    if (!txt || txt.trim() === '') return undefined;
-    try {
-      return JSON.parse(txt);
-    } catch {
-      throw new Error('Lines must be valid JSON');
-    }
-  }),
-}).transform((data) => ({
-  leadId: data.leadId,
-  jobId: data.jobId,
-  title: data.title,
-  description: data.description || undefined,
-  status: data.status,
-  totalCents: data.amountDollars as unknown as number,
-  laborHours: data.laborHours || '0',
-  linesJson: data.linesJsonText,
-}));
+  status: z.enum(['DRAFT', 'SENT', 'APPROVED', 'REJECTED']),
+  totalDollars: z
+    .string()
+    .trim()
+    .refine(v => v !== '' && !isNaN(Number(v)), 'Enter a valid amount'),
+  laborHours: z.number().int().nonnegative().optional(),
+  linesJson: z
+    .array(
+      z.object({
+        label: z.string().min(1),
+        qty: z.number().positive(),
+        unit: z.string().min(1),
+        unitCents: z.number().int().nonnegative(),
+      })
+    )
+    .default([]),
+}).transform(v => {
+  const totalCents = Math.round(Number(v.totalDollars) * 100);
+  const status = v.status.toLowerCase() as 'draft' | 'sent' | 'approved' | 'rejected';
+  return {
+    leadId: v.leadId,
+    jobId: v.jobId,
+    title: v.title,
+    description: v.description,
+    status,
+    totalCents,
+    laborHours: v.laborHours,
+    linesJson: v.linesJson,
+  };
+});
+
+export type EstimateFormInput = z.input<typeof EstimateSchema>;
+export type EstimateInsert = z.output<typeof EstimateSchema>;
 
 export default function EstimateForm({ onSuccess, leadId, initialData, estimateId }: EstimateFormProps) {
   const { toast } = useToast();
@@ -92,22 +97,22 @@ export default function EstimateForm({ onSuccess, leadId, initialData, estimateI
     enabled: !!leadId,
   });
 
-  const form = useForm<z.input<typeof estimateFormSchema>>({
-    resolver: zodResolver(estimateFormSchema),
+  const form = useForm<EstimateFormInput>({
+    resolver: zodResolver(EstimateSchema),
     defaultValues: {
       leadId,
-      jobId: initialData?.jobId ?? '',
+      jobId: (initialData as any)?.jobId,
       title: (initialData as any)?.title ?? '',
       description: (initialData as any)?.description ?? '',
-      status: (initialData as any)?.status ?? 'draft',
-      amountDollars: centsToDollars((initialData as any)?.totalCents),
-      laborHours: (initialData as any)?.laborHours ?? '0',
-      linesJsonText: (initialData as any)?.linesJson ? JSON.stringify((initialData as any).linesJson, null, 2) : '',
+      status: ((initialData as any)?.status ? String((initialData as any).status).toUpperCase() : 'DRAFT') as any,
+      totalDollars: centsToDollars((initialData as any)?.totalCents),
+      laborHours: (initialData as any)?.laborHours !== undefined ? Number((initialData as any).laborHours) : undefined,
+      linesJson: (initialData as any)?.linesJson ?? [],
     },
   });
 
   const mutation = useMutation({
-    mutationFn: async (data: z.output<typeof estimateFormSchema>) => {
+    mutationFn: async (data: EstimateInsert) => {
       if (estimateId) {
         return await apiRequest('PUT', `/api/estimates/${estimateId}`, data);
       }
@@ -154,7 +159,7 @@ export default function EstimateForm({ onSuccess, leadId, initialData, estimateI
     },
   });
 
-  const onSubmit = (data: z.output<typeof estimateFormSchema>) => {
+  const onSubmit = (data: EstimateInsert) => {
     mutation.mutate(data);
   };
 
@@ -185,6 +190,7 @@ export default function EstimateForm({ onSuccess, leadId, initialData, estimateI
               </FormItem>
             )}
           />
+
           <FormField
             control={form.control}
             name="title"
@@ -201,7 +207,7 @@ export default function EstimateForm({ onSuccess, leadId, initialData, estimateI
 
           <FormField
             control={form.control}
-            name="amountDollars"
+            name="totalDollars"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Total (USD) *</FormLabel>
@@ -224,7 +230,7 @@ export default function EstimateForm({ onSuccess, leadId, initialData, estimateI
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Related Job (Optional)</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} defaultValue={field.value as any}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Select a job" />
@@ -250,17 +256,17 @@ export default function EstimateForm({ onSuccess, leadId, initialData, estimateI
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Status</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} defaultValue={field.value as any}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="draft">Draft</SelectItem>
-                    <SelectItem value="sent">Sent</SelectItem>
-                    <SelectItem value="approved">Approved</SelectItem>
-                    <SelectItem value="rejected">Rejected</SelectItem>
+                    <SelectItem value="DRAFT">Draft</SelectItem>
+                    <SelectItem value="SENT">Sent</SelectItem>
+                    <SelectItem value="APPROVED">Approved</SelectItem>
+                    <SelectItem value="REJECTED">Rejected</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -275,14 +281,13 @@ export default function EstimateForm({ onSuccess, leadId, initialData, estimateI
               <FormItem>
                 <FormLabel>Labor Hours</FormLabel>
                 <FormControl>
-                  <Input type="number" step="0.1" placeholder="0" {...field} />
+                  <Input type="number" step="1" min="0" placeholder="0" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
-
-          
+        
         </div>
 
         <FormField
@@ -301,12 +306,24 @@ export default function EstimateForm({ onSuccess, leadId, initialData, estimateI
 
         <FormField
           control={form.control}
-          name="linesJsonText"
+          name="linesJson"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Line Items (JSON)</FormLabel>
               <FormControl>
-                <Textarea rows={6} placeholder='[{"item":"Labor","qty":10,"rate":50}]' {...field} />
+                <Textarea
+                  rows={6}
+                  value={JSON.stringify(field.value ?? [], null, 2)}
+                  onChange={(e) => {
+                    try {
+                      const parsed = JSON.parse(e.target.value);
+                      field.onChange(parsed);
+                    } catch {
+                      // ignore invalid JSON until submit
+                    }
+                  }}
+                  placeholder='[{"label":"Labor","qty":10,"unit":"hr","unitCents":5000}]'
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
