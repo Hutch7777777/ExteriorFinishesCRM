@@ -1,5 +1,5 @@
 import superjson from 'superjson';
-import { verifyToken } from './auth';
+import { verifyToken, decryptToken } from './auth';
 import { storage } from './storage';
 import type { User } from '@shared/schema';
 import type { Request, Response } from 'express';
@@ -14,21 +14,25 @@ export interface TRPCContext {
 // Create context function - extracts user from JWT if present
 export const createContext = async (req: Request, res: Response): Promise<TRPCContext> => {
   console.log('🍪 All cookies:', JSON.stringify(req.cookies, null, 2));
-  const token = req.cookies?.access_token;
-  console.log('🔑 Access token from cookies:', token ? 'Found' : 'Not found');
+  const encryptedToken = req.cookies?.session;
+  console.log('🔑 Session token from cookies:', encryptedToken ? 'Found' : 'Not found');
   
-  if (!token) {
-    console.log('❌ No access token found in cookies');
+  if (!encryptedToken) {
+    console.log('❌ No session token found in cookies');
     return { user: null, req, res };
   }
 
   try {
+    // First decrypt the token, then verify it
+    const token = decryptToken(encryptedToken);
     const payload = verifyToken(token);
     if (!payload) {
+      console.log('❌ Invalid token payload');
       return { user: null, req, res };
     }
 
     const user = await storage.getUser(payload.userId);
+    console.log('✅ User authenticated via TRPC:', user?.email);
     return { user: user || null, req, res };
   } catch (error) {
     console.error('Error creating tRPC context:', error);
