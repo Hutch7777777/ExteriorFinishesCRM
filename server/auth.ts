@@ -91,7 +91,7 @@ export async function authenticateToken(
   res: Response,
   next: NextFunction
 ): Promise<void> {
-  const encToken = req.cookies?.access_token;
+  const encToken = req.cookies?.session;
 
   if (!encToken) {
     res.status(401).json({ message: 'Access token required' });
@@ -149,20 +149,20 @@ export function requireAdmin(
 // Set auth cookie
 export function setAuthCookie(res: Response, token: string): void {
   const encryptedToken = encryptToken(token);
-  res.cookie('access_token', encryptedToken, {
+  res.cookie('session', encryptedToken, {
     httpOnly: true,
-    secure: false, // Set to true in production with HTTPS
+    secure: process.env.NODE_ENV === "production",
     sameSite: 'lax',
-    maxAge: 24 * 60 * 60 * 1000, // 24 hours in milliseconds to match JWT
     path: '/',
+    maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
   });
 }
 
 // Clear auth cookie
 export function clearAuthCookie(res: Response): void {
-  res.clearCookie('access_token', {
+  res.clearCookie('session', {
     httpOnly: true,
-    secure: false,
+    secure: process.env.NODE_ENV === "production",
     sameSite: 'lax',
     path: '/',
   });
