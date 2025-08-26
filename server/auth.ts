@@ -28,7 +28,7 @@ export function encryptToken(token: string): string {
   const key = crypto.createHash('sha256').update(ENCRYPTION_SECRET).digest();
   const iv = crypto.randomBytes(16);
   
-  const cipher = crypto.createCipher(algorithm, key);
+  const cipher = crypto.createCipheriv(algorithm, key, iv);
   let encrypted = cipher.update(token, 'utf8', 'hex');
   encrypted += cipher.final('hex');
   
@@ -48,7 +48,7 @@ export function decryptToken(encryptedToken: string): string {
   const iv = Buffer.from(parts[0], 'hex');
   const encrypted = parts[1];
   
-  const decipher = crypto.createDecipher(algorithm, key);
+  const decipher = crypto.createDecipheriv(algorithm, key, iv);
   let decrypted = decipher.update(encrypted, 'hex', 'utf8');
   decrypted += decipher.final('utf8');
   
